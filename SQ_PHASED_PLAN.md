@@ -182,11 +182,12 @@ If a phase goes sideways, the rollback is always:
 
 **Goal:** Collapse the per-game bespoke queries in `LandingPage.jsx:64-93` into one RPC the hub calls. Every new game only has to write one Postgres function.
 
-**What to build:**
-- Each game exposes a function: `wordy_pending_for(uid uuid) returns table(count int, label text, url text)`, same for `rungles_pending_for`.
-- Hub-level wrapper `sq_pending_for(uid)` iterates over the published catalog and unions the results.
-- Hub replaces two inline queries with one RPC call.
-- **Shadow-run for one week:** both the new RPC and the old queries run in parallel; on mismatch, log to `sq_events` with event `pending_mismatch`. Only cut over after a clean week.
+**What to build:** (shipped 2026-04-24)
+- Per-game functions in Postgres: `public.wordy_pending_for(uid uuid)` and `public.rungles_pending_for(uid uuid)`, both returning `(count int, label text, url text)` rows when count > 0. SECURITY INVOKER so RLS still applies.
+- Hub-level wrapper `public.sq_pending_for(uid uuid)` returning `(game_id text, count int, label text, url text)`. plpgsql function that iterates over `games_catalog WHERE is_published=true ORDER BY sort_order` and dynamically calls `<id>_pending_for(uid)` for each (with `replace(id, '-', '_')` for safe identifier names). Skips silently if the per-game function is undefined.
+- LandingPage's `recountInbox` calls `supabase.rpc('sq_pending_for', { uid })` first; on error or with `VITE_SQ_USE_RPC=false`, falls back to `recountInboxLegacy()` which runs the original per-game queries and constructs the same `(game_id, count, label, url)` shape.
+- Single inbox state `inboxItems` replaces the three game-specific states; bell badge + dropdown are now data-driven and look up game visuals (initial, gradient, name) from the games_catalog state.
+- Adding a new game's inbox = define one `<id>_pending_for(uid)` Postgres function. Zero hub code changes.
 
 **Risks:**
 | Type | Detail | Workaround |

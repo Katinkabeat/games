@@ -27,6 +27,7 @@ const FALLBACK_GAMES = [
 ];
 
 const USE_CATALOG = import.meta.env.VITE_SQ_USE_CATALOG !== 'false';
+const USE_RPC = import.meta.env.VITE_SQ_USE_RPC !== 'false';
 
 export default function LandingPage({ session }) {
   const user = session.user;
@@ -39,9 +40,10 @@ export default function LandingPage({ session }) {
     setUsername(name);
     try { localStorage.setItem(usernameStorageKey, name); } catch {}
   };
-  const [wordyTurn, setWordyTurn] = useState(0);
-  const [wordyWaiting, setWordyWaiting] = useState(0);
-  const [runglesTurn, setRunglesTurn] = useState(0);
+  // Phase 6: unified inbox state. Each item is {game_id, count, label, url}.
+  // Populated either from sq_pending_for() RPC or, if that fails or is
+  // disabled, from the legacy per-game queries (via buildLegacyItems).
+  const [inboxItems, setInboxItems] = useState([]);
   const [loading, setLoading] = useState(true);
 
   const [bellOpen, setBellOpen] = useState(false);
@@ -94,12 +96,16 @@ export default function LandingPage({ session }) {
       // On error or empty, leave the fallback array in place.
     }
 
-    async function recountInbox() {
+    // Legacy fallback — runs the per-game queries the hub used before
+    // Phase 6 and returns the same shape sq_pending_for() does.
+    async function recountInboxLegacy() {
+      const items = [];
+
       const { data: wordyRows, error: wordyErr } = await supabase
         .from('game_players')
         .select('player_index, games!inner(id, status, current_player_idx)')
         .eq('user_id', user.id);
-      if (!wordyErr && active && wordyRows) {
+      if (!wordyErr && wordyRows) {
         let turn = 0;
         let waiting = 0;
         for (const row of wordyRows) {
@@ -108,23 +114,38 @@ export default function LandingPage({ session }) {
           if (g.status === 'active' && g.current_player_idx === row.player_index) turn++;
           else if (g.status === 'waiting') waiting++;
         }
-        setWordyTurn(turn);
-        setWordyWaiting(waiting);
+        if (turn > 0)    items.push({ game_id: 'wordy', count: turn,    label: 'Your turn',           url: '/wordy/' });
+        if (waiting > 0) items.push({ game_id: 'wordy', count: waiting, label: 'Waiting for players', url: '/wordy/' });
       }
 
       const { data: runglesRows, error: runglesErr } = await supabase
         .from('rg_players')
         .select('player_idx, rg_games!inner(id, status, current_player_idx)')
         .eq('user_id', user.id);
-      if (!runglesErr && active && runglesRows) {
+      if (!runglesErr && runglesRows) {
         let turn = 0;
         for (const row of runglesRows) {
           const g = row.rg_games;
           if (!g) continue;
           if (g.status === 'active' && g.current_player_idx === row.player_idx) turn++;
         }
-        setRunglesTurn(turn);
+        if (turn > 0) items.push({ game_id: 'rungles', count: turn, label: 'Your turn', url: '/rungles/' });
       }
+
+      return items;
+    }
+
+    async function recountInbox() {
+      if (USE_RPC) {
+        const { data, error } = await supabase.rpc('sq_pending_for', { uid: user.id });
+        if (!error && active && Array.isArray(data)) {
+          setInboxItems(data);
+          return;
+        }
+        // Fall through to legacy on error.
+      }
+      const legacyItems = await recountInboxLegacy();
+      if (active) setInboxItems(legacyItems);
     }
 
     function scheduleRecount() {
@@ -183,8 +204,9 @@ export default function LandingPage({ session }) {
     if (error) toast.error(error.message);
   }
 
-  const inboxTotal = wordyTurn + wordyWaiting + runglesTurn;
+  const inboxTotal = inboxItems.reduce((sum, it) => sum + (it.count || 0), 0);
   const hasNotifications = inboxTotal > 0;
+  const gamesById = games.reduce((acc, g) => { acc[g.id] = g; return acc; }, {});
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-wordy-100 via-pink-100 to-wordy-100">
@@ -219,63 +241,31 @@ export default function LandingPage({ session }) {
                   <p className="text-sm text-wordy-500 px-2 pb-2">Nothing waiting for you.</p>
                 ) : (
                   <ul className="space-y-1">
-                    {wordyTurn > 0 && (
-                      <li>
-                        <a
-                          href="/wordy/"
-                          className="flex items-center gap-2.5 p-2 rounded-lg hover:bg-wordy-50 transition-colors"
-                        >
-                          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-wordy-600 to-wordy-800 flex items-center justify-center shrink-0">
-                            <span className="font-display text-sm text-white">W</span>
-                          </div>
-                          <div className="min-w-0 flex-1">
-                            <div className="text-sm font-bold text-wordy-800">Wordy</div>
-                            <div className="text-xs text-wordy-500">Your turn</div>
-                          </div>
-                          <span className="min-w-[24px] h-6 px-1.5 rounded-full bg-red-500 text-white text-xs font-bold flex items-center justify-center shrink-0">
-                            {wordyTurn}
-                          </span>
-                        </a>
-                      </li>
-                    )}
-                    {wordyWaiting > 0 && (
-                      <li>
-                        <a
-                          href="/wordy/"
-                          className="flex items-center gap-2.5 p-2 rounded-lg hover:bg-wordy-50 transition-colors"
-                        >
-                          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-wordy-600 to-wordy-800 flex items-center justify-center shrink-0">
-                            <span className="font-display text-sm text-white">W</span>
-                          </div>
-                          <div className="min-w-0 flex-1">
-                            <div className="text-sm font-bold text-wordy-800">Wordy</div>
-                            <div className="text-xs text-wordy-500">Waiting for players</div>
-                          </div>
-                          <span className="min-w-[24px] h-6 px-1.5 rounded-full bg-wordy-400 text-white text-xs font-bold flex items-center justify-center shrink-0">
-                            {wordyWaiting}
-                          </span>
-                        </a>
-                      </li>
-                    )}
-                    {runglesTurn > 0 && (
-                      <li>
-                        <a
-                          href="/rungles/"
-                          className="flex items-center gap-2.5 p-2 rounded-lg hover:bg-wordy-50 transition-colors"
-                        >
-                          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-wordy-600 to-wordy-800 flex items-center justify-center shrink-0">
-                            <span className="font-display text-sm text-white">R</span>
-                          </div>
-                          <div className="min-w-0 flex-1">
-                            <div className="text-sm font-bold text-wordy-800">Rungles</div>
-                            <div className="text-xs text-wordy-500">Your turn</div>
-                          </div>
-                          <span className="min-w-[24px] h-6 px-1.5 rounded-full bg-red-500 text-white text-xs font-bold flex items-center justify-center shrink-0">
-                            {runglesTurn}
-                          </span>
-                        </a>
-                      </li>
-                    )}
+                    {inboxItems.filter((it) => (it.count || 0) > 0).map((it, idx) => {
+                      const game = gamesById[it.game_id];
+                      if (!game) return null;
+                      const isUrgent = it.label === 'Your turn';
+                      const badgeClass = isUrgent ? 'bg-red-500' : 'bg-wordy-400';
+                      return (
+                        <li key={`${it.game_id}-${it.label}-${idx}`}>
+                          <a
+                            href={it.url}
+                            className="flex items-center gap-2.5 p-2 rounded-lg hover:bg-wordy-50 transition-colors"
+                          >
+                            <div className={`w-8 h-8 rounded-lg bg-gradient-to-br ${game.gradient} flex items-center justify-center shrink-0`}>
+                              <span className="font-display text-sm text-white">{game.initial}</span>
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <div className="text-sm font-bold text-wordy-800">{game.name}</div>
+                              <div className="text-xs text-wordy-500">{it.label}</div>
+                            </div>
+                            <span className={`min-w-[24px] h-6 px-1.5 rounded-full ${badgeClass} text-white text-xs font-bold flex items-center justify-center shrink-0`}>
+                              {it.count}
+                            </span>
+                          </a>
+                        </li>
+                      );
+                    })}
                   </ul>
                 )}
               </div>

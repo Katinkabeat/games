@@ -103,11 +103,20 @@ DROP TABLE IF EXISTS public.games_catalog;
 Plus in code: restore the `GAMES` constant name (or keep `FALLBACK_GAMES` — same effect), remove `USE_CATALOG`, `games` state, `loadCatalog()`, and the `Promise.all([loadProfileAndAdmin(), loadCatalog()])` call (change back to just `await loadProfileAndAdmin()`), and change `games.map` back to the hardcoded constant name.
 
 ### Phase 6 — Unified pending-actions RPC
+Quick disable (frontend flag):
 ```bash
 # In rae-side-quest/.env
 VITE_SQ_USE_RPC=false
 ```
-Redeploy. The bespoke per-game queries in `LandingPage.jsx` stay in place for a month after cutover specifically so this fallback works.
+Redeploy. The hub will call `recountInboxLegacy()` (the original per-game `from('game_players')` and `from('rg_players')` queries) instead. The legacy fallback stays in code indefinitely — there's no plan to remove it.
+
+Full reversal (drop the SQL functions):
+```sql
+DROP FUNCTION IF EXISTS public.sq_pending_for(uuid);
+DROP FUNCTION IF EXISTS public.wordy_pending_for(uuid);
+DROP FUNCTION IF EXISTS public.rungles_pending_for(uuid);
+```
+With the flag still on, the RPC call will fail and the hub will fall back to legacy queries automatically — no extra UI rollback needed.
 
 ### Phase 7 — `user_game_access` (beta gating)
 No flag needed — just set all catalog rows to `requires_access = false`:
