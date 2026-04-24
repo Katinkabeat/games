@@ -6,6 +6,7 @@ import { useTheme } from '../contexts/ThemeContext.jsx';
 import SettingsDropdown from './SettingsDropdown.jsx';
 import AdminPanel from './AdminPanel.jsx';
 import AnnouncementBanner from './AnnouncementBanner.jsx';
+import FriendsView from './FriendsView.jsx';
 
 // Hardcoded fallback — used if the games_catalog query fails/errors or
 // returns zero rows, and when VITE_SQ_USE_CATALOG is explicitly false.
@@ -320,6 +321,7 @@ export default function LandingPage({ session }) {
                 isAdmin={isAdmin}
                 onUsernameChange={handleUsernameChange}
                 onOpenAdmin={() => setView('admin')}
+                onOpenFriends={() => setView('friends')}
                 onLogout={handleLogout}
                 onClose={() => setSettingsOpen(false)}
               />
@@ -330,6 +332,8 @@ export default function LandingPage({ session }) {
 
       {view === 'admin' ? (
         <AdminPanel userId={user.id} isMaster={isMaster} onBack={() => setView('landing')} />
+      ) : view === 'friends' ? (
+        <FriendsView userId={user.id} onBack={() => setView('landing')} />
       ) : (
         <>
           <AnnouncementBanner />

@@ -19,6 +19,7 @@ export default function SettingsDropdown({
   isAdmin,
   onUsernameChange,
   onOpenAdmin,
+  onOpenFriends,
   onLogout,
   onClose,
 }) {
@@ -348,6 +349,19 @@ export default function SettingsDropdown({
           {notifyState === 'off' && '🔕 Off'}
           {notifyState === 'denied' && 'Blocked'}
           {notifyState === 'unsupported' && 'Not supported'}
+        </button>
+      </div>
+
+      <div className="settings-row">
+        <span className="text-sm font-bold text-wordy-600">Friends</span>
+        <button
+          onClick={() => {
+            onOpenFriends?.();
+            onClose();
+          }}
+          className="text-sm font-bold text-wordy-700 hover:text-wordy-500 transition-colors"
+        >
+          👥 Open
         </button>
       </div>
 

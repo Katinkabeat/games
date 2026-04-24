@@ -143,6 +143,20 @@ DROP TABLE IF EXISTS public.user_groups CASCADE;  -- cascades user_group_members
 Plus in code: remove `<GroupsAdmin />` from `AdminPanel.jsx`, delete `GroupsAdmin.jsx`, and revert the bulk-grant block in `AccessAdmin.jsx` (the per-user search still works without it).
 
 ### Phase 8 — Hub-level friendships
+Quick disable (frontend only — table can stay):
+- Remove `<FriendsView />` render block in `LandingPage.jsx`.
+- Remove the "Friends 👥" entry in `SettingsDropdown.jsx`.
+- Drop the `onOpenFriends` prop from LandingPage's SettingsDropdown call.
+
+Full reversal (drop the table + RPCs):
+```sql
+DROP FUNCTION IF EXISTS public.are_friends(uuid, uuid);
+DROP FUNCTION IF EXISTS public.request_friendship(uuid);
+DROP FUNCTION IF EXISTS public.accept_friendship(uuid);
+DROP FUNCTION IF EXISTS public.remove_friendship(uuid);
+DROP TABLE IF EXISTS public.friendships;
+```
+Wordy/Rungles invite flows aren't using `are_friends` yet, so dropping has no game-side impact.
 ```bash
 # In rae-side-quest/.env
 VITE_SQ_FRIENDS=false

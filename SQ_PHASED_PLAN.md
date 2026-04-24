@@ -253,12 +253,12 @@ If a phase goes sideways, the rollback is always:
 
 **Goal:** Let connections carry across games — invite someone in Wordy and they're in your Rungles invite dropdown too.
 
-**What to build:**
-- `friendships(user_a, user_b, status, created_at)` with `status in ('pending','accepted','blocked')`.
-- Rule: `user_a < user_b` enforced via a check constraint so each pair is one row.
-- RPC `are_friends(uid1, uid2)` for games to call.
-- Hub UI: "Friends" section in settings dropdown — search, request, accept, remove.
-- **Don't touch existing game invite flows yet.** This phase is additive: hub has a friends list, games optionally read it later.
+**What to build:** (shipped 2026-04-24)
+- `public.friendships(user_a, user_b, status, requested_by, created_at, updated_at)` with PK `(user_a, user_b)` and `CHECK (user_a < user_b)` so each pair is one row.
+- RLS lets users SELECT their own rows; direct INSERT/UPDATE/DELETE are blocked. All writes go through SECURITY DEFINER RPCs.
+- RPCs: `request_friendship(target_user)`, `accept_friendship(other_user)` (only succeeds if the OTHER party requested), `remove_friendship(other_user)` (covers cancel / decline / unfriend), and `are_friends(uid1, uid2)` for downstream callers.
+- New `FriendsView.jsx` component, opened from a "Friends 👥" entry in the settings dropdown. Shows incoming requests with accept/decline, sent requests with cancel, accepted friends with remove, and a username search to send new requests.
+- Wordy and Rungles invite flows are untouched — this is additive infrastructure. They can adopt `are_friends` later when convenient.
 
 **Risks:**
 | Type | Detail | Workaround |
