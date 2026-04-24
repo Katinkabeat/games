@@ -51,8 +51,10 @@ export default function LandingPage({ session }) {
 
   useEffect(() => {
     let active = true;
+    let recountTimer = null;
+    let pollInterval = null;
 
-    async function load() {
+    async function loadProfileAndAdmin() {
       const { data: profile } = await supabase
         .from('profiles')
         .select('username')
@@ -72,7 +74,9 @@ export default function LandingPage({ session }) {
         setIsAdmin(!!adminRow);
         setIsMaster(!!adminRow?.is_master);
       }
+    }
 
+    async function recountInbox() {
       const { data: wordyRows, error: wordyErr } = await supabase
         .from('game_players')
         .select('player_index, games!inner(id, status, current_player_idx)')
@@ -103,13 +107,43 @@ export default function LandingPage({ session }) {
         }
         setRunglesTurn(turn);
       }
-
-      if (active) setLoading(false);
     }
 
-    load();
+    function scheduleRecount() {
+      if (recountTimer) clearTimeout(recountTimer);
+      recountTimer = setTimeout(() => {
+        if (active) recountInbox();
+      }, 300);
+    }
+
+    (async () => {
+      await loadProfileAndAdmin();
+      await recountInbox();
+      if (active) setLoading(false);
+    })();
+
+    const channel = supabase
+      .channel('hub-inbox')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'games' }, scheduleRecount)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'rg_games' }, scheduleRecount)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'game_players', filter: `user_id=eq.${user.id}` }, scheduleRecount)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'rg_players', filter: `user_id=eq.${user.id}` }, scheduleRecount)
+      .subscribe((status) => {
+        if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
+          if (!pollInterval) {
+            pollInterval = setInterval(() => { if (active) recountInbox(); }, 60000);
+          }
+        } else if (status === 'SUBSCRIBED' && pollInterval) {
+          clearInterval(pollInterval);
+          pollInterval = null;
+        }
+      });
+
     return () => {
       active = false;
+      if (recountTimer) clearTimeout(recountTimer);
+      if (pollInterval) clearInterval(pollInterval);
+      supabase.removeChannel(channel);
     };
   }, [user.id]);
 

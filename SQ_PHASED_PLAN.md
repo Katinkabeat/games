@@ -138,10 +138,11 @@ If a phase goes sideways, the rollback is always:
 
 **Goal:** The bell badge updates live while the user is on the hub, instead of only on page load.
 
-**What to build:**
-- Subscribe to Supabase Realtime on `games` (Wordy) and `rg_games` (Rungles) for rows where this user is a player.
-- Debounce re-fetching the counts (200–500ms) so a batch of updates triggers one recount.
-- Fall back to a 60s polling interval if the realtime channel errors.
+**What to build:** (shipped 2026-04-24)
+- LandingPage's inbox useEffect refactored: profile/admin loaded once, inbox counts recomputed by a `recountInbox()` function callable from realtime events.
+- Supabase Realtime channel `hub-inbox` listens for changes on `games`, `rg_games`, `game_players`, and `rg_players` (filtered to this user where applicable). All four tables are already in the `supabase_realtime` publication.
+- Each event triggers `scheduleRecount`, a 300ms debounce that batches rapid updates into a single recount.
+- If the channel errors or closes (CHANNEL_ERROR / TIMED_OUT / CLOSED), a 60s polling fallback kicks in until the channel resubscribes.
 
 **Risks:**
 | Type | Detail | Workaround |

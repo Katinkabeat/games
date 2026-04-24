@@ -76,11 +76,17 @@ DROP TABLE IF EXISTS public.announcements CASCADE;
 Plus: in `rae-side-quest`, remove the `<AnnouncementBanner />` render in `LandingPage.jsx`, the `<AnnouncementsAdmin />` render in `AdminPanel.jsx`, and delete `AnnouncementBanner.jsx` and `AnnouncementsAdmin.jsx`.
 
 ### Phase 4 — Realtime inbox updates
+Frontend-only change (no DB migration). Revert the inbox useEffect in
+`rae-side-quest/src/components/LandingPage.jsx` back to mount-only fetch:
 ```bash
+cd ~/OneDrive/Claude/rae-side-quest
 git revert <phase-4-merge-sha>
 git push
 ```
-Hub falls back to mount-only fetch (today's behavior).
+Or flip a feature flag (none wired yet — if added later, set
+`VITE_SQ_REALTIME_INBOX=false` and the channel subscription will be skipped).
+No DB rollback needed — the realtime publication and RLS policies remain
+as they were.
 
 ### Phase 5 — Games catalog table
 ```bash
