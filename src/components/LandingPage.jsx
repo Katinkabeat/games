@@ -7,7 +7,9 @@ import SettingsDropdown from './SettingsDropdown.jsx';
 import AdminPanel from './AdminPanel.jsx';
 import AnnouncementBanner from './AnnouncementBanner.jsx';
 
-const GAMES = [
+// Hardcoded fallback — used if the games_catalog query fails/errors or
+// returns zero rows, and when VITE_SQ_USE_CATALOG is explicitly false.
+const FALLBACK_GAMES = [
   {
     id: 'wordy',
     name: 'Wordy',
@@ -23,6 +25,8 @@ const GAMES = [
     gradient: 'from-wordy-600 to-wordy-800',
   },
 ];
+
+const USE_CATALOG = import.meta.env.VITE_SQ_USE_CATALOG !== 'false';
 
 export default function LandingPage({ session }) {
   const user = session.user;
@@ -45,6 +49,7 @@ export default function LandingPage({ session }) {
   const [view, setView] = useState('landing');
   const [isAdmin, setIsAdmin] = useState(false);
   const [isMaster, setIsMaster] = useState(false);
+  const [games, setGames] = useState(FALLBACK_GAMES);
 
   const bellRef = useRef(null);
   const cogRef = useRef(null);
@@ -74,6 +79,19 @@ export default function LandingPage({ session }) {
         setIsAdmin(!!adminRow);
         setIsMaster(!!adminRow?.is_master);
       }
+    }
+
+    async function loadCatalog() {
+      if (!USE_CATALOG) return;
+      const { data, error } = await supabase
+        .from('games_catalog')
+        .select('id, name, url, initial, gradient')
+        .eq('is_published', true)
+        .order('sort_order', { ascending: true });
+      if (!error && active && data && data.length > 0) {
+        setGames(data);
+      }
+      // On error or empty, leave the fallback array in place.
     }
 
     async function recountInbox() {
@@ -117,7 +135,7 @@ export default function LandingPage({ session }) {
     }
 
     (async () => {
-      await loadProfileAndAdmin();
+      await Promise.all([loadProfileAndAdmin(), loadCatalog()]);
       await recountInbox();
       if (active) setLoading(false);
     })();
@@ -302,7 +320,7 @@ export default function LandingPage({ session }) {
           <AnnouncementBanner />
           <main className="max-w-3xl mx-auto px-4 pb-12">
             <div className="grid gap-4 sm:grid-cols-2">
-              {GAMES.map((game) => (
+              {games.map((game) => (
                 <a
                   key={game.id}
                   href={game.url}

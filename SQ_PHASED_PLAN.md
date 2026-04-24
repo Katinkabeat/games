@@ -160,11 +160,12 @@ If a phase goes sideways, the rollback is always:
 
 **Goal:** Replace the hardcoded `GAMES` array in `LandingPage.jsx:8` with a database row per game, so adding game #3 is a row insert, not a hub redeploy.
 
-**What to build:**
-- `games_catalog(id text pk, name, url, initial, gradient, is_published, sort_order, requires_access boolean default false)`.
-- Seed with `wordy` and `rungles` using the exact values from the current array.
-- Hub reads published catalog rows, sorted.
-- Keep the hardcoded array as a hardcoded fallback if the catalog query fails or returns empty.
+**What to build:** (shipped 2026-04-24)
+- `public.games_catalog(id text pk, name, url, initial, gradient, is_published, sort_order, requires_access, created_at, updated_at)` with partial index on `sort_order` for published rows.
+- RLS: authenticated users read `is_published=true` rows; master admins read all, insert, and update. No DELETE policy — soft-hide via `is_published=false`.
+- Seeded with `wordy` and `rungles` using the exact values from the hardcoded array (sort_order 1 and 2).
+- LandingPage fetches catalog on mount (alongside profile/admin loading) and renders from it; if the fetch errors or returns empty, the hardcoded `FALLBACK_GAMES` array takes over.
+- Feature flag: `VITE_SQ_USE_CATALOG=false` skips the fetch entirely, forcing the fallback.
 
 **Risks:**
 | Type | Detail | Workaround |

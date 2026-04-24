@@ -89,11 +89,18 @@ No DB rollback needed — the realtime publication and RLS policies remain
 as they were.
 
 ### Phase 5 — Games catalog table
+Quick disable (frontend flag):
 ```bash
 # In rae-side-quest/.env
 VITE_SQ_USE_CATALOG=false
 ```
-Redeploy. Hub returns to the hardcoded `GAMES` array in `LandingPage.jsx`.
+Redeploy. Hub returns to the hardcoded `FALLBACK_GAMES` array in `LandingPage.jsx`. No DB change needed — the table and seeded rows stay in place.
+
+Full reversal (drop the table):
+```sql
+DROP TABLE IF EXISTS public.games_catalog;
+```
+Plus in code: restore the `GAMES` constant name (or keep `FALLBACK_GAMES` — same effect), remove `USE_CATALOG`, `games` state, `loadCatalog()`, and the `Promise.all([loadProfileAndAdmin(), loadCatalog()])` call (change back to just `await loadProfileAndAdmin()`), and change `games.map` back to the hardcoded constant name.
 
 ### Phase 6 — Unified pending-actions RPC
 ```bash
