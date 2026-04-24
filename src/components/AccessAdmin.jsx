@@ -12,15 +12,25 @@ export default function AccessAdmin({ userId }) {
   const [matchesByGame, setMatchesByGame] = useState({}); // gameId -> [{id, username}]
   const [busyKey, setBusyKey] = useState(null); // `${gameId}:${userId}` while writing
 
+  // Phase 7.5: groups for bulk-grant
+  const [groups, setGroups] = useState([]);
+  const [groupMembersByGroup, setGroupMembersByGroup] = useState({});
+  const [selectedGroupByGame, setSelectedGroupByGame] = useState({});
+  const [bulkBusyByGame, setBulkBusyByGame] = useState({});
+
   async function load() {
-    const [{ data: catalog, error: catErr }, { data: rows, error: rowsErr }] = await Promise.all([
+    const [catalogResp, rowsResp, groupsResp, membersResp] = await Promise.all([
       supabase.from('games_catalog').select('id, name, requires_access, is_published').order('sort_order'),
       supabase.from('user_game_access').select('user_id, game_id, status'),
+      supabase.from('user_groups').select('id, name').order('name'),
+      supabase.from('user_group_members').select('group_id, user_id'),
     ]);
-    if (catErr) toast.error(catErr.message);
-    if (rowsErr) toast.error(rowsErr.message);
+    if (catalogResp.error) toast.error(catalogResp.error.message);
+    if (rowsResp.error) toast.error(rowsResp.error.message);
+    // groups/members errors are silent — non-master admins might lack read; the UI just hides the bulk-grant control.
 
-    const userIds = Array.from(new Set((rows || []).map((r) => r.user_id)));
+    const rows = rowsResp.data || [];
+    const userIds = Array.from(new Set(rows.map((r) => r.user_id)));
     let nameMap = {};
     if (userIds.length > 0) {
       const { data: profiles } = await supabase
@@ -30,10 +40,49 @@ export default function AccessAdmin({ userId }) {
       for (const p of profiles || []) nameMap[p.id] = p.username;
     }
 
-    setGames(catalog || []);
-    setAccessRows(rows || []);
+    const grouped = {};
+    for (const m of membersResp.data || []) {
+      if (!grouped[m.group_id]) grouped[m.group_id] = [];
+      grouped[m.group_id].push(m.user_id);
+    }
+
+    setGames(catalogResp.data || []);
+    setAccessRows(rows);
     setUsernames(nameMap);
+    setGroups(groupsResp.data || []);
+    setGroupMembersByGroup(grouped);
     setLoading(false);
+  }
+
+  async function bulkGrantGroup(gameId) {
+    const groupId = selectedGroupByGame[gameId];
+    if (!groupId) {
+      toast.error('Pick a group first');
+      return;
+    }
+    const memberIds = groupMembersByGroup[groupId] || [];
+    if (memberIds.length === 0) {
+      toast.error('That group has no members yet');
+      return;
+    }
+    setBulkBusyByGame((prev) => ({ ...prev, [gameId]: true }));
+    const { error } = await supabase.from('user_game_access').upsert(
+      memberIds.map((uid) => ({
+        user_id: uid,
+        game_id: gameId,
+        status: 'allowed',
+        added_by: userId,
+      })),
+      { onConflict: 'user_id,game_id' }
+    );
+    setBulkBusyByGame((prev) => ({ ...prev, [gameId]: false }));
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    toast.success(`Granted ${memberIds.length} member${memberIds.length === 1 ? '' : 's'} access`);
+    setSelectedGroupByGame((prev) => ({ ...prev, [gameId]: '' }));
+    load();
   }
 
   useEffect(() => { load(); }, []);
@@ -138,6 +187,33 @@ export default function AccessAdmin({ userId }) {
 
                 {game.requires_access && (
                   <>
+                    {groups.length > 0 && (
+                      <div className="flex items-center gap-1.5 mb-2 p-2 rounded bg-white">
+                        <select
+                          value={selectedGroupByGame[game.id] || ''}
+                          onChange={(e) =>
+                            setSelectedGroupByGame((prev) => ({ ...prev, [game.id]: e.target.value }))
+                          }
+                          className="flex-1 min-w-0 px-2 py-1 border-2 border-wordy-200 rounded-lg focus:border-wordy-400 focus:outline-none text-xs"
+                        >
+                          <option value="">Bulk grant: pick a group…</option>
+                          {groups.map((grp) => (
+                            <option key={grp.id} value={grp.id}>
+                              {grp.name} ({(groupMembersByGroup[grp.id] || []).length})
+                            </option>
+                          ))}
+                        </select>
+                        <button
+                          type="button"
+                          onClick={() => bulkGrantGroup(game.id)}
+                          disabled={!selectedGroupByGame[game.id] || bulkBusyByGame[game.id]}
+                          className="text-xs font-bold text-white bg-wordy-600 px-2 py-1 rounded-lg hover:bg-wordy-500 disabled:opacity-60 shrink-0"
+                        >
+                          {bulkBusyByGame[game.id] ? '…' : 'Grant'}
+                        </button>
+                      </div>
+                    )}
+
                     <div className="text-xs font-bold text-wordy-700 mb-1">Allowed users</div>
                     {allowed.length === 0 ? (
                       <p className="text-xs text-wordy-500 mb-2">Nobody yet — search below to add.</p>

@@ -16,6 +16,7 @@ Earliest phases are purely additive — new tables and hub-only code that don't 
 | 5 | Games catalog table | Hub only | Yes, fallback array |
 | 6 | Unified pending-actions RPC | Read-only queries | Yes, feature flag |
 | 7 | `user_game_access` (beta gating) | Hub read only | Yes, skip the check |
+| 7.5 | User groups | Hub only | Yes, drop tables |
 | 8 | Hub-level friendships | Additive to games | Yes, dead-table no-op |
 | 9 | Reports + block list | Optional reads | Yes, tables persist |
 | 10 | Rate limits (public prep) | Edge functions | Yes, remove check |
@@ -222,6 +223,29 @@ If a phase goes sideways, the rollback is always:
 | User conflict | User doesn't understand why a game is hidden. | Show a "coming soon" card instead of nothing when `requires_access=true` and no access row; include a "request access" mailto. |
 
 **Backup plan:** Drop the `requires_access` check from the hub query. Table can stay.
+
+---
+
+## Phase 7.5 — User groups
+
+**Goal:** Named buckets of users so future ad-tier subscriptions, beta cohorts, and similar bulk-treatments don't require touching individual rows. Inserted between Phase 7 and Phase 8 once Rae flagged that a paid ad-free tier was a likely future direction.
+
+**What was built:** (shipped 2026-04-24)
+- `public.user_groups(id, name, description, created_by, created_at)` with id CHECK constraint enforcing `^[a-z][a-z0-9-]{1,49}$` for safe identifiers.
+- `public.user_group_members(group_id, user_id, added_by, expires_at, created_at)` with PK `(group_id, user_id)` and CASCADE on both refs. `expires_at` (nullable) supports paid-tier memberships that lapse without scripting.
+- `public.user_in_group(uid uuid, gid text) returns boolean` SQL function — takes expiry into account. Future ad-rendering / paywall code should call this rather than touching the tables directly.
+- RLS: any admin reads groups; users read their own memberships; only master admins create/edit/delete groups or memberships.
+- New `GroupsAdmin.jsx` (master-only): create groups (id + name + description), list all groups with member counts, per-group username search to add, per-row remove.
+- `AccessAdmin.jsx` extended: each gated game now has a "Bulk grant: pick a group → Grant" control that upserts allowed access for every member in one shot.
+
+**Risks / mitigation:**
+| Type | Detail | Workaround |
+|---|---|---|
+| Game interruption | None — purely admin-side. | — |
+| Data loss | Deleting a group cascades member rows away. | Confirmation dialog in the UI; no automatic group deletion anywhere. |
+| User conflict | Bulk grant could give the wrong group access to a sensitive game. | Master-admin-only UI; explicit Group → Game pick before grant. |
+
+**Backup plan:** Drop both tables (`DROP TABLE user_groups CASCADE` cascades members) — `user_game_access` is unaffected since groups never gate it directly, only convenience-bulk-write to it. UI components can be removed without other code changes.
 
 ---
 

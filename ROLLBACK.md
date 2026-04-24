@@ -132,6 +132,16 @@ DROP TABLE IF EXISTS public.user_game_access CASCADE;
 ```
 Plus in code: revert the `loadCatalog` Promise.all to a single catalog fetch, remove `_access` handling in the game grid render, remove `<AccessAdmin />` from `AdminPanel.jsx`, and delete `src/components/AccessAdmin.jsx`.
 
+### Phase 7.5 — User groups
+Drop both tables and the helper. user_game_access rows previously
+inserted via the bulk-grant button stay in place (groups only
+convenience-write to that table; they never gate access at read time):
+```sql
+DROP FUNCTION IF EXISTS public.user_in_group(uuid, text);
+DROP TABLE IF EXISTS public.user_groups CASCADE;  -- cascades user_group_members
+```
+Plus in code: remove `<GroupsAdmin />` from `AdminPanel.jsx`, delete `GroupsAdmin.jsx`, and revert the bulk-grant block in `AccessAdmin.jsx` (the per-user search still works without it).
+
 ### Phase 8 — Hub-level friendships
 ```bash
 # In rae-side-quest/.env

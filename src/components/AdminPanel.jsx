@@ -3,6 +3,7 @@ import toast from 'react-hot-toast';
 import { supabase } from '../lib/supabase.js';
 import AnnouncementsAdmin from './AnnouncementsAdmin.jsx';
 import AccessAdmin from './AccessAdmin.jsx';
+import GroupsAdmin from './GroupsAdmin.jsx';
 
 export default function AdminPanel({ userId, isMaster, onBack }) {
   const [admins, setAdmins] = useState([]);
@@ -130,6 +131,8 @@ export default function AdminPanel({ userId, isMaster, onBack }) {
       {isMaster && <AnnouncementsAdmin userId={userId} />}
 
       {isMaster && <AccessAdmin userId={userId} />}
+
+      {isMaster && <GroupsAdmin userId={userId} />}
 
       {isMaster && (
         <section className="card">
