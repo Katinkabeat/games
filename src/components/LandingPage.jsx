@@ -18,7 +18,7 @@ const GAMES = [
     name: 'Rungles',
     url: '/rungles/',
     initial: 'R',
-    gradient: 'from-pink-500 to-wordy-700',
+    gradient: 'from-wordy-600 to-wordy-800',
   },
 ];
 
@@ -195,7 +195,7 @@ export default function LandingPage({ session }) {
                           href="/rungles/"
                           className="flex items-center gap-2.5 p-2 rounded-lg hover:bg-wordy-50 transition-colors"
                         >
-                          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-pink-500 to-wordy-700 flex items-center justify-center shrink-0">
+                          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-wordy-600 to-wordy-800 flex items-center justify-center shrink-0">
                             <span className="font-display text-sm text-white">R</span>
                           </div>
                           <div className="min-w-0 flex-1">
