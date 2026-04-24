@@ -3,7 +3,7 @@
   "short_name": "SideQuest",
   "description": "All your games in one place.",
   "start_url": "/games/",
-  "scope": "/",
+  "scope": "/games/",
   "display": "standalone",
   "orientation": "portrait",
   "theme_color": "#9333ea",
