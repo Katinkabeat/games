@@ -44,11 +44,12 @@ supabase functions list > "snapshots/pre-phase-<N>-functions-$(date +%F).txt"
 Nothing to roll back. If the snapshot or tags didn't take, just re-run the commands above.
 
 ### Phase 1 — Supabase heartbeat cron
+Shipped via in-DB pg_cron. Full reversal in SQL editor:
 ```sql
--- In Supabase SQL editor:
-drop table if exists heartbeat;
+SELECT cron.unschedule('sq-heartbeat');
+DROP TABLE IF EXISTS public.heartbeat;
+-- Leave pg_cron extension enabled — it's useful for future phases.
 ```
-Plus: delete the `heartbeat-ping` scheduled function in the Supabase dashboard.
 
 ### Phase 2 — Shared events telemetry
 ```sql

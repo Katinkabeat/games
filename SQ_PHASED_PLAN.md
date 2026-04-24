@@ -69,10 +69,11 @@ If a phase goes sideways, the rollback is always:
 
 **Goal:** Prevent the 7-day auto-pause on quiet weeks. Memory already flags this as the biggest free-tier risk.
 
-**What to build:**
-- `heartbeat(id, created_at)` table.
-- Supabase Edge Function `heartbeat-ping` scheduled daily via the Supabase dashboard cron.
-- Function does `insert into heartbeat default values` then deletes rows older than 30 days.
+**What to build:** (shipped 2026-04-24 using in-DB pg_cron instead of an edge function — same effect, fewer moving parts)
+- `public.heartbeat(id, created_at)` table with RLS enabled (no policies = service-role only).
+- pg_cron extension enabled.
+- pg_cron job `sq-heartbeat` scheduled at `0 12 * * *` (noon UTC daily).
+- Job inserts a row then deletes anything older than 30 days.
 
 **Risks:**
 | Type | Detail | Workaround |
