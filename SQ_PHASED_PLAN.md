@@ -116,10 +116,12 @@ If a phase goes sideways, the rollback is always:
 
 **Goal:** Give yourself a way to post "Rungles got X" or "Supabase is down, sorry!" without editing code.
 
-**What to build:**
-- `announcements(id, body, severity, published_at, expires_at, dismissible)` table.
-- Admin panel: list + compose form (master admin only).
-- Hub shows the latest unexpired announcement above the game grid; stores dismissed IDs in `localStorage`.
+**What to build:** (shipped 2026-04-24)
+- `public.announcements` table with `id, body, severity, published_at, expires_at, dismissible, created_by, created_at`.
+- RLS: any authenticated user reads active rows (`published_at <= now() < expires_at`); master admins read/insert/update/delete all.
+- `AnnouncementBanner.jsx` renders the latest active announcement above the game grid; severity-styled (info/warning/success); dismissible state in `localStorage`.
+- `AnnouncementsAdmin.jsx` (master-admin only, embedded in AdminPanel): textarea + severity picker + datetime expiry + dismissible toggle, plus a list of recent announcements with delete.
+- Feature flag: `VITE_SQ_ANNOUNCEMENTS=false` hides the banner.
 
 **Risks:**
 | Type | Detail | Workaround |

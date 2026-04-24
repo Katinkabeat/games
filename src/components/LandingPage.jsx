@@ -5,6 +5,7 @@ import { logEvent } from '../lib/telemetry.js';
 import { useTheme } from '../contexts/ThemeContext.jsx';
 import SettingsDropdown from './SettingsDropdown.jsx';
 import AdminPanel from './AdminPanel.jsx';
+import AnnouncementBanner from './AnnouncementBanner.jsx';
 
 const GAMES = [
   {
@@ -253,26 +254,29 @@ export default function LandingPage({ session }) {
       {view === 'admin' ? (
         <AdminPanel userId={user.id} isMaster={isMaster} onBack={() => setView('landing')} />
       ) : (
-        <main className="max-w-3xl mx-auto px-4 pb-12">
-          <div className="grid gap-4 sm:grid-cols-2">
-            {GAMES.map((game) => (
-              <a
-                key={game.id}
-                href={game.url}
-                className="card hover:shadow-lg transition-shadow flex items-center gap-4 p-5"
-              >
-                <div
-                  className={`w-14 h-14 rounded-2xl bg-gradient-to-br ${game.gradient} flex items-center justify-center shrink-0 shadow-sm`}
+        <>
+          <AnnouncementBanner />
+          <main className="max-w-3xl mx-auto px-4 pb-12">
+            <div className="grid gap-4 sm:grid-cols-2">
+              {GAMES.map((game) => (
+                <a
+                  key={game.id}
+                  href={game.url}
+                  className="card hover:shadow-lg transition-shadow flex items-center gap-4 p-5"
                 >
-                  <span className="font-display text-2xl text-white">{game.initial}</span>
-                </div>
-                <h3 className="font-display text-xl text-wordy-800 flex-1 min-w-0 truncate">
-                  {game.name}
-                </h3>
-              </a>
-            ))}
-          </div>
-        </main>
+                  <div
+                    className={`w-14 h-14 rounded-2xl bg-gradient-to-br ${game.gradient} flex items-center justify-center shrink-0 shadow-sm`}
+                  >
+                    <span className="font-display text-2xl text-white">{game.initial}</span>
+                  </div>
+                  <h3 className="font-display text-xl text-wordy-800 flex-1 min-w-0 truncate">
+                    {game.name}
+                  </h3>
+                </a>
+              ))}
+            </div>
+          </main>
+        </>
       )}
     </div>
   );

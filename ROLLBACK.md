@@ -62,11 +62,18 @@ Plus in code:
 - Delete `wordy/src/lib/telemetry.js`, `rungles/js/telemetry.js`, `rae-side-quest/src/lib/telemetry.js` (none of them have wired call sites in wordy/rungles yet, so no other code changes needed).
 
 ### Phase 3 — Announcements banner
+Quick disable (UI only, table stays):
 ```bash
 # In rae-side-quest/.env
 VITE_SQ_ANNOUNCEMENTS=false
 ```
-Redeploy. Leave the table — no harm, easy to re-enable.
+Redeploy. Banner disappears for everyone; admin form still visible to master admins so they can manage existing rows.
+
+Full reversal (drop the feature):
+```sql
+DROP TABLE IF EXISTS public.announcements CASCADE;
+```
+Plus: in `rae-side-quest`, remove the `<AnnouncementBanner />` render in `LandingPage.jsx`, the `<AnnouncementsAdmin />` render in `AdminPanel.jsx`, and delete `AnnouncementBanner.jsx` and `AnnouncementsAdmin.jsx`.
 
 ### Phase 4 — Realtime inbox updates
 ```bash

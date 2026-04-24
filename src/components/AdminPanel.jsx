@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
 import { supabase } from '../lib/supabase.js';
+import AnnouncementsAdmin from './AnnouncementsAdmin.jsx';
 
 export default function AdminPanel({ userId, isMaster, onBack }) {
   const [admins, setAdmins] = useState([]);
@@ -124,6 +125,8 @@ export default function AdminPanel({ userId, isMaster, onBack }) {
           <li>User lookup and moderation tools</li>
         </ul>
       </section>
+
+      {isMaster && <AnnouncementsAdmin userId={userId} />}
 
       {isMaster && (
         <section className="card">
