@@ -1,6 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
 import toast from 'react-hot-toast';
 import { supabase } from '../lib/supabase.js';
+import {
+  getPushPermissionState,
+  hasActivePushSubscription,
+  subscribeToPush,
+  unsubscribeFromPush,
+} from '../lib/pushNotifications.js';
 
 const PW_RULES = { number: /\d/, special: /[^A-Za-z0-9]/ };
 
@@ -21,6 +27,9 @@ export default function SettingsDropdown({
   const [saving, setSaving] = useState(false);
   const dropdownRef = useRef(null);
   const inputRef = useRef(null);
+
+  const [notifyState, setNotifyState] = useState('loading');
+  const [notifyBusy, setNotifyBusy] = useState(false);
 
   const [changingPw, setChangingPw] = useState(false);
   const [oldPw, setOldPw] = useState('');
@@ -50,6 +59,58 @@ export default function SettingsDropdown({
   useEffect(() => {
     if (editing && inputRef.current) inputRef.current.focus();
   }, [editing]);
+
+  useEffect(() => {
+    let active = true;
+    (async () => {
+      const perm = getPushPermissionState();
+      if (perm === 'unsupported') {
+        if (active) setNotifyState('unsupported');
+        return;
+      }
+      if (perm === 'denied') {
+        if (active) setNotifyState('denied');
+        return;
+      }
+      const has = await hasActivePushSubscription();
+      if (active) setNotifyState(has ? 'on' : 'off');
+    })();
+    return () => { active = false; };
+  }, []);
+
+  async function handleToggleNotify() {
+    if (notifyBusy) return;
+    if (notifyState === 'unsupported') {
+      toast.error('Notifications are not supported in this browser');
+      return;
+    }
+    if (notifyState === 'denied') {
+      toast.error('Notifications are blocked — enable them in your browser settings');
+      return;
+    }
+    setNotifyBusy(true);
+    if (notifyState === 'on') {
+      const ok = await unsubscribeFromPush(userId);
+      if (ok) {
+        setNotifyState('off');
+        toast.success('Notifications turned off');
+      } else {
+        toast.error('Could not turn off notifications');
+      }
+    } else {
+      const ok = await subscribeToPush(userId);
+      if (ok) {
+        setNotifyState('on');
+        toast.success('Notifications turned on');
+      } else if (Notification.permission === 'denied') {
+        setNotifyState('denied');
+        toast.error('Notifications are blocked — enable them in your browser settings');
+      } else {
+        toast.error('Could not turn on notifications');
+      }
+    }
+    setNotifyBusy(false);
+  }
 
   async function handleNameSave() {
     const trimmed = newName.trim();
@@ -272,6 +333,21 @@ export default function SettingsDropdown({
           className="text-sm font-bold text-wordy-700 hover:text-wordy-500 transition-colors"
         >
           {isDark ? '☀️ Light' : '🌙 Dark'}
+        </button>
+      </div>
+
+      <div className="settings-row">
+        <span className="text-sm font-bold text-wordy-600">Notifications</span>
+        <button
+          onClick={handleToggleNotify}
+          disabled={notifyBusy || notifyState === 'loading' || notifyState === 'unsupported'}
+          className="text-sm font-bold text-wordy-700 hover:text-wordy-500 transition-colors disabled:opacity-60"
+        >
+          {notifyState === 'loading' && '…'}
+          {notifyState === 'on' && '🔔 On'}
+          {notifyState === 'off' && '🔕 Off'}
+          {notifyState === 'denied' && 'Blocked'}
+          {notifyState === 'unsupported' && 'Not supported'}
         </button>
       </div>
 
