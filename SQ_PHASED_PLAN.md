@@ -91,11 +91,14 @@ If a phase goes sideways, the rollback is always:
 
 **Goal:** Start collecting "which game gets played, when, by whom" so future decisions are data-driven rather than guesses.
 
-**What to build:**
-- `sq_events(id, user_id, game, event, payload jsonb, created_at)` table.
-- RLS: users can insert their own rows; only admins can select.
-- Retention trigger: nightly delete of rows older than 90 days (keeps well under 500 MB).
-- Wordy and Rungles each add a tiny helper: `logEvent('game_started')` etc. — firing is best-effort (fire-and-forget, swallow errors).
+**What to build:** (shipped 2026-04-24)
+- `public.sq_events(id, user_id, game, event, payload jsonb, created_at)` table with two indexes.
+- RLS: `sq_events_insert_self` (user can insert own rows), `sq_events_select_admin` (admins read).
+- Retention: pg_cron job `sq-events-retention` at `0 2 * * *` UTC, deletes rows > 90 days old.
+- `logEvent(event, payload)` helper in all three repos:
+  - `wordy/src/lib/telemetry.js` — available, no call sites wired yet
+  - `rungles/js/telemetry.js` — available, no call sites wired yet
+  - `rae-side-quest/src/lib/telemetry.js` — wired: `logEvent('app_opened')` fires on LandingPage mount
 
 **Risks:**
 | Type | Detail | Workaround |

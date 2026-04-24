@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import toast from 'react-hot-toast';
 import { supabase } from '../lib/supabase.js';
+import { logEvent } from '../lib/telemetry.js';
 import { useTheme } from '../contexts/ThemeContext.jsx';
 import SettingsDropdown from './SettingsDropdown.jsx';
 import AdminPanel from './AdminPanel.jsx';
@@ -100,6 +101,10 @@ export default function LandingPage({ session }) {
       active = false;
     };
   }, [user.id]);
+
+  useEffect(() => {
+    logEvent('app_opened');
+  }, []);
 
   useEffect(() => {
     if (!bellOpen) return;

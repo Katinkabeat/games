@@ -52,10 +52,14 @@ DROP TABLE IF EXISTS public.heartbeat;
 ```
 
 ### Phase 2 — Shared events telemetry
+Shipped via table + RLS + pg_cron retention. Full reversal in SQL editor:
 ```sql
-drop table if exists sq_events cascade;
+SELECT cron.unschedule('sq-events-retention');
+DROP TABLE IF EXISTS public.sq_events CASCADE;
 ```
-Plus: remove the `logEvent(...)` calls from Wordy and Rungles (grep each repo and delete the one-line calls).
+Plus in code:
+- Revert the single `logEvent('app_opened')` call in `rae-side-quest/src/components/LandingPage.jsx` and remove the `import { logEvent }` line.
+- Delete `wordy/src/lib/telemetry.js`, `rungles/js/telemetry.js`, `rae-side-quest/src/lib/telemetry.js` (none of them have wired call sites in wordy/rungles yet, so no other code changes needed).
 
 ### Phase 3 — Announcements banner
 ```bash
