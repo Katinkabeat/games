@@ -26,8 +26,15 @@ const GAMES = [
 
 export default function LandingPage({ session }) {
   const user = session.user;
+  const usernameStorageKey = `sq:username:${user.id}`;
   const { isDark, toggle: toggleTheme } = useTheme();
-  const [username, setUsername] = useState('friend');
+  const [username, setUsername] = useState(() => {
+    try { return localStorage.getItem(usernameStorageKey) || ''; } catch { return ''; }
+  });
+  const handleUsernameChange = (name) => {
+    setUsername(name);
+    try { localStorage.setItem(usernameStorageKey, name); } catch {}
+  };
   const [wordyTurn, setWordyTurn] = useState(0);
   const [wordyWaiting, setWordyWaiting] = useState(0);
   const [runglesTurn, setRunglesTurn] = useState(0);
@@ -51,7 +58,10 @@ export default function LandingPage({ session }) {
         .select('username')
         .eq('id', user.id)
         .single();
-      if (active && profile?.username) setUsername(profile.username);
+      if (active && profile?.username) {
+        setUsername(profile.username);
+        try { localStorage.setItem(usernameStorageKey, profile.username); } catch {}
+      }
 
       const { data: adminRow } = await supabase
         .from('admins')
@@ -129,7 +139,7 @@ export default function LandingPage({ session }) {
       <header className="max-w-3xl mx-auto px-4 pt-6 pb-4 flex items-center justify-between gap-3">
         <div className="min-w-0">
           <h1 className="font-display text-2xl text-wordy-800 truncate">Rae's Side Quest</h1>
-          <p className="text-sm text-wordy-600 truncate">Hi, {username}</p>
+          <p className="text-sm text-wordy-600 truncate">{username ? `Hi, ${username}` : '\u00A0'}</p>
         </div>
         <div className="flex items-center gap-2 shrink-0">
           <div className="relative" ref={bellRef}>
@@ -241,7 +251,7 @@ export default function LandingPage({ session }) {
                 isDark={isDark}
                 toggleTheme={toggleTheme}
                 isAdmin={isAdmin}
-                onUsernameChange={setUsername}
+                onUsernameChange={handleUsernameChange}
                 onOpenAdmin={() => setView('admin')}
                 onLogout={handleLogout}
                 onClose={() => setSettingsOpen(false)}
