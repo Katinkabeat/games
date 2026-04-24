@@ -9,6 +9,7 @@ import AnnouncementBanner from './AnnouncementBanner.jsx';
 
 // Hardcoded fallback — used if the games_catalog query fails/errors or
 // returns zero rows, and when VITE_SQ_USE_CATALOG is explicitly false.
+// _access defaults to 'allowed' since fallback bypasses Phase 7 gating.
 const FALLBACK_GAMES = [
   {
     id: 'wordy',
@@ -16,6 +17,7 @@ const FALLBACK_GAMES = [
     url: '/wordy/',
     initial: 'W',
     gradient: 'from-wordy-600 to-wordy-800',
+    _access: 'allowed',
   },
   {
     id: 'rungles',
@@ -23,6 +25,7 @@ const FALLBACK_GAMES = [
     url: '/rungles/',
     initial: 'R',
     gradient: 'from-wordy-600 to-wordy-800',
+    _access: 'allowed',
   },
 ];
 
@@ -85,15 +88,37 @@ export default function LandingPage({ session }) {
 
     async function loadCatalog() {
       if (!USE_CATALOG) return;
-      const { data, error } = await supabase
-        .from('games_catalog')
-        .select('id, name, url, initial, gradient')
-        .eq('is_published', true)
-        .order('sort_order', { ascending: true });
-      if (!error && active && data && data.length > 0) {
-        setGames(data);
+      const [catalogResp, accessResp] = await Promise.all([
+        supabase
+          .from('games_catalog')
+          .select('id, name, url, initial, gradient, requires_access')
+          .eq('is_published', true)
+          .order('sort_order', { ascending: true }),
+        supabase
+          .from('user_game_access')
+          .select('game_id, status')
+          .eq('user_id', user.id),
+      ]);
+      if (!active) return;
+      if (catalogResp.error || !catalogResp.data || catalogResp.data.length === 0) return;
+
+      const accessByGame = {};
+      if (!accessResp.error && accessResp.data) {
+        for (const row of accessResp.data) accessByGame[row.game_id] = row.status;
       }
-      // On error or empty, leave the fallback array in place.
+
+      const enriched = catalogResp.data
+        .map((game) => {
+          let _access;
+          if (!game.requires_access) _access = 'allowed';
+          else if (accessByGame[game.id] === 'allowed') _access = 'allowed';
+          else if (accessByGame[game.id] === 'blocked') _access = 'blocked';
+          else _access = 'gated';
+          return { ...game, _access };
+        })
+        .filter((g) => g._access !== 'blocked');
+
+      setGames(enriched);
     }
 
     // Legacy fallback — runs the per-game queries the hub used before
@@ -310,22 +335,43 @@ export default function LandingPage({ session }) {
           <AnnouncementBanner />
           <main className="max-w-3xl mx-auto px-4 pb-12">
             <div className="grid gap-4 sm:grid-cols-2">
-              {games.map((game) => (
-                <a
-                  key={game.id}
-                  href={game.url}
-                  className="card hover:shadow-lg transition-shadow flex items-center gap-4 p-5"
-                >
-                  <div
-                    className={`w-14 h-14 rounded-2xl bg-gradient-to-br ${game.gradient} flex items-center justify-center shrink-0 shadow-sm`}
+              {games.map((game) => {
+                if (game._access === 'gated') {
+                  return (
+                    <div
+                      key={game.id}
+                      className="card opacity-60 cursor-not-allowed flex items-center gap-4 p-5"
+                      aria-disabled="true"
+                    >
+                      <div
+                        className={`w-14 h-14 rounded-2xl bg-gradient-to-br ${game.gradient} flex items-center justify-center shrink-0 shadow-sm`}
+                      >
+                        <span className="font-display text-2xl text-white">{game.initial}</span>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <h3 className="font-display text-xl text-wordy-800 truncate">{game.name}</h3>
+                        <p className="text-xs text-wordy-500">Coming soon</p>
+                      </div>
+                    </div>
+                  );
+                }
+                return (
+                  <a
+                    key={game.id}
+                    href={game.url}
+                    className="card hover:shadow-lg transition-shadow flex items-center gap-4 p-5"
                   >
-                    <span className="font-display text-2xl text-white">{game.initial}</span>
-                  </div>
-                  <h3 className="font-display text-xl text-wordy-800 flex-1 min-w-0 truncate">
-                    {game.name}
-                  </h3>
-                </a>
-              ))}
+                    <div
+                      className={`w-14 h-14 rounded-2xl bg-gradient-to-br ${game.gradient} flex items-center justify-center shrink-0 shadow-sm`}
+                    >
+                      <span className="font-display text-2xl text-white">{game.initial}</span>
+                    </div>
+                    <h3 className="font-display text-xl text-wordy-800 flex-1 min-w-0 truncate">
+                      {game.name}
+                    </h3>
+                  </a>
+                );
+              })}
             </div>
           </main>
         </>

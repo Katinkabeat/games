@@ -205,11 +205,14 @@ If a phase goes sideways, the rollback is always:
 
 **Goal:** Enable closed-beta launches for new games (game #3 onward) and, later, per-game bans. Connects to the "Test groups" stub in `AdminPanel.jsx:121`.
 
-**What to build:**
-- `user_game_access(user_id, game_id, status text check (status in ('allowed','blocked')), added_by, created_at)`, PK `(user_id, game_id)`.
-- Hub respects `requires_access` from the catalog: if true, only users with an `allowed` row see the card.
-- Admin panel: simple user search + toggle per game.
-- **Crucial default:** existing games (Wordy, Rungles) keep `requires_access = false` forever — no one gets accidentally locked out of a game they already played.
+**What to build:** (shipped 2026-04-24)
+- `public.user_game_access(user_id, game_id, status check 'allowed'|'blocked', added_by, created_at)` with PK `(user_id, game_id)` and CASCADE deletes on the user and game refs.
+- RLS: users see their own rows; any admin can read/insert/update/delete.
+- Hub's `loadCatalog()` now also fetches `user_game_access` for the current user and tags each catalog row with `_access`: 'allowed' (open game OR user explicitly allowed), 'blocked' (filtered out), 'gated' (requires_access true and no allow row).
+- Game grid renders gated games as a faded "Coming soon" card (no link, opacity-60, cursor-not-allowed).
+- `sq_pending_for(uid)` now skips gated games where the user lacks access — no inbox notifications for games they can't open.
+- New `AccessAdmin.jsx` (master-admin only, lives in AdminPanel): per game, shows requires_access state and the list of allowed users, with username search to add and per-row remove.
+- **Crucial default preserved:** Wordy and Rungles seeded with `requires_access = false`. The gating logic is opt-in per game.
 
 **Risks:**
 | Type | Detail | Workaround |

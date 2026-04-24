@@ -119,11 +119,18 @@ DROP FUNCTION IF EXISTS public.rungles_pending_for(uuid);
 With the flag still on, the RPC call will fail and the hub will fall back to legacy queries automatically — no extra UI rollback needed.
 
 ### Phase 7 — `user_game_access` (beta gating)
-No flag needed — just set all catalog rows to `requires_access = false`:
+Quick disable (open every gated game without dropping the table):
 ```sql
-update games_catalog set requires_access = false;
+UPDATE public.games_catalog SET requires_access = false;
 ```
-Everyone sees every published game again.
+Everyone sees every published game again. Access rows persist; flipping `requires_access` back to true re-enables gating.
+
+Full reversal (drop the table + revert hub):
+```sql
+-- Restore original sq_pending_for (no access check) — see git history for the version without the requires_access branch
+DROP TABLE IF EXISTS public.user_game_access CASCADE;
+```
+Plus in code: revert the `loadCatalog` Promise.all to a single catalog fetch, remove `_access` handling in the game grid render, remove `<AccessAdmin />` from `AdminPanel.jsx`, and delete `src/components/AccessAdmin.jsx`.
 
 ### Phase 8 — Hub-level friendships
 ```bash
