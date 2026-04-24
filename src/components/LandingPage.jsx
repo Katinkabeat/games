@@ -27,7 +27,7 @@ const GAMES = [
 export default function LandingPage({ session }) {
   const user = session.user;
   const { isDark, toggle: toggleTheme } = useTheme();
-  const [username, setUsername] = useState(user.email?.split('@')[0] || 'friend');
+  const [username, setUsername] = useState('friend');
   const [wordyTurn, setWordyTurn] = useState(0);
   const [wordyWaiting, setWordyWaiting] = useState(0);
   const [runglesTurn, setRunglesTurn] = useState(0);
