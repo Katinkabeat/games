@@ -143,12 +143,14 @@ DROP TABLE IF EXISTS public.user_groups CASCADE;  -- cascades user_group_members
 Plus in code: remove `<GroupsAdmin />` from `AdminPanel.jsx`, delete `GroupsAdmin.jsx`, and revert the bulk-grant block in `AccessAdmin.jsx` (the per-user search still works without it).
 
 ### Phase 8 — Hub-level friendships
-Quick disable of just the notification (keeps the friendships feature working):
+**Note:** the friend-request push notification (edge function + trigger) was attempted on 2026-04-24 but rolled back because the Management API's body-upload path doesn't actually bundle functions for the Edge Runtime — every deploy via that path BOOTed with HTTP 503. Source is committed at `supabase/functions/sq-friend-request-notification/` and the trigger SQL at `supabase/migrations/sq_friend_request_trigger.sql`; both can be activated once the Supabase CLI is installed and used to deploy properly. See the function's README.md for the deploy steps.
+
+If a future deploy succeeds and you need to disable just the notification:
 ```sql
 DROP TRIGGER IF EXISTS friendships_notify_on_insert ON public.friendships;
 DROP FUNCTION IF EXISTS public.notify_friend_request();
 ```
-You can leave the edge function deployed — without the trigger, it just sits idle.
+The edge function can be left deployed — without the trigger, it just sits idle.
 
 Quick disable of the friends UI (frontend only — table can stay):
 - Remove `<FriendsView />` render block in `LandingPage.jsx`.
