@@ -143,7 +143,14 @@ DROP TABLE IF EXISTS public.user_groups CASCADE;  -- cascades user_group_members
 Plus in code: remove `<GroupsAdmin />` from `AdminPanel.jsx`, delete `GroupsAdmin.jsx`, and revert the bulk-grant block in `AccessAdmin.jsx` (the per-user search still works without it).
 
 ### Phase 8 — Hub-level friendships
-Quick disable (frontend only — table can stay):
+Quick disable of just the notification (keeps the friendships feature working):
+```sql
+DROP TRIGGER IF EXISTS friendships_notify_on_insert ON public.friendships;
+DROP FUNCTION IF EXISTS public.notify_friend_request();
+```
+You can leave the edge function deployed — without the trigger, it just sits idle.
+
+Quick disable of the friends UI (frontend only — table can stay):
 - Remove `<FriendsView />` render block in `LandingPage.jsx`.
 - Remove the "Friends 👥" entry in `SettingsDropdown.jsx`.
 - Drop the `onOpenFriends` prop from LandingPage's SettingsDropdown call.
@@ -156,7 +163,13 @@ DROP FUNCTION IF EXISTS public.accept_friendship(uuid);
 DROP FUNCTION IF EXISTS public.remove_friendship(uuid);
 DROP TABLE IF EXISTS public.friendships;
 ```
-Wordy/Rungles invite flows aren't using `are_friends` yet, so dropping has no game-side impact.
+Wordy/Rungles invite flows aren't using `are_friends` yet, so dropping has no game-side impact. To remove the edge function too:
+```bash
+# Via Supabase dashboard: Functions → sq-friend-request-notification → Delete
+# Or via Management API:
+curl -X DELETE -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" \
+  "https://api.supabase.com/v1/projects/yyhewndblruwxsrqzart/functions/sq-friend-request-notification"
+```
 ```bash
 # In rae-side-quest/.env
 VITE_SQ_FRIENDS=false

@@ -259,6 +259,7 @@ If a phase goes sideways, the rollback is always:
 - RPCs: `request_friendship(target_user)`, `accept_friendship(other_user)` (only succeeds if the OTHER party requested), `remove_friendship(other_user)` (covers cancel / decline / unfriend), and `are_friends(uid1, uid2)` for downstream callers.
 - New `FriendsView.jsx` component, opened from a "Friends 👥" entry in the settings dropdown. Shows incoming requests with accept/decline, sent requests with cancel, accepted friends with remove, and a username search to send new requests.
 - Wordy and Rungles invite flows are untouched — this is additive infrastructure. They can adopt `are_friends` later when convenient.
+- **Push notification on incoming requests:** new edge function `sq-friend-request-notification` (in `rae-side-quest/supabase/functions/`) mirrors Wordy's push pattern. A DB trigger `friendships_notify_on_insert` fires on each new pending row and POSTs to the function via pg_net, which sends a "X wants to be friends!" Web Push to the recipient using their existing SideQuest/Wordy/Rungles subscription. Reuses the unified push-subscriptions architecture — no new permission prompts.
 
 **Risks:**
 | Type | Detail | Workaround |
