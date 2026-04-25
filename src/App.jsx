@@ -5,9 +5,33 @@ import { ThemeProvider } from './contexts/ThemeContext.jsx';
 import AuthPage from './components/AuthPage.jsx';
 import LandingPage from './components/LandingPage.jsx';
 
+// Allowlist of path prefixes the post-login ?return= redirect will honor.
+// Add new SQ games here when scaffolding them so notifications and bookmarks
+// survive a logged-out re-entry.
+const ALLOWED_RETURN_PREFIXES = ['/wordy/', '/rungles/'];
+
+function getValidatedReturn() {
+  const params = new URLSearchParams(window.location.search);
+  const ret = params.get('return');
+  if (!ret) return null;
+  try {
+    const url = new URL(ret, window.location.origin);
+    if (url.origin !== window.location.origin) return null;
+    if (!ALLOWED_RETURN_PREFIXES.some((p) => url.pathname.startsWith(p))) return null;
+    return url.pathname + url.search + url.hash;
+  } catch {
+    return null;
+  }
+}
+
 export default function App() {
   const [session, setSession] = useState(null);
   const [loading, setLoading] = useState(true);
+  // Detect a password-recovery link from the URL hash before getSession()
+  // resolves so we never momentarily render the lobby for a recovery user.
+  const [isRecovery, setIsRecovery] = useState(
+    () => window.location.hash.includes('type=recovery')
+  );
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
@@ -15,12 +39,21 @@ export default function App() {
       setLoading(false);
     });
 
-    const { data: sub } = supabase.auth.onAuthStateChange((_event, s) => {
+    const { data: sub } = supabase.auth.onAuthStateChange((event, s) => {
       setSession(s);
+      if (event === 'PASSWORD_RECOVERY') setIsRecovery(true);
     });
 
     return () => sub.subscription.unsubscribe();
   }, []);
+
+  // Honor a validated ?return= redirect once we have a session and the user
+  // isn't in the middle of a password recovery flow.
+  useEffect(() => {
+    if (loading || !session || isRecovery) return;
+    const ret = getValidatedReturn();
+    if (ret) window.location.replace(ret);
+  }, [loading, session, isRecovery]);
 
   if (loading) {
     return (
@@ -35,7 +68,14 @@ export default function App() {
   return (
     <ThemeProvider>
       <Toaster position="top-center" />
-      {session ? <LandingPage session={session} /> : <AuthPage />}
+      {session && !isRecovery ? (
+        <LandingPage session={session} />
+      ) : (
+        <AuthPage
+          isRecovery={isRecovery}
+          onPasswordReset={() => setIsRecovery(false)}
+        />
+      )}
     </ThemeProvider>
   );
 }
