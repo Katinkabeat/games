@@ -47,6 +47,21 @@ export default function App() {
     return () => sub.subscription.unsubscribe();
   }, []);
 
+  // The SideQuest service worker posts a NAVIGATE message when a user clicks
+  // a notification whose target URL is outside the SQ scope (e.g. a Wordy or
+  // Rungles game board). Without this listener, the SW focuses an existing
+  // SQ tab but the tab never actually navigates to the deep link.
+  useEffect(() => {
+    if (!('serviceWorker' in navigator)) return;
+    function handleSWMessage(event) {
+      if (event.data?.type === 'NAVIGATE' && typeof event.data.url === 'string') {
+        window.location.href = event.data.url;
+      }
+    }
+    navigator.serviceWorker.addEventListener('message', handleSWMessage);
+    return () => navigator.serviceWorker.removeEventListener('message', handleSWMessage);
+  }, []);
+
   // Honor a validated ?return= redirect once we have a session and the user
   // isn't in the middle of a password recovery flow.
   useEffect(() => {

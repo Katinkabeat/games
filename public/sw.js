@@ -18,20 +18,10 @@ self.addEventListener('push', (event) => {
     data: { url: data.url || '/games/' },
   };
 
-  event.waitUntil(
-    clients.matchAll({ type: 'window', includeUncontrolled: true }).then((windowClients) => {
-      const targetUrl = data.url || '';
-      const hasFocusedClient = windowClients.some(
-        (c) =>
-          c.visibilityState === 'visible' &&
-          c.focused &&
-          targetUrl &&
-          c.url.includes(targetUrl)
-      );
-      if (hasFocusedClient) return;
-      return self.registration.showNotification(data.title, options);
-    })
-  );
+  // Always show the notification. Turn-based games rely on push to alert
+  // a player whose turn it now is — even if they're staring at the board
+  // waiting, they need the cue.
+  event.waitUntil(self.registration.showNotification(data.title, options));
 });
 
 self.addEventListener('notificationclick', (event) => {
