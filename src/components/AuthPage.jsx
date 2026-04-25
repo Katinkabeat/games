@@ -43,7 +43,7 @@ export default function AuthPage() {
       return;
     }
     const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
-      redirectTo: `${window.location.origin}/wordy/`,
+      redirectTo: `${window.location.origin}/games/`,
       captchaToken,
     });
     captchaRef.current?.reset();
