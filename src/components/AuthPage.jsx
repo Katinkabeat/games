@@ -38,9 +38,16 @@ export default function AuthPage() {
       toast.error('Enter your email first');
       return;
     }
+    if (!captchaToken) {
+      toast.error('Complete the captcha first');
+      return;
+    }
     const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
       redirectTo: `${window.location.origin}/wordy/`,
+      captchaToken,
     });
+    captchaRef.current?.reset();
+    setCaptchaToken('');
     if (error) toast.error(error.message);
     else toast.success('Password reset email sent');
   }
