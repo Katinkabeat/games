@@ -333,6 +333,74 @@ Before marking a phase "done":
 
 ---
 
+## Deferred work + migration checklist
+
+These items were intentionally not done during the initial 11-phase rollout (2026-04-25). Track them here so nothing surprises you when migrating to Dean's server later.
+
+### Deferred features (functional gaps to fill when convenient)
+
+1. **Telemetry call sites in Wordy and Rungles.**
+   The `logEvent(event, payload)` helper exists in `wordy/src/lib/telemetry.js` and `rungles/js/telemetry.js` but is never called. Only the SideQuest hub fires telemetry (one `app_opened` event on landing-page mount). To get useful gameplay data, sprinkle calls at key moments:
+   - Wordy: `logEvent('wordy_game_created')`, `logEvent('wordy_move_submitted')`, `logEvent('wordy_game_completed')`
+   - Rungles: `logEvent('rungles_solo_started')`, `logEvent('rungles_rung_completed', { score })`, `logEvent('rungles_game_completed')`
+   Calls are fire-and-forget — no risk to gameplay.
+
+2. **Game-side blocked-user filtering.**
+   Wordy and Rungles invite dropdowns currently show every signed-in user. The `is_blocked(blocker_uid, blocked_uid)` SQL function exists for them to consult. To wire up: filter invite candidate lists with `.not.in('id', blockedUserIds)` after fetching the user's blocks. Game-side change only; no DB change.
+
+3. **Game-side friend filtering / prioritization.**
+   `are_friends(uid1, uid2)` exists for games to call. Optional UX improvement — Wordy/Rungles could surface "your friends" first in invite dropdowns or restrict invites to friends only.
+
+4. **Rate-limit call sites in edge functions.**
+   `check_and_bump_rate_limit(uid, action, limit_per_hour)` exists with no callers. Likely candidates when scaling up:
+   - Wordy/Rungles edge functions: cap moves per hour per user
+   - Friend request RPC: cap requests per day
+   - Report submission: already has 24h-per-pair cooldown built in; rate-limit is for bulk-sending across many targets
+   Start permissive (e.g. 100/hour), tighten based on real `sq_events` data.
+
+5. **In-game "Report player" buttons.**
+   Currently reports come only from the hub's Friends view. For better moderation coverage during gameplay, each game could show a small `⋯ Report` link on opponent profile chips. Calls `submit_report` RPC same as the hub.
+
+### Migration notes for moving Supabase off the free tier (e.g., to Dean's server)
+
+When the Supabase project moves to a different host (different URL or project ref):
+
+1. **Push subscriptions break.**
+   Browsers' push subscription endpoints are bound to the original Supabase URL's VAPID keys. Every existing row in `push_subscriptions` will be invalid after migration. Users must re-enable notifications on each device once.
+
+2. **Hardcoded URL in the friend-request notification trigger.**
+   `supabase/migrations/sq_friend_request_trigger.sql` contains the literal URL `https://yyhewndblruwxsrqzart.supabase.co/functions/v1/sq-friend-request-notification`. Update this to the new project's URL before re-applying the trigger.
+
+3. **Hardcoded project ref in `rungles/js/supabase-client.js`.**
+   The Rungles client has the URL and anon key inlined. Wordy and SideQuest both use Vite env vars (cleaner). When migrating, update Rungles's hardcoded values to match.
+
+4. **VAPID keys.**
+   `VAPID_PUBLIC_KEY` and `VAPID_PRIVATE_KEY` are project-level secrets. Either generate new ones on the new project (forces all subscriptions to be regenerated, see #1) or copy the existing pair to the new project's secrets so existing subscriptions remain valid.
+
+5. **pg_cron jobs.**
+   `sq-heartbeat` (12:00 UTC daily) and `sq-events-retention` (02:00 UTC daily) are stored in `cron.job` and don't transfer with a normal `pg_dump`. After restoring the schema on the new host, re-create them with `cron.schedule(...)` — the SQL is in this plan under Phase 1 and Phase 2.
+
+6. **Edge functions.**
+   Edge functions don't migrate with `pg_dump`. After moving, redeploy each via the CLI:
+   ```bash
+   supabase functions deploy push-notification --project-ref <new-ref>
+   supabase functions deploy rungles-push-notification --project-ref <new-ref>
+   supabase functions deploy sq-friend-request-notification --project-ref <new-ref> --no-verify-jwt
+   ```
+
+7. **GitHub Pages base URL.**
+   If Dean's server uses a different domain than `katinkabeat.github.io/games/`, every hardcoded `/games/`, `/wordy/`, `/rungles/` reference (in `games_catalog`, hub URLs, edge function payloads) needs to be updated. Search the codebase for those literal paths.
+
+8. **Same-origin assumption.**
+   The hub currently relies on Wordy and Rungles being same-origin so the Supabase auth session is shared via localStorage. If Dean splits them across subdomains, plan for cross-origin auth (cookies with explicit domain, or a redirect-based session sync).
+
+9. **Realtime publication tables.**
+   The `supabase_realtime` publication includes `games`, `rg_games`, `game_players`, `rg_players`. When restoring on a new host, re-apply `ALTER PUBLICATION supabase_realtime ADD TABLE …` for each — `pg_dump` doesn't always preserve publication memberships.
+
+10. **The `pre-sq-plan` and `pre-sq-phase-N` git tags** are anchor points for rollback. They reference commits that exist in all three repos before each phase. Keep them when migrating; they're handy reference markers.
+
+---
+
 ## If a phase breaks production
 
 1. **Flip the feature flag off** (if one exists) and redeploy the hub. 2–3 minute recovery.
