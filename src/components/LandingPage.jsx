@@ -255,7 +255,7 @@ export default function LandingPage({ session }) {
                 setSettingsOpen(false);
               }}
               aria-label={hasNotifications ? `Notifications (${inboxTotal})` : 'Notifications'}
-              className="relative w-10 h-10 flex items-center justify-center rounded-xl border-2 border-purple-400 bg-white hover:bg-purple-50 transition-colors active:scale-95"
+              className="relative w-10 h-10 flex items-center justify-center active:scale-95"
             >
               <span className="text-xl leading-none">🔔</span>
               {hasNotifications && (
@@ -311,7 +311,7 @@ export default function LandingPage({ session }) {
                 setBellOpen(false);
               }}
               aria-label="Settings"
-              className="w-10 h-10 flex items-center justify-center rounded-xl border-2 border-purple-400 bg-white hover:bg-purple-50 transition-colors active:scale-95"
+              className="w-10 h-10 flex items-center justify-center active:scale-95"
             >
               <span className="text-xl leading-none">⚙️</span>
             </button>
