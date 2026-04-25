@@ -5,30 +5,22 @@ Web Push notification for incoming friend requests. Mirrors the pattern in
 
 ## Status
 
-**Source committed, but not deployed to Supabase.**
+**Live since 2026-04-25.** Deployed via Supabase CLI 2.90.0 (installed via Scoop). The DB trigger `friendships_notify_on_insert` is wired and fires on each new pending friendship row.
 
-I tried to deploy this via the Supabase Management API's `POST/PATCH /v1/projects/{ref}/functions` endpoint, but functions deployed that way fail with `BOOT_ERROR` — even a minimal hello-world. The API's `body` field stores source but doesn't bundle it for the Edge Runtime. Real deploys need the CLI's eszip path or the multipart `/deploy` endpoint.
+## Tooling note
 
-The DB trigger that called this function has also been dropped, so no pg_net requests are queueing against a broken endpoint.
+The Supabase Management API's `POST/PATCH /v1/projects/{ref}/functions` endpoint with a `body` field does NOT actually bundle functions for the Edge Runtime — every deploy via that path returned `BOOT_ERROR`, even a minimal hello-world. Real deploys must go through `supabase functions deploy …`.
 
-## To enable
+## To redeploy after edits
 
-1. Install Supabase CLI (recommended via Scoop on Windows):
-   ```powershell
-   Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
-   Invoke-RestMethod -Uri https://get.scoop.sh | Invoke-Expression
-   scoop install supabase
-   ```
-2. Link the project once:
-   ```bash
-   supabase link --project-ref yyhewndblruwxsrqzart
-   ```
-3. Deploy the function:
-   ```bash
-   cd ~/OneDrive/Claude/rae-side-quest
-   supabase functions deploy sq-friend-request-notification --no-verify-jwt
-   ```
-4. Re-apply the trigger SQL from `supabase/migrations/sq_friend_request_trigger.sql` (or paste into the Supabase SQL editor).
+```powershell
+$env:Path = "$env:USERPROFILE\scoop\shims;$env:Path"
+$env:SUPABASE_ACCESS_TOKEN = "<your PAT from .env.supabase>"
+cd C:\Users\trace\OneDrive\Claude\rae-side-quest
+supabase functions deploy sq-friend-request-notification --project-ref yyhewndblruwxsrqzart --no-verify-jwt
+```
+
+The `--no-verify-jwt` flag matters — pg_net's http_post from the trigger doesn't sign with a Supabase JWT.
 
 ## What it does
 
