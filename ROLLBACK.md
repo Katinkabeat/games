@@ -179,18 +179,28 @@ VITE_SQ_FRIENDS=false
 Redeploy. The friends section in settings disappears. Games keep using their own invite lists — this phase never changed them.
 
 ### Phase 9 — Reports + block list
-```bash
-# In rae-side-quest/.env
-VITE_SQ_REPORTS=false
+Quick disable (frontend only):
+- Remove `<ReportsAdmin />` from `AdminPanel.jsx`.
+- Remove the Block/Report buttons and the Blocked section from `FriendsView.jsx`.
+
+Full reversal:
+```sql
+DROP FUNCTION IF EXISTS public.submit_report(uuid, text, text);
+DROP FUNCTION IF EXISTS public.block_user(uuid);
+DROP FUNCTION IF EXISTS public.unblock_user(uuid);
+DROP FUNCTION IF EXISTS public.is_blocked(uuid, uuid);
+DROP TABLE IF EXISTS public.user_blocks;
+DROP TABLE IF EXISTS public.reports;
 ```
-Redeploy. The report button vanishes; invite dropdowns stop filtering blocked users. Tables persist — re-enable later.
+If you want to preserve report history before dropping, snapshot the table to `snapshots/` first.
 
 ### Phase 10 — Rate limits
-Remove the `check_and_bump_rate_limit` calls from the affected edge functions and redeploy them:
-```bash
-supabase functions deploy <function-name>
+No call sites yet, so no UI rollback needed. To drop the table + helper:
+```sql
+DROP FUNCTION IF EXISTS public.check_and_bump_rate_limit(uuid, text, int);
+DROP TABLE IF EXISTS public.rate_limits;
 ```
-Logging table stays for future tuning.
+When you eventually wire `check_and_bump_rate_limit` into edge functions, the rollback is to remove the call (no `--no-verify` redeploy needed since the rate-limit check is purely additive).
 
 ---
 

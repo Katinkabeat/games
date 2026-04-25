@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase.js';
 
 export default function FriendsView({ userId, onBack }) {
   const [rows, setRows] = useState([]);
+  const [blocks, setBlocks] = useState([]);
   const [usernames, setUsernames] = useState({});
   const [loading, setLoading] = useState(true);
 
@@ -12,18 +13,22 @@ export default function FriendsView({ userId, onBack }) {
   const [busyKey, setBusyKey] = useState(null);
 
   async function load() {
-    const { data, error } = await supabase
-      .from('friendships')
-      .select('user_a, user_b, status, requested_by, created_at');
-    if (error) {
-      toast.error(error.message);
+    const [friendsResp, blocksResp] = await Promise.all([
+      supabase.from('friendships').select('user_a, user_b, status, requested_by, created_at'),
+      supabase.from('user_blocks').select('blocked, created_at'),
+    ]);
+    if (friendsResp.error) {
+      toast.error(friendsResp.error.message);
       setLoading(false);
       return;
     }
 
     const otherIds = new Set();
-    for (const r of data || []) {
+    for (const r of friendsResp.data || []) {
       otherIds.add(r.user_a === userId ? r.user_b : r.user_a);
+    }
+    for (const b of blocksResp.data || []) {
+      otherIds.add(b.blocked);
     }
 
     let nameMap = {};
@@ -35,7 +40,8 @@ export default function FriendsView({ userId, onBack }) {
       for (const p of profiles || []) nameMap[p.id] = p.username;
     }
 
-    setRows(data || []);
+    setRows(friendsResp.data || []);
+    setBlocks(blocksResp.data || []);
     setUsernames(nameMap);
     setLoading(false);
   }
@@ -63,7 +69,10 @@ export default function FriendsView({ userId, onBack }) {
         return;
       }
       const friendIds = new Set(rows.map((r) => (r.user_a === userId ? r.user_b : r.user_a)));
-      setMatches((data || []).map((p) => ({ ...p, alreadyConnected: friendIds.has(p.id) })));
+      const blockedIds = new Set(blocks.map((b) => b.blocked));
+      setMatches((data || [])
+        .filter((p) => !blockedIds.has(p.id))
+        .map((p) => ({ ...p, alreadyConnected: friendIds.has(p.id) })));
     }, 250);
     return () => { cancelled = true; clearTimeout(t); };
   }, [search, rows, userId]);
@@ -110,6 +119,54 @@ export default function FriendsView({ userId, onBack }) {
     }
     toast.success(action === 'cancel' ? 'Cancelled' : action === 'decline' ? 'Declined' : 'Removed');
     load();
+  }
+
+  async function blockUser(otherId, otherName) {
+    if (!window.confirm(`Block ${otherName || 'this user'}? This removes any friendship and hides them from your search.`)) return;
+    setBusyKey(`blk:${otherId}`);
+    // Remove friendship first (silent if no row exists), then block.
+    await supabase.rpc('remove_friendship', { other_user: otherId });
+    const { error } = await supabase.rpc('block_user', { target: otherId });
+    setBusyKey(null);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    toast.success(`${otherName || 'User'} blocked`);
+    load();
+  }
+
+  async function unblockUser(otherId, otherName) {
+    setBusyKey(`unb:${otherId}`);
+    const { error } = await supabase.rpc('unblock_user', { target: otherId });
+    setBusyKey(null);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    toast.success(`${otherName || 'User'} unblocked`);
+    load();
+  }
+
+  async function reportUser(otherId, otherName) {
+    const reason = window.prompt(`Report ${otherName || 'this user'}?\n\nDescribe what's wrong (admins will review):`);
+    if (reason === null) return;
+    if (!reason.trim()) {
+      toast.error('Reason cannot be empty');
+      return;
+    }
+    setBusyKey(`rpt:${otherId}`);
+    const { error } = await supabase.rpc('submit_report', {
+      reported_user: otherId,
+      game: 'sidequest',
+      reason: reason.trim(),
+    });
+    setBusyKey(null);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    toast.success('Report submitted — thanks for letting us know');
   }
 
   const incoming = rows.filter((r) => r.status === 'pending' && r.requested_by !== userId);
@@ -241,18 +298,62 @@ export default function FriendsView({ userId, onBack }) {
               return (
                 <li key={otherId} className="flex items-center justify-between gap-2 p-2.5 rounded-lg bg-wordy-50 text-sm">
                   <span className="font-bold text-wordy-700 truncate">{otherName}</span>
-                  <button
-                    onClick={() => removeRow(otherId, otherName, 'remove')}
-                    className="text-xs font-bold text-rose-500 hover:text-rose-700 shrink-0"
-                  >
-                    Remove
-                  </button>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <button
+                      onClick={() => reportUser(otherId, otherName)}
+                      className="text-xs font-bold text-wordy-500 hover:text-wordy-700"
+                      title="Report"
+                    >
+                      Report
+                    </button>
+                    <button
+                      onClick={() => blockUser(otherId, otherName)}
+                      className="text-xs font-bold text-wordy-500 hover:text-wordy-700"
+                      title="Block"
+                    >
+                      Block
+                    </button>
+                    <button
+                      onClick={() => removeRow(otherId, otherName, 'remove')}
+                      className="text-xs font-bold text-rose-500 hover:text-rose-700"
+                    >
+                      Remove
+                    </button>
+                  </div>
                 </li>
               );
             })}
           </ul>
         )}
       </section>
+
+      {blocks.length > 0 && (
+        <section className="card">
+          <h3 className="font-display text-lg text-wordy-800 mb-2">
+            Blocked <span className="text-sm font-normal text-wordy-500">({blocks.length})</span>
+          </h3>
+          <p className="text-xs text-wordy-500 mb-2">
+            Blocked users can't appear in your friend search. They aren't notified.
+          </p>
+          <ul className="space-y-1.5">
+            {blocks.map((b) => {
+              const otherName = usernames[b.blocked] || '(unknown)';
+              return (
+                <li key={b.blocked} className="flex items-center justify-between gap-2 p-2.5 rounded-lg bg-wordy-50 text-sm">
+                  <span className="font-bold text-wordy-700 truncate">{otherName}</span>
+                  <button
+                    onClick={() => unblockUser(b.blocked, otherName)}
+                    disabled={busyKey === `unb:${b.blocked}`}
+                    className="text-xs font-bold text-wordy-600 hover:text-wordy-800 shrink-0"
+                  >
+                    {busyKey === `unb:${b.blocked}` ? '…' : 'Unblock'}
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        </section>
+      )}
     </main>
   );
 }

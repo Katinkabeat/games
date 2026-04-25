@@ -278,12 +278,16 @@ If a phase goes sideways, the rollback is always:
 
 **Goal:** The infrastructure needed *before* opening to the public. Small friend group doesn't need it today, but it's painful to retrofit.
 
-**What to build:**
-- `reports(id, reporter, reported, game, reason, created_at, status)` — status starts as `'open'`, moves to `'reviewed'` by admin.
-- `user_blocks(blocker, blocked, created_at)` — blocks are one-sided and silent.
-- Admin panel: open-reports queue, with a "view profile" and "take action" flow.
-- In-game "Report player" button becomes a shared hub component each game mounts.
-- Invite dropdowns in games filter out blocked users.
+**What to build:** (shipped 2026-04-25)
+- `public.reports(id, reporter, reported, reported_username, game, reason, status, reviewed_by, reviewed_at, reviewer_notes, created_at)`. `reported_username` is a snapshot so reports survive account deletion. Reason limited to 1–1000 chars.
+- `public.user_blocks(blocker, blocked, created_at)` with PK `(blocker, blocked)` and `CHECK(blocker != blocked)`.
+- RPCs (all SECURITY DEFINER):
+  - `submit_report(reported_user, game, reason)` — enforces 24h cooldown per (reporter, reported) to prevent retaliation spam.
+  - `block_user(target)` / `unblock_user(target)`.
+  - `is_blocked(blocker_uid, blocked_uid)` for downstream callers.
+- New `ReportsAdmin.jsx` (visible to ALL admins, not just master): open queue with reviewer notes + Mark reviewed / Dismiss; collapsed Resolved section showing history.
+- `FriendsView.jsx` extended: per-friend `Report` / `Block` / `Remove` buttons; new "Blocked" section with Unblock; search results filter out blocked users.
+- **Skipped for now:** in-game "Report player" button + invite-dropdown blocked-user filtering. Wordy/Rungles invite flows are unchanged in this phase — they can adopt `is_blocked()` later. Phase 9's hub-side controls cover the moderation infrastructure.
 
 **Risks:**
 | Type | Detail | Workaround |
@@ -300,11 +304,10 @@ If a phase goes sideways, the rollback is always:
 
 **Goal:** Protect the free tier from a single bad actor the day you open signups.
 
-**What to build:**
-- `rate_limits(user_id, action, window_start, count)` table.
-- Postgres function `check_and_bump_rate_limit(uid, action, limit_per_hour)` that atomically increments and returns whether the user is over the limit.
-- Call it in high-risk edge functions: push subscriptions, invite creation, report submission, profile updates.
-- Start with generous limits (e.g. 100 invites/hour) and tighten based on real data from `sq_events`.
+**What to build:** (shipped 2026-04-25)
+- `public.rate_limits(user_id, action, window_start, count)` with PK `(user_id, action, window_start)`. RLS enabled but no user-facing policies — only callable via the SECURITY DEFINER function.
+- `public.check_and_bump_rate_limit(uid, action, limit_per_hour) returns boolean`. Atomically upserts a row for the current hour bucket (`date_trunc('hour', now())`), returns `true` if the user is still under the limit, `false` if they hit it. Cleans up windows >24h old on every call (cheap, table stays small).
+- **Not yet wired into any call sites.** Available for future use in edge functions (invite creation, report submission, profile updates, etc.). Start with generous limits (100/hour) and tighten based on real data from `sq_events`. Currently log-only — when you add a call site, you can choose whether to enforce (return error) or just log (insert into `sq_events` with `event='rate_limit_exceeded'`).
 
 **Risks:**
 | Type | Detail | Workaround |
