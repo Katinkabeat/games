@@ -333,6 +333,26 @@ Before marking a phase "done":
 
 ---
 
+## Phase 8.5 — Unified notification opt-in (added 2026-04-25)
+
+Friends were originally opting in to push notifications via per-game banners (Wordy lobby, Rungles lobby). Once SideQuest's unified push setup landed in Phase 1, those per-game banners became redundant clutter. This phase removes them and silently migrates existing per-game subscribers.
+
+**What was built:**
+- `migrateToSideQuestPush(userId)` helper in `rae-side-quest/src/lib/pushNotifications.js`. Called from LandingPage's mount effect. Silent — no UI prompts.
+- Trigger conditions: `Notification.permission === 'granted'` AND no active SideQuest subscription on this device.
+- On migration: subscribes the SideQuest service worker (browser permission already granted, so no prompt), unsubscribes the wordy/rungles SW push managers, and deletes the user's `app='wordy'` and `app='rungles'` rows from `push_subscriptions`.
+- Wordy: removed `<NotificationBanner>` from `LobbyPage.jsx`. The component file stays in repo for easy revert.
+- Rungles: removed `initNotificationBanner` and `resyncPushSubscription` calls from `multiplayer.js`. The notifications.js file stays in repo for easy revert.
+
+**Net effect:**
+- Existing friends → auto-migrated on their next hub visit, zero clicks
+- New users → opt in via the unified hub Settings → Notifications toggle (single permission prompt, single subscription, all games)
+- Per-game notification UIs are gone — the hub is the single source of truth for opt-in
+
+**Backup plan:** revert the LandingPage mount effect's `migrateToSideQuestPush` call; restore the `<NotificationBanner>` JSX in `wordy/src/components/lobby/LobbyPage.jsx`; restore the import + calls in `rungles/js/multiplayer.js`. No DB rollback needed — the migration is idempotent and the unified subscription path was already in place.
+
+---
+
 ## Deferred work + migration checklist
 
 These items were intentionally not done during the initial 11-phase rollout (2026-04-25). Track them here so nothing surprises you when migrating to Dean's server later.

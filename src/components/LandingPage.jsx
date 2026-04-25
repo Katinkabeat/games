@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import toast from 'react-hot-toast';
 import { supabase } from '../lib/supabase.js';
 import { logEvent } from '../lib/telemetry.js';
+import { migrateToSideQuestPush } from '../lib/pushNotifications.js';
 import { useTheme } from '../contexts/ThemeContext.jsx';
 import SettingsDropdown from './SettingsDropdown.jsx';
 import AdminPanel from './AdminPanel.jsx';
@@ -214,7 +215,11 @@ export default function LandingPage({ session }) {
 
   useEffect(() => {
     logEvent('app_opened');
-  }, []);
+    // Auto-migrate friends who already enabled notifications via Wordy or
+    // Rungles to the unified SideQuest subscription. Silent no-op if they
+    // haven't granted permission on this device.
+    migrateToSideQuestPush(user.id);
+  }, [user.id]);
 
   useEffect(() => {
     if (!bellOpen) return;

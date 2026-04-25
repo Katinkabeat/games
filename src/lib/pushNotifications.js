@@ -112,6 +112,63 @@ export async function hasActivePushSubscription() {
   }
 }
 
+/**
+ * Auto-migrate a user from per-game (wordy/rungles) push subscriptions to a
+ * unified SideQuest subscription. Silent — no UI prompts.
+ *
+ * Trigger conditions (all must be true):
+ *   - Notification.permission is already 'granted' (i.e. user previously
+ *     allowed notifications via Wordy or Rungles on this device).
+ *   - No active SideQuest push subscription on this device yet.
+ *
+ * On success:
+ *   - Subscribes the SideQuest service worker (no permission prompt because
+ *     permission is already granted for this origin).
+ *   - Unsubscribes the wordy and rungles service workers' push managers
+ *     so the browser doesn't keep multiple active subscriptions.
+ *   - Deletes the user's wordy/rungles rows from push_subscriptions.
+ *
+ * Fire-and-forget; safe to call on every hub mount.
+ */
+export async function migrateToSideQuestPush(userId) {
+  if (typeof Notification === 'undefined') return;
+  if (Notification.permission !== 'granted') return;
+  if (!('serviceWorker' in navigator)) return;
+
+  try {
+    // Already on SideQuest? Nothing to do.
+    const sqReg = await navigator.serviceWorker.ready;
+    if (await sqReg.pushManager.getSubscription()) return;
+
+    // Subscribe via SideQuest's SW. No prompt because permission is granted.
+    const ok = await subscribeToPush(userId);
+    if (!ok) return;
+
+    // Browser-side: unsubscribe any per-game registrations under this origin.
+    const allRegs = await navigator.serviceWorker.getRegistrations();
+    for (const reg of allRegs) {
+      if (reg.scope === sqReg.scope) continue;
+      try {
+        const sub = await reg.pushManager.getSubscription();
+        if (sub) await sub.unsubscribe();
+      } catch {
+        // Ignore — best-effort cleanup.
+      }
+    }
+
+    // DB-side: drop the user's wordy/rungles rows. The unified push edge
+    // functions try sidequest first now anyway; cleaning up keeps the table
+    // tidy and avoids stale rows lingering across browser storage clears.
+    await supabase
+      .from('push_subscriptions')
+      .delete()
+      .eq('user_id', userId)
+      .in('app', ['wordy', 'rungles']);
+  } catch {
+    // Migration is opportunistic — never throw or block the hub render.
+  }
+}
+
 function urlBase64ToUint8Array(base64String) {
   const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
   const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
