@@ -274,7 +274,7 @@ export default function LandingPage({ session }) {
             </button>
 
             {bellOpen && (
-              <div className="absolute right-0 top-full mt-2 w-72 card p-2 z-50 shadow-lg">
+              <div className="absolute right-0 top-full mt-2 w-72 card dropdown-surface p-2 z-50 shadow-lg">
                 <h3 className="font-display text-base text-wordy-800 px-2 pt-1 pb-2">Inbox</h3>
                 {loading ? (
                   <p className="text-sm text-wordy-500 px-2 pb-2">Loading...</p>
