@@ -174,7 +174,7 @@ export default function FriendsView({ userId, onBack }) {
   const friends = rows.filter((r) => r.status === 'accepted');
 
   return (
-    <main className="max-w-3xl mx-auto px-4 pb-12 space-y-6">
+    <main className="max-w-[480px] mx-auto px-4 pb-12 space-y-6">
       <div className="flex items-center justify-between">
         <h2 className="font-display text-2xl text-wordy-800">Friends</h2>
         <button onClick={onBack} className="btn-secondary text-sm px-3 py-1.5">← Back</button>

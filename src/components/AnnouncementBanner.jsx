@@ -52,7 +52,7 @@ export default function AnnouncementBanner() {
   const icon = SEVERITY_ICONS[announcement.severity] || SEVERITY_ICONS.info;
 
   return (
-    <div className="max-w-3xl mx-auto px-4 mb-4">
+    <div className="max-w-[480px] mx-auto px-4 mb-4">
       <div className={`rounded-2xl border-2 ${style} flex items-start gap-3 p-3 shadow-sm`}>
         <span className="text-lg leading-none pt-0.5" aria-hidden="true">{icon}</span>
         <div className="flex-1 text-sm whitespace-pre-wrap">{announcement.body}</div>

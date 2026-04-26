@@ -248,7 +248,7 @@ export default function LandingPage({ session }) {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-wordy-100 via-pink-100 to-wordy-100">
-      <header className="max-w-3xl mx-auto px-4 pt-6 pb-4 flex items-center justify-between gap-3">
+      <header className="max-w-[480px] mx-auto px-4 pt-6 pb-4 flex items-center justify-between gap-3">
         <div className="flex items-center gap-3 min-w-0">
           <HubAvatarMenu profile={profile} onProfileUpdate={setProfile} />
           <div className="min-w-0">
@@ -352,7 +352,7 @@ export default function LandingPage({ session }) {
       ) : (
         <>
           <AnnouncementBanner />
-          <main className="max-w-3xl mx-auto px-4 pb-12">
+          <main className="max-w-[480px] mx-auto px-4 pb-12">
             <div className="grid gap-4 sm:grid-cols-2">
               {games.map((game) => {
                 if (game._access === 'gated') {
