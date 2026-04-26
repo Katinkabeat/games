@@ -35,6 +35,41 @@ Layout, left to right:
 - The hub itself follows the same pattern: avatar left of "Rae's Side
   Quest", bell + cog on the right.
 
+## Floating overlays — dropdowns, popovers, modals, dialogs
+
+Every floating surface (avatar dropdowns, cog dropdowns, bell dropdowns,
+stats popups, confirm modals, full-screen dialogs) follows the same
+"raised above the page" treatment in dark mode:
+
+- **Background:** `#241640` — one shade lighter than the page surface
+  (`#1a1130`) so the menu reads as floating, not blending into the
+  page's cards.
+- **Border:** `1px solid #6d28d9` — bright wordy-700 purple. Defines
+  the menu edge clearly against the dark page.
+
+In light mode keep the surface white (`#fff`) with a soft purple-100
+border (`#e9d5ff`) — same shape, less aggressive contrast.
+
+**Tailwind gotcha:** the projects' `index.css` files have
+`.dark .bg-white { #1a1130 !important }` and
+`.dark .border-purple-100 { #2d1b55 !important }` overrides that
+clobber arbitrary `dark:bg-[…]` and `dark:border-[…]` classes. Route
+around them by using arbitrary classes for the light-mode value too:
+
+```jsx
+// ❌ won't override in dark mode
+className="bg-white dark:bg-[#241640] border border-purple-100 dark:border-[#6d28d9]"
+// ✅ arbitrary classes bypass the !important global rules
+className="bg-[#fff] dark:bg-[#241640] border border-[#e9d5ff] dark:border-[#6d28d9]"
+```
+
+For `.card`-based dropdowns (which `@apply bg-white border border-purple-100`
+in CSS), add the marker class `dropdown-surface` and rely on the
+`.dark .dropdown-surface` rule in `index.css` instead.
+
+For Rungles `<dialog>` elements, the `html.dark dialog` rule in
+`style.css` handles it.
+
 ## Avatar dropdown
 
 The avatar dropdown is **identity** — what's *about you*, not about
