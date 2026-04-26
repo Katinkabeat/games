@@ -5,6 +5,7 @@ import { logEvent } from '../lib/telemetry.js';
 import { migrateToSideQuestPush } from '../lib/pushNotifications.js';
 import { useTheme } from '../contexts/ThemeContext.jsx';
 import SettingsDropdown from './SettingsDropdown.jsx';
+import HubAvatarMenu from './HubAvatarMenu.jsx';
 import AdminPanel from './AdminPanel.jsx';
 import AnnouncementBanner from './AnnouncementBanner.jsx';
 import FriendsView from './FriendsView.jsx';
@@ -41,8 +42,11 @@ export default function LandingPage({ session }) {
   const [username, setUsername] = useState(() => {
     try { return localStorage.getItem(usernameStorageKey) || ''; } catch { return ''; }
   });
+  // Full profile (id + username + avatar_hue) for the hub avatar dropdown.
+  const [profile, setProfile] = useState(null);
   const handleUsernameChange = (name) => {
     setUsername(name);
+    setProfile((p) => (p ? { ...p, username: name } : p));
     try { localStorage.setItem(usernameStorageKey, name); } catch {}
   };
   // Phase 6: unified inbox state. Each item is {game_id, count, label, url}.
@@ -67,14 +71,17 @@ export default function LandingPage({ session }) {
     let pollInterval = null;
 
     async function loadProfileAndAdmin() {
-      const { data: profile } = await supabase
+      const { data: profileRow } = await supabase
         .from('profiles')
-        .select('username')
+        .select('id, username, avatar_hue')
         .eq('id', user.id)
         .single();
-      if (active && profile?.username) {
-        setUsername(profile.username);
-        try { localStorage.setItem(usernameStorageKey, profile.username); } catch {}
+      if (active && profileRow) {
+        setProfile(profileRow);
+        if (profileRow.username) {
+          setUsername(profileRow.username);
+          try { localStorage.setItem(usernameStorageKey, profileRow.username); } catch {}
+        }
       }
 
       const { data: adminRow } = await supabase
@@ -242,9 +249,12 @@ export default function LandingPage({ session }) {
   return (
     <div className="min-h-screen bg-gradient-to-br from-wordy-100 via-pink-100 to-wordy-100">
       <header className="max-w-3xl mx-auto px-4 pt-6 pb-4 flex items-center justify-between gap-3">
-        <div className="min-w-0">
-          <h1 className="font-display text-2xl text-wordy-800 truncate">Rae's Side Quest</h1>
-          <p className="text-sm text-wordy-600 truncate">{username ? `Hi, ${username}` : '\u00A0'}</p>
+        <div className="flex items-center gap-3 min-w-0">
+          <HubAvatarMenu profile={profile} onProfileUpdate={setProfile} />
+          <div className="min-w-0">
+            <h1 className="font-display text-2xl text-wordy-800 truncate">Rae's Side Quest</h1>
+            <p className="text-sm text-wordy-600 truncate">{username ? `Hi, ${username}` : '\u00A0'}</p>
+          </div>
         </div>
         <div className="flex items-center gap-2 shrink-0">
           <div className="relative" ref={bellRef}>
