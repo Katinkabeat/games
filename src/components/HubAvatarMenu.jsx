@@ -85,8 +85,8 @@ export default function HubAvatarMenu({ profile, onProfileUpdate }) {
         </button>
 
         {open && (
-          <div className="absolute left-0 top-full mt-2 w-60 bg-[#fff] dark:bg-[#241640] border border-purple-100 dark:border-[#2d1b55] rounded-xl shadow-lg z-50 py-1">
-            <div className="flex items-center gap-2.5 px-3 py-2.5 border-b border-purple-100 dark:border-[#2d1b55]">
+          <div className="absolute left-0 top-full mt-2 w-60 bg-[#fff] dark:bg-[#241640] border border-purple-100 dark:border-[#6d28d9] rounded-xl shadow-lg z-50 py-1">
+            <div className="flex items-center gap-2.5 px-3 py-2.5 border-b border-purple-100 dark:border-[#6d28d9]">
               <div
                 className="w-9 h-9 rounded-full flex items-center justify-center font-bold text-white text-xs"
                 style={{ background: `hsl(${hue}, 70%, 55%)` }}
@@ -98,7 +98,7 @@ export default function HubAvatarMenu({ profile, onProfileUpdate }) {
                 <div className="text-xs text-wordy-500">Your profile</div>
               </div>
             </div>
-            <div className="px-3 py-2.5 border-b border-purple-100 dark:border-[#2d1b55]">
+            <div className="px-3 py-2.5 border-b border-purple-100 dark:border-[#6d28d9]">
               <div className="text-[0.68rem] uppercase tracking-wide text-wordy-500 mb-2">Avatar color</div>
               <div className="grid grid-cols-6 gap-1.5">
                 {AVATAR_HUES.map(h => (
@@ -157,12 +157,12 @@ export default function HubAvatarMenu({ profile, onProfileUpdate }) {
 
             {stats && (
               <div className="space-y-3 text-sm">
-                <div className="flex justify-between border-b border-wordy-100 dark:border-[#2d1b55] pb-2">
+                <div className="flex justify-between border-b border-wordy-100 dark:border-[#6d28d9] pb-2">
                   <span className="text-wordy-600 dark:text-wordy-400">Member since</span>
                   <span className="font-bold text-wordy-800 dark:text-wordy-200">{formatMonthYear(stats.member_since)}</span>
                 </div>
 
-                <div className="flex justify-between border-b border-wordy-100 dark:border-[#2d1b55] pb-2">
+                <div className="flex justify-between border-b border-wordy-100 dark:border-[#6d28d9] pb-2">
                   <span className="text-wordy-600 dark:text-wordy-400">Daily streak</span>
                   <span className="font-bold text-wordy-800 dark:text-wordy-200">
                     {stats.daily_streak} {stats.daily_streak === 1 ? 'day' : 'days'} 🔥
