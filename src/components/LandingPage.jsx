@@ -61,6 +61,9 @@ export default function LandingPage({ session }) {
   const [isAdmin, setIsAdmin] = useState(false);
   const [isMaster, setIsMaster] = useState(false);
   const [games, setGames] = useState(FALLBACK_GAMES);
+  // Count of pending incoming friend requests (not ones I sent). Surfaces
+  // as a red dot on the cog and the Friends menu item.
+  const [pendingFriendCount, setPendingFriendCount] = useState(0);
 
   const bellRef = useRef(null);
   const cogRef = useRef(null);
@@ -93,6 +96,17 @@ export default function LandingPage({ session }) {
         setIsAdmin(!!adminRow);
         setIsMaster(!!adminRow?.is_master);
       }
+    }
+
+    async function loadPendingFriends() {
+      // Pending requests where I am the recipient (the OTHER user requested).
+      const { count } = await supabase
+        .from('friendships')
+        .select('*', { count: 'exact', head: true })
+        .eq('status', 'pending')
+        .or(`user_a.eq.${user.id},user_b.eq.${user.id}`)
+        .neq('requested_by', user.id);
+      if (active) setPendingFriendCount(count ?? 0);
     }
 
     async function loadCatalog() {
@@ -190,7 +204,7 @@ export default function LandingPage({ session }) {
     }
 
     (async () => {
-      await Promise.all([loadProfileAndAdmin(), loadCatalog()]);
+      await Promise.all([loadProfileAndAdmin(), loadCatalog(), loadPendingFriends()]);
       await recountInbox();
       if (active) setLoading(false);
     })();
@@ -201,6 +215,7 @@ export default function LandingPage({ session }) {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'rg_games' }, scheduleRecount)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'game_players', filter: `user_id=eq.${user.id}` }, scheduleRecount)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'rg_players', filter: `user_id=eq.${user.id}` }, scheduleRecount)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'friendships' }, () => { if (active) loadPendingFriends(); })
       .subscribe((status) => {
         if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
           if (!pollInterval) {
@@ -320,10 +335,13 @@ export default function LandingPage({ session }) {
                 setSettingsOpen((v) => !v);
                 setBellOpen(false);
               }}
-              aria-label="Settings"
-              className="w-10 h-10 flex items-center justify-center active:scale-95"
+              aria-label={pendingFriendCount > 0 ? `Settings (${pendingFriendCount} friend request${pendingFriendCount === 1 ? '' : 's'})` : 'Settings'}
+              className="relative w-10 h-10 flex items-center justify-center active:scale-95"
             >
               <span className="text-xl leading-none">⚙️</span>
+              {pendingFriendCount > 0 && (
+                <span className="absolute top-1 right-1 w-2.5 h-2.5 bg-red-500 rounded-full" />
+              )}
             </button>
 
             {settingsOpen && (
@@ -334,6 +352,7 @@ export default function LandingPage({ session }) {
                 isDark={isDark}
                 toggleTheme={toggleTheme}
                 isAdmin={isAdmin}
+                pendingFriendCount={pendingFriendCount}
                 onUsernameChange={handleUsernameChange}
                 onOpenAdmin={() => setView('admin')}
                 onOpenFriends={() => setView('friends')}
@@ -355,7 +374,11 @@ export default function LandingPage({ session }) {
           <main className="max-w-[480px] mx-auto px-4 pb-12">
             <div className="grid gap-4 sm:grid-cols-2">
               {games.map((game) => {
-                if (game._access === 'gated') {
+                // Admins bypass the access gate so they can test in-development
+                // games while the rest of the world sees them as "Coming soon".
+                // Pattern locked during Snibble build (2026-04-25).
+                const isGatedForUser = game._access === 'gated' && !isAdmin;
+                if (isGatedForUser) {
                   return (
                     <div
                       key={game.id}

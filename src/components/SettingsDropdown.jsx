@@ -17,6 +17,7 @@ export default function SettingsDropdown({
   isDark,
   toggleTheme,
   isAdmin,
+  pendingFriendCount = 0,
   onUsernameChange,
   onOpenAdmin,
   onOpenFriends,
@@ -353,7 +354,15 @@ export default function SettingsDropdown({
       </div>
 
       <div className="settings-row">
-        <span className="text-sm font-bold text-wordy-600">Friends</span>
+        <span className="text-sm font-bold text-wordy-600 flex items-center gap-1.5">
+          Friends
+          {pendingFriendCount > 0 && (
+            <span
+              className="inline-block w-2 h-2 rounded-full bg-red-500"
+              aria-label={`${pendingFriendCount} pending friend request${pendingFriendCount === 1 ? '' : 's'}`}
+            />
+          )}
+        </span>
         <button
           onClick={() => {
             onOpenFriends?.();
