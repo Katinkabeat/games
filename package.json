@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "dev:all": "concurrently --names SQ,WORDY,RUNGLES --prefix-colors magenta,cyan,yellow --kill-others-on-fail \"npm run dev\" \"npm --prefix ../wordy run dev\" \"python -m http.server 5176 --directory ../rungles\"",
+    "dev:all": "concurrently --names SQ,WORDY,RUNGLES --prefix-colors magenta,cyan,yellow --kill-others-on-fail \"npm run dev\" \"npm --prefix ../wordy run dev\" \"npm --prefix ../rungles run dev\"",
     "build": "vite build",
     "preview": "vite preview"
   },
