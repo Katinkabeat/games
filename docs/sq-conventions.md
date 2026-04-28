@@ -35,6 +35,27 @@ Layout, left to right:
 - The hub itself follows the same pattern: avatar left of "Rae's Side
   Quest", bell + cog on the right.
 
+## Dark mode — Wordy is the source of truth
+
+**All SQ games inherit dark mode styling from Wordy's `src/index.css`
+`.dark .*` overrides.** Don't invent new dark-mode color values for
+your game. Mirror Wordy's rule block verbatim and add only what your
+game actually needs.
+
+For elements your game has that Wordy doesn't (e.g. Snibble's gold
+craving banner, yellow word-builder tiles, indigo done-for-today
+button), the LIGHT mode can use whatever accent palette fits the
+game's character — but in DARK mode those elements must use values
+from Wordy's purple palette (`#0f0a1e`, `#1a1130`, `#221540`,
+`#2d1b55`, `#3d2070`, `#4c1d95`, `#6d28d9`, `#7c3aed`). This keeps
+all SQ games visually unified at night even when their daytime
+palettes differ.
+
+Pattern: light mode preserves cozy character, dark mode aligns with
+Wordy. The `.dark .from-amber-200`, `.dark .to-yellow-400`, etc.
+rules in your `index.css` should redirect those gradients to wordy
+purple values, not muted amber/yellow/indigo.
+
 ## Floating overlays — dropdowns, popovers, modals, dialogs
 
 Every floating surface (avatar dropdowns, cog dropdowns, bell dropdowns,
