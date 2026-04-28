@@ -56,6 +56,15 @@ Wordy. The `.dark .from-amber-200`, `.dark .to-yellow-400`, etc.
 rules in your `index.css` should redirect those gradients to wordy
 purple values, not muted amber/yellow/indigo.
 
+**Gotcha — Tailwind's via-stop hardcodes the literal colour.** A
+class like `via-pink-50` writes `#fdf2f8` straight into
+`--tw-gradient-stops`, NOT `var(--tw-gradient-via)`. So overriding
+`--tw-gradient-via` in dark mode does NOT reach the middle stop —
+the middle band of the gradient stays light. Workaround used by
+Wordy + Snibble's wrappers: add `dark:bg-[#0f0a1e] dark:bg-none`
+to any wrapper div whose gradient uses a `via-*` utility. The
+`bg-none` clears the gradient and `bg-[#0f0a1e]` paints flat dark.
+
 ## Floating overlays — dropdowns, popovers, modals, dialogs
 
 Every floating surface (avatar dropdowns, cog dropdowns, bell dropdowns,
