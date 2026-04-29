@@ -132,7 +132,7 @@ body {
   cursor: default;
 }
 .tile-value {
-  @apply absolute text-[9px] font-bold;
+  @apply absolute text-[9px] font-bold leading-none;
   bottom: 2px;
   right: 3px;
   color: hsl(270, 65%, 40%);
