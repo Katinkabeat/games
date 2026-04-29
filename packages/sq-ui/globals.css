@@ -1,0 +1,312 @@
+/* Shared SideQuest global styles.
+ *
+ * Import once in the consuming app's entry CSS, AFTER @tailwind directives:
+ *   @tailwind base;
+ *   @tailwind components;
+ *   @tailwind utilities;
+ *   @import '../../rae-side-quest/packages/sq-ui/globals.css';
+ *
+ * Provides: body defaults, .card, .btn-*, .tile, .dropdown-surface, scrollbar,
+ * and the full dark-mode override block. See ../../docs/sq-style-spec.md.
+ */
+
+body {
+  font-family: 'Nunito', sans-serif;
+  background-color: #faf5ff;
+  color: #3b0764;
+}
+
+/* ── Card / panel ── */
+.card {
+  @apply bg-white rounded-2xl shadow-md border border-purple-100 p-4;
+}
+
+/* ── Buttons ── */
+.btn-primary {
+  @apply px-4 py-2 rounded-xl font-bold text-white transition-all duration-150 active:scale-95;
+  background: linear-gradient(135deg, #9333ea, #7e22ce);
+  box-shadow: 0 3px 0 #581c87;
+}
+.btn-primary:hover { filter: brightness(1.08); }
+.btn-primary:active { box-shadow: none; transform: translateY(2px); }
+.btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
+
+.btn-secondary {
+  @apply px-4 py-2 rounded-xl font-bold border-2 border-purple-400 text-purple-700 bg-white transition-all duration-150 active:scale-95;
+}
+.btn-secondary:hover { @apply bg-purple-50; }
+.btn-secondary:disabled { opacity: 0.6; cursor: not-allowed; }
+
+.btn-danger {
+  @apply px-4 py-2 rounded-xl font-bold text-white bg-rose-500 transition-all duration-150 active:scale-95;
+  box-shadow: 0 3px 0 #9f1239;
+}
+.btn-danger:hover { filter: brightness(1.08); }
+.btn-danger:active { box-shadow: none; transform: translateY(2px); }
+
+/* ── Compact icon buttons (game action bar) ── */
+.btn-icon {
+  @apply flex flex-col items-center justify-center rounded-lg transition-all duration-150 active:scale-95;
+  min-width: 56px;
+  height: 40px;
+  padding: 2px 8px;
+  gap: 1px;
+}
+.btn-icon-emoji { font-size: 15px; line-height: 1; }
+.btn-icon-label { font-size: 9px; font-weight: 700; line-height: 1; }
+
+.btn-icon-primary {
+  background: linear-gradient(135deg, #9333ea, #7e22ce);
+  box-shadow: 0 2px 0 #581c87;
+  color: white;
+}
+.btn-icon-primary .btn-icon-label { color: #e9d5ff; }
+.btn-icon-primary:hover { filter: brightness(1.08); }
+.btn-icon-primary:active { box-shadow: none; transform: translateY(1px); }
+
+.btn-icon-secondary {
+  @apply border-2 border-purple-400 bg-white;
+  color: #7e22ce;
+}
+.btn-icon-secondary .btn-icon-label { color: #7e22ce; }
+.btn-icon-secondary:hover { @apply bg-purple-50; }
+
+.btn-icon-danger {
+  @apply border-2 border-red-400 bg-red-50;
+  color: #dc2626;
+}
+.btn-icon-danger .btn-icon-label { color: #dc2626; }
+
+/* ── Tile ──
+ * Colours mirror Wordy's deployed default-purple tiles (hue 270 in
+ * tileColors.js). Light mode: light lavender gradient. Dark mode:
+ * bright pastel purple with glow — NOT dark deep purple. This is
+ * what makes tiles pop on the dark board.
+ */
+.tile {
+  @apply flex items-center justify-center rounded-lg font-body font-bold select-none cursor-pointer transition-all duration-100;
+  background: linear-gradient(145deg, hsl(270, 80%, 93%), hsl(270, 70%, 87%));
+  border: 1.5px solid hsl(270, 55%, 68%);
+  box-shadow: 2px 3px 0px hsla(270, 70%, 25%, 0.4);
+  color: hsl(270, 80%, 15%);
+  position: relative;
+}
+.tile:hover:not(.tile-disabled):not(.tile-selected) {
+  box-shadow: 3px 4px 0px hsla(270, 70%, 25%, 0.5);
+  transform: translateY(-1px);
+}
+.tile.tile-selected {
+  @apply ring-2 ring-pink-400;
+  box-shadow: 0 0 0 3px #f472b6;
+  transform: translateY(-3px);
+}
+.tile.tile-placed {
+  background: linear-gradient(145deg, hsl(270, 70%, 87%), hsl(270, 65%, 80%));
+  box-shadow: 1px 2px 0px hsla(270, 70%, 25%, 0.3);
+}
+.tile.tile-disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.tile-value {
+  @apply absolute text-[9px] font-bold;
+  bottom: 2px;
+  right: 3px;
+  color: hsl(270, 65%, 40%);
+}
+
+/* ── Settings / floating overlays ── */
+.settings-dropdown {
+  @apply absolute z-50 w-64 mt-2 py-1 px-0;
+  animation: settings-slide 0.12s ease-out;
+}
+.settings-dropdown .settings-row {
+  @apply flex items-center justify-between px-4 py-2.5;
+}
+.settings-dropdown .settings-section {
+  @apply px-4 py-2.5;
+}
+.settings-dropdown .settings-row + .settings-row,
+.settings-dropdown .settings-row + .settings-section,
+.settings-dropdown .settings-section + .settings-row {
+  @apply border-t border-purple-100;
+}
+@keyframes settings-slide {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.settings-backdrop {
+  @apply fixed inset-0 z-50 flex items-center justify-center;
+  background: rgba(59, 7, 100, 0.4);
+  backdrop-filter: blur(4px);
+}
+.tile-picker-modal {
+  @apply w-full max-w-xs mx-4;
+  animation: picker-pop 0.15s ease-out;
+}
+@keyframes picker-pop {
+  from { opacity: 0; transform: scale(0.95); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+/* ── Scrollbar ── */
+::-webkit-scrollbar       { width: 6px; }
+::-webkit-scrollbar-track { background: #f3e8ff; }
+::-webkit-scrollbar-thumb { background: #c084fc; border-radius: 3px; }
+
+/* ════════════════════════════════════════════════════════════
+   DARK MODE — applied when <html class="dark"> is set.
+   ════════════════════════════════════════════════════════════ */
+
+.dark body {
+  background-color: #0f0a1e;
+  color: #ede0ff;
+}
+
+/* Page gradients → solid dark background */
+.dark .from-wordy-50  { --tw-gradient-from: #0f0a1e; }
+.dark .from-wordy-100 { --tw-gradient-from: #0f0a1e; }
+.dark .via-pink-50    { --tw-gradient-via:  #130c25; }
+.dark .via-pink-100   {
+  --tw-gradient-via: #130c25;
+  --tw-gradient-stops: var(--tw-gradient-from), #130c25 var(--tw-gradient-via-position, 50%), var(--tw-gradient-to);
+}
+.dark .to-wordy-100   { --tw-gradient-to:   #0f0a1e; }
+.dark .to-wordy-200   { --tw-gradient-to:   #130c25; }
+.dark .to-pink-50     { --tw-gradient-to:   #130c25; }
+.dark .from-pink-50   { --tw-gradient-from: #130c25; }
+
+/* Tailwind colour overrides */
+.dark .bg-white           { background-color: #1a1130 !important; }
+.dark .settings-dropdown.card,
+.dark .dropdown-surface {
+  background-color: #241640 !important;
+  border-color: #6d28d9 !important;
+}
+.dark .bg-wordy-50        { background-color: #1a1130 !important; }
+.dark .bg-wordy-100       { background-color: #221540 !important; }
+.dark .bg-wordy-200       { background-color: #2d1b55 !important; }
+.dark .bg-wordy-300       { background-color: #4c1d95 !important; }
+.dark .bg-purple-50       { background-color: #1a1130 !important; }
+.dark .bg-purple-100      { background-color: #221540 !important; }
+
+.dark .border-wordy-100   { border-color: #2d1b55 !important; }
+.dark .border-wordy-200   { border-color: #3d2070 !important; }
+.dark .border-purple-100  { border-color: #2d1b55 !important; }
+.dark .border-wordy-400   { border-color: #6d28d9 !important; }
+.dark .border-purple-400  { border-color: #6d28d9 !important; }
+
+.dark .text-wordy-800     { color: #ddd6fe !important; }
+.dark .text-wordy-700     { color: #c4b5fd !important; }
+.dark .text-wordy-600     { color: #a78bfa !important; }
+.dark .text-wordy-500     { color: #8b5cf6 !important; }
+.dark .text-wordy-400     { color: #7c6a9a !important; }
+.dark .text-wordy-300     { color: #5b4a72 !important; }
+.dark .text-pink-500      { color: #f472b6 !important; }
+.dark .text-purple-700    { color: #c4b5fd !important; }
+
+/* Card / panel */
+.dark .card {
+  background-color: #1a1130;
+  border-color: #2d1b55;
+  color: #ede0ff;
+}
+
+/* Tiles — bright pastel purple with glow, dark text for readability.
+ * Mirrors tileStyle(270, true) from Wordy's tileColors.js. */
+.dark .tile {
+  background: linear-gradient(145deg, hsl(270, 70%, 78%), hsl(270, 60%, 68%));
+  border-color: hsl(270, 60%, 58%);
+  box-shadow:
+    2px 3px 0px hsla(270, 60%, 15%, 0.5),
+    0 0 8px hsla(270, 70%, 60%, 0.3);
+  color: hsl(270, 80%, 12%);
+}
+.dark .tile:hover:not(.tile-disabled):not(.tile-selected) {
+  box-shadow:
+    3px 4px 0px hsla(270, 60%, 15%, 0.6),
+    0 0 10px hsla(270, 70%, 60%, 0.4);
+}
+.dark .tile.tile-selected {
+  box-shadow: 0 0 0 3px #f472b6, 0 0 8px hsla(270, 70%, 60%, 0.4);
+}
+.dark .tile.tile-placed {
+  background: linear-gradient(145deg, hsl(270, 65%, 73%), hsl(270, 55%, 63%));
+}
+.dark .tile.tile-disabled { opacity: 0.4; }
+.dark .tile-value          { color: hsl(270, 70%, 30%); }
+
+/* Buttons */
+.dark .btn-secondary {
+  background-color: #1a1130;
+  border-color: #6d28d9;
+  color: #c4b5fd;
+}
+.dark .btn-secondary:hover { background-color: #221540; }
+
+.dark .btn-icon-secondary {
+  background-color: #1a1130;
+  border-color: #6d28d9;
+  color: #c4b5fd;
+}
+.dark .btn-icon-secondary .btn-icon-label { color: #c4b5fd; }
+.dark .btn-icon-secondary:hover { background-color: #221540; }
+
+.dark .btn-icon-danger {
+  background-color: #2d1215;
+  border-color: #dc2626;
+  color: #fca5a5;
+}
+.dark .btn-icon-danger .btn-icon-label { color: #fca5a5; }
+
+/* Inputs & selects */
+.dark input,
+.dark select,
+.dark textarea {
+  background-color: #1a1130;
+  border-color: #3d2070;
+  color: #ede0ff;
+}
+.dark input::placeholder,
+.dark textarea::placeholder { color: #5b4a72; }
+.dark input:focus,
+.dark select:focus,
+.dark textarea:focus  { border-color: #7c3aed; outline: none; }
+
+/* Misc */
+.dark .shadow-sm { box-shadow: 0 1px 3px rgba(0,0,0,0.5); }
+.dark .shadow-md { box-shadow: 0 4px 6px rgba(0,0,0,0.5); }
+.dark .shadow-lg { box-shadow: 0 10px 15px rgba(0,0,0,0.5); }
+
+/* Status rows — green / rose / yellow */
+.dark .bg-green-50      { background-color: #052e16 !important; }
+.dark .border-green-200 { border-color: #166534 !important; }
+.dark .text-green-700   { color: #4ade80 !important; }
+.dark .bg-rose-50       { background-color: #2d0a0a !important; }
+.dark .border-rose-200  { border-color: #7f1d1d !important; }
+.dark .text-rose-700    { color: #f87171 !important; }
+.dark .text-rose-400    { color: #f87171 !important; }
+.dark .bg-rose-100      { background-color: #3b0f0f !important; }
+.dark .text-rose-500    { color: #f87171 !important; }
+.dark .text-rose-600    { color: #fca5a5 !important; }
+.dark .hover\:text-rose-700:hover { color: #fca5a5 !important; }
+.dark .bg-yellow-50     { background-color: #1c1400 !important; }
+.dark .border-yellow-300 { border-color: #92400e !important; }
+.dark .text-yellow-800  { color: #fde68a !important; }
+.dark .bg-yellow-100    { background-color: #231800 !important; }
+.dark .text-yellow-700  { color: #fcd34d !important; }
+
+/* Tile picker backdrop */
+.dark .settings-backdrop { background: rgba(15, 10, 30, 0.6); }
+
+/* Settings dropdown dividers */
+.dark .settings-dropdown .settings-row + .settings-row,
+.dark .settings-dropdown .settings-row + .settings-section,
+.dark .settings-dropdown .settings-section + .settings-row {
+  border-color: #2d1b55;
+}
+
+/* Scrollbar */
+.dark ::-webkit-scrollbar-track { background: #1a1130; }
+.dark ::-webkit-scrollbar-thumb { background: #6d28d9; }

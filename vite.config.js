@@ -18,13 +18,14 @@ export default defineConfig({
         ws: true,
       },
       '/rungles': {
-        target: 'http://localhost:5176',
+        target: 'http://localhost:5183',
         changeOrigin: true,
-        // Python http.server doesn't know about the /rungles/ path prefix
-        // (it just serves files from the rungles directory), so we strip
-        // the prefix before forwarding. Wordy doesn't need this because
-        // its Vite is configured with base: '/wordy/'.
-        rewrite: (path) => path.replace(/^\/rungles/, ''),
+        ws: true,
+      },
+      '/snibble': {
+        target: 'http://localhost:5182',
+        changeOrigin: true,
+        ws: true,
       },
     },
   },

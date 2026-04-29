@@ -1,106 +1,48 @@
 # SideQuest game conventions
 
-The shared visual + structural conventions that every SQ game (Wordy,
-Rungles, and any future game) follows. Use this as the starting point
-when scaffolding a new game so it feels like part of the platform from
-day one.
+The shared **behavioral** conventions that every SQ game (Wordy,
+Rungles, Snibble, and any future game) follows. Use this alongside
+[`sq-style-spec.md`](./sq-style-spec.md) — that doc covers visual
+styling (tokens, layouts, components); this one covers everything
+else.
 
-Last updated: 2026-04-26
+Reference implementation: **Wordy**.
+
+Last updated: 2026-04-28
 
 ---
 
-## Layout
+## Page architecture
 
-- **Max width: `480px`** for landing/lobby/menu pages (mobile-first column).
-  - Tailwind: `max-w-[480px] mx-auto`
-  - Plain CSS: `max-width: 480px; margin: 0 auto`
-- **Exception:** in-game pages that need a wider surface (e.g. Wordy's
-  board) may use a wider container (currently `max-w-6xl`).
-- **Header bar** is sticky on mobile, opaque background, divider line at
-  the bottom. Reference: Wordy's `LobbyPage.jsx` and Rungles' `.app-header`.
+Three archetypes across the platform:
 
-## Header anatomy (every page that has one)
+- **Hub** — `rae-side-quest/` itself. The single landing page that
+  lists all games. One of these, ever. Visually follows
+  [`sq-style-spec.md`](./sq-style-spec.md) but is not part of the new-game template.
+- **Game lobby** — per-game landing (start a game, list active/completed
+  games, settings). Every game has one. Built on `<SQLobbyShell>`.
+- **Game board** — per-game play surface. Every game has one. Built on
+  `<SQBoardShell>`.
 
-Layout, left to right:
+All visual structure for lobby and board lives in
+[`sq-style-spec.md`](./sq-style-spec.md). This doc only covers what
+goes *in* them behaviorally.
 
-```
-[avatar]  [Game Name]                     [🏠]  [⚙️]
-```
+## Header content (behavioral)
 
-- **Left side:** the user's avatar circle (clickable → opens the avatar
-  dropdown), then the game name in the display font. **No `W` / `R` /
-  glyph logo** — the avatar carries identity.
-- **Right side:** a 🏠 link to `/games/` (back to hub) and a ⚙️ cog
-  button (per-app settings dropdown).
+For visual layout of the two header components, see the style spec.
+Behavior:
+
+- **Left side, lobby header**: avatar circle (clickable → opens the
+  avatar dropdown), then the game name. **No `W` / `R` / glyph logo** —
+  the avatar carries identity.
+- **Left side, board header**: `← Lobby` back link.
+- **Right side**: 🏠 link to `/games/` (back to hub) + ⚙️ cog button
+  (per-app settings dropdown).
 - The hub itself follows the same pattern: avatar left of "Rae's Side
   Quest", bell + cog on the right.
 
-## Dark mode — Wordy is the source of truth
-
-**All SQ games inherit dark mode styling from Wordy's `src/index.css`
-`.dark .*` overrides.** Don't invent new dark-mode color values for
-your game. Mirror Wordy's rule block verbatim and add only what your
-game actually needs.
-
-For elements your game has that Wordy doesn't (e.g. Snibble's gold
-craving banner, yellow word-builder tiles, indigo done-for-today
-button), the LIGHT mode can use whatever accent palette fits the
-game's character — but in DARK mode those elements must use values
-from Wordy's purple palette (`#0f0a1e`, `#1a1130`, `#221540`,
-`#2d1b55`, `#3d2070`, `#4c1d95`, `#6d28d9`, `#7c3aed`). This keeps
-all SQ games visually unified at night even when their daytime
-palettes differ.
-
-Pattern: light mode preserves cozy character, dark mode aligns with
-Wordy. The `.dark .from-amber-200`, `.dark .to-yellow-400`, etc.
-rules in your `index.css` should redirect those gradients to wordy
-purple values, not muted amber/yellow/indigo.
-
-**Gotcha — Tailwind's via-stop hardcodes the literal colour.** A
-class like `via-pink-50` writes `#fdf2f8` straight into
-`--tw-gradient-stops`, NOT `var(--tw-gradient-via)`. So overriding
-`--tw-gradient-via` in dark mode does NOT reach the middle stop —
-the middle band of the gradient stays light. Workaround used by
-Wordy + Snibble's wrappers: add `dark:bg-[#0f0a1e] dark:bg-none`
-to any wrapper div whose gradient uses a `via-*` utility. The
-`bg-none` clears the gradient and `bg-[#0f0a1e]` paints flat dark.
-
-## Floating overlays — dropdowns, popovers, modals, dialogs
-
-Every floating surface (avatar dropdowns, cog dropdowns, bell dropdowns,
-stats popups, confirm modals, full-screen dialogs) follows the same
-"raised above the page" treatment in dark mode:
-
-- **Background:** `#241640` — one shade lighter than the page surface
-  (`#1a1130`) so the menu reads as floating, not blending into the
-  page's cards.
-- **Border:** `1px solid #6d28d9` — bright wordy-700 purple. Defines
-  the menu edge clearly against the dark page.
-
-In light mode keep the surface white (`#fff`) with a soft purple-100
-border (`#e9d5ff`) — same shape, less aggressive contrast.
-
-**Tailwind gotcha:** the projects' `index.css` files have
-`.dark .bg-white { #1a1130 !important }` and
-`.dark .border-purple-100 { #2d1b55 !important }` overrides that
-clobber arbitrary `dark:bg-[…]` and `dark:border-[…]` classes. Route
-around them by using arbitrary classes for the light-mode value too:
-
-```jsx
-// ❌ won't override in dark mode
-className="bg-white dark:bg-[#241640] border border-purple-100 dark:border-[#6d28d9]"
-// ✅ arbitrary classes bypass the !important global rules
-className="bg-[#fff] dark:bg-[#241640] border border-[#e9d5ff] dark:border-[#6d28d9]"
-```
-
-For `.card`-based dropdowns (which `@apply bg-white border border-purple-100`
-in CSS), add the marker class `dropdown-surface` and rely on the
-`.dark .dropdown-surface` rule in `index.css` instead.
-
-For Rungles `<dialog>` elements, the `html.dark dialog` rule in
-`style.css` handles it.
-
-## Avatar dropdown
+## Avatar dropdown content
 
 The avatar dropdown is **identity** — what's *about you*, not about
 this app:
@@ -108,10 +50,10 @@ this app:
 - **In each game:** identity card (avatar + username + "Your profile")
   + 📊 Stats link (game-specific stats — per-game leaderboards, etc.).
   **No** colour picker, **no** name change, **no** password change.
-- **In the hub:** identity card + colour picker + 📊 Stats link (cross-
-  platform stats: account age, streak, games per game).
+- **In the hub:** identity card + colour picker + 📊 Stats link
+  (cross-platform stats: account age, streak, games per game).
 
-## Cog (settings) dropdown
+## Cog (settings) dropdown content
 
 App-specific behaviour:
 
@@ -202,7 +144,8 @@ On click: call the RPC, then fire-and-forget POST to the edge function.
 
 Unless explicitly told "only solo" or "only multi", every UX or
 gameplay change should land in BOTH modes (e.g. Wordy doesn't have a
-solo mode, but Rungles does). This avoids cross-platform drift.
+solo mode, but Rungles does, and Snibble starts solo with multiplayer
+planned). This avoids cross-platform drift.
 
 ## Deploy workflow
 
@@ -210,3 +153,5 @@ solo mode, but Rungles does). This avoids cross-platform drift.
   under `localhost:8080`, sessions shared via localStorage).
 - Test the change locally before pushing.
 - Ask Rae before `git push`. GitHub Actions auto-deploys from `main`.
+- Bump `CACHE_VERSION` in each affected game's `public/sw.js` per
+  user-visible deploy so installed PWAs detect the new SW.

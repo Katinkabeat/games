@@ -4,6 +4,7 @@ import { supabase } from './lib/supabase.js';
 import { ThemeProvider } from './contexts/ThemeContext.jsx';
 import AuthPage from './components/AuthPage.jsx';
 import LandingPage from './components/LandingPage.jsx';
+import StyleGuidePage from './components/StyleGuidePage.jsx';
 
 // Allowlist of path prefixes the post-login ?return= redirect will honor.
 // Add new SQ games here when scaffolding them so notifications and bookmarks
@@ -24,7 +25,20 @@ function getValidatedReturn() {
   }
 }
 
+// ?styleguide=1 short-circuits auth so the sq-ui style guide is reachable
+// without a session. Dev-only review surface; safe to ship since it just
+// renders static UI with no data access.
+const isStyleGuide = new URLSearchParams(window.location.search).has('styleguide');
+
 export default function App() {
+  if (isStyleGuide) {
+    return (
+      <ThemeProvider>
+        <StyleGuidePage />
+      </ThemeProvider>
+    );
+  }
+
   const [session, setSession] = useState(null);
   const [loading, setLoading] = useState(true);
   // Detect a password-recovery link from the URL hash before getSession()
