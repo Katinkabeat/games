@@ -22,7 +22,7 @@ export default function SQBoardHeader({
 
   return (
     <div
-      className={`px-4 py-3 flex items-center gap-3 ${className}`.trim()}
+      className={`px-4 py-1.5 flex items-center gap-3 ${className}`.trim()}
     >
       <a
         href={backHref}
