@@ -300,24 +300,33 @@ export default function StyleGuidePage() {
 
         <Section title="📐 Board shell (live demo, scaled)">
           <p className="text-xs opacity-70 mb-3">
-            Wraps header + play area + sticky action bar. Wider on desktop;
-            mobile column.
+            Stacks two headers: <b>SQLobbyHeader</b> banner on top
+            (avatar / game title / 🏠 / ⚙️), <b>SQBoardHeader</b> plain
+            inline row beneath (← Lobby + one game badge). Live status
+            (whose turn) lives in the score panel, not the sub-header.
           </p>
           <div className="border border-dashed border-purple-300 rounded-xl overflow-hidden h-96">
             <SQBoardShell
               header={
-                <SQBoardHeader
-                  centerSlot={
-                    <div className="font-display text-base text-wordy-700">
-                      ✨ Your turn!
+                <SQLobbyHeader
+                  title="Wordy"
+                  avatarSlot={
+                    <div className="w-9 h-9 rounded-full bg-wordy-500 text-white flex items-center justify-center font-bold text-sm shrink-0">
+                      R
                     </div>
                   }
                   rightSlot={
-                    <>
-                      <span className="text-lg">🏠</span>
-                      <span className="text-xs font-bold">🎒 42</span>
+                    <div className="flex items-center gap-3 shrink-0 text-2xl">
+                      <span>🏠</span>
                       <span className="text-lg">⚙️</span>
-                    </>
+                    </div>
+                  }
+                />
+              }
+              subHeader={
+                <SQBoardHeader
+                  rightSlot={
+                    <span className="text-xs font-bold">🎒 42 left</span>
                   }
                 />
               }
