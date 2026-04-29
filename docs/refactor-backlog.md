@@ -10,7 +10,27 @@ Living list of refactor candidates across the SQ platform (hub + Wordy + Rungles
 
 ## In flight
 
-_(none yet)_
+_(none)_
+
+## Shipped — sq-ui shared design system rollout (2026-04-28 → 2026-04-29)
+
+- [x] Extract design tokens, layouts, and primitives into `packages/sq-ui/`
+  (Tailwind preset, globals.css, SQCard/SQButton/SQTile/SQModal/SQDropdown/
+  SQLobbyHeader/SQBoardHeader/SQLobbyShell/SQBoardShell/SQCompletedGamesCard
+  + shared SQAvatarButton/SQAvatarDropdown/SQAvatarMenuItem so the
+  per-game avatar dropdowns can't drift)
+- [x] Hub uses the package + serves a `/styleguide` demo route
+- [x] Wordy lobby + board migrated; Rungles lobby + solo + multi migrated;
+  Snibble lobby + GameView migrated. Each game's CI clones rae-side-quest
+  as a sibling so the relative imports resolve.
+- [x] Self-hosted fonts at `/games/fonts/` (Fredoka One + Nunito) — eliminates
+  Google Fonts FOUT
+- [x] Spec docs (`sq-style-spec.md`, `sq-conventions.md`) capture the
+  finalized dual-header pattern (SQLobbyHeader on top + plain SQBoardHeader
+  inline row on board pages), the score panel responsive behavior, and
+  the rule that whose-turn lives in the score panel not the sub-header.
+- [x] Tile letter font, value position, and tile size unified across all
+  three games. Carried tiles align with play area's first slot in Rungles.
 
 ## Next up — Tier 1: large single-file components
 
