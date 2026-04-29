@@ -19,7 +19,7 @@ export default function SQBoardShell({
         {scorePanel ? (
           <aside className="lg:w-56 shrink-0 hidden lg:block">{scorePanel}</aside>
         ) : null}
-        <div className="flex-1 min-w-0 flex items-start justify-center">
+        <div className="flex-1 min-w-0 flex items-center justify-center">
           {children}
         </div>
         {/* Spacer mirrors the score panel width so the play area centers visually. */}
