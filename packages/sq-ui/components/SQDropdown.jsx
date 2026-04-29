@@ -32,7 +32,9 @@ export default function SQDropdown({
 
   if (!open) return null;
 
-  const alignCls = align === 'left' ? 'left-0' : 'right-0';
+  // .settings-dropdown CSS sets `right: 0` by default for legacy callers.
+  // For left-aligned dropdowns, override both: `right-auto left-0`.
+  const alignCls = align === 'left' ? 'right-auto left-0' : 'right-0';
 
   return (
     <div
