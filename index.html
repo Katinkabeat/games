@@ -15,6 +15,8 @@
          parses, before CSS even loads — usually arrives before first paint. -->
     <link rel="preload" href="/games/fonts/fredoka-one-400.woff2" as="font" type="font/woff2" crossorigin />
     <link rel="preload" href="/games/fonts/nunito.woff2" as="font" type="font/woff2" crossorigin />
+    <!-- Prevent flash of wrong theme: apply dark class synchronously before React renders -->
+    <script>if((localStorage.getItem('sq-theme')||localStorage.getItem('wordy-theme')||localStorage.getItem('rungles-theme')||localStorage.getItem('snibble-theme'))==='dark')document.documentElement.classList.add('dark')</script>
   </head>
   <body>
     <div id="root"></div>
