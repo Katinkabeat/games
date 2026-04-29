@@ -6,9 +6,32 @@
  *   @tailwind utilities;
  *   @import '../../rae-side-quest/packages/sq-ui/globals.css';
  *
- * Provides: body defaults, .card, .btn-*, .tile, .dropdown-surface, scrollbar,
- * and the full dark-mode override block. See ../../docs/sq-style-spec.md.
+ * Provides: @font-face declarations, body defaults, .card, .btn-*, .tile,
+ * .dropdown-surface, scrollbar, and the full dark-mode override block.
+ * See ../../docs/sq-style-spec.md.
  */
+
+/* ── Self-hosted fonts ──
+ * Fonts live in rae-side-quest/public/fonts/ and serve at /games/fonts/...
+ * in production and dev:all (same origin for all SQ surfaces). Eliminates
+ * Google Fonts FOUT and the third-party DNS/TLS round-trip.
+ *
+ * Each game's index.html should also <link rel="preload"> these so the
+ * browser starts fetching them as soon as the HTML parses. */
+@font-face {
+  font-family: 'Fredoka One';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('/games/fonts/fredoka-one-400.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Nunito';
+  font-style: normal;
+  font-weight: 400 800;  /* variable font covers all SQ weights in one file */
+  font-display: swap;
+  src: url('/games/fonts/nunito.woff2') format('woff2');
+}
 
 body {
   font-family: 'Nunito', sans-serif;

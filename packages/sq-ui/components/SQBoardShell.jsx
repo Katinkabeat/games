@@ -17,12 +17,17 @@ export default function SQBoardShell({
       {header}
       <div className="flex-1 flex flex-col lg:flex-row gap-3 max-w-6xl mx-auto w-full px-1 py-3 lg:p-3">
         {scorePanel ? (
-          <aside className="lg:w-56 shrink-0 hidden lg:block">{scorePanel}</aside>
+          // Visible on both mobile (top bar via flex-col) and desktop (left
+          // sidebar via lg:flex-row). Hiding on mobile would erase the score
+          // strip players rely on at-a-glance.
+          <aside className="lg:w-56 shrink-0">{scorePanel}</aside>
         ) : null}
         <div className="flex-1 min-w-0 flex items-center justify-center">
           {children}
         </div>
-        {/* Spacer mirrors the score panel width so the play area centers visually. */}
+        {/* Invisible spacer mirrors the score panel width on desktop only so
+            the play area centers visually. Hidden on mobile (no sidebar
+            there to balance against). */}
         {scorePanel ? (
           <div className="lg:w-56 shrink-0 hidden lg:block" aria-hidden="true" />
         ) : null}
