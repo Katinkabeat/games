@@ -31,15 +31,17 @@ export default function SQBoardShell({
 
   if (isNarrow) {
     // Narrow column layout — no sidebar, no responsive sub-header
-    // duplication. Sub-header just sits above the children.
+    // duplication. Sub-header sits flush with the max-w-[480px] container
+    // so its own px-4 aligns with the avatar/cog above (matches Wordy's
+    // wide-mode alignment). Children get their own px-4 inset.
     return (
       <div
         className={`min-h-screen flex flex-col bg-gradient-to-br from-wordy-50 to-pink-50 dark:bg-[#0f0a1e] dark:bg-none ${className}`.trim()}
       >
         {header}
-        <div className="flex-1 flex flex-col max-w-[480px] mx-auto w-full px-4 py-3">
+        <div className="flex-1 flex flex-col max-w-[480px] mx-auto w-full">
           {subHeader}
-          <div className="flex-1 flex flex-col">
+          <div className="flex-1 flex flex-col px-4 pb-3">
             {children}
           </div>
         </div>
