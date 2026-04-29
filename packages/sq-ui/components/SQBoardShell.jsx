@@ -1,10 +1,12 @@
 // Board page shell — wraps the standard SQ in-game chrome.
-// Header on top, flexible play area in the middle, sticky action bar at
-// the bottom. Wider container (max-w-6xl) on desktop.
+// Top banner header, optional inline sub-header above the play area,
+// flexible play area in the middle, sticky action bar at the bottom.
+// Wider container (max-w-6xl) on desktop.
 // Style spec: ../../../docs/sq-style-spec.md §3
 
 export default function SQBoardShell({
   header,
+  subHeader = null,
   scorePanel = null,
   actionBar = null,
   children,
@@ -22,8 +24,14 @@ export default function SQBoardShell({
           // strip players rely on at-a-glance.
           <aside className="lg:w-56 shrink-0">{scorePanel}</aside>
         ) : null}
-        <div className="flex-1 min-w-0 flex items-center justify-center">
-          {children}
+        <div className="flex-1 min-w-0 flex flex-col">
+          {/* Sub-header sits at the top of the play column so it spans the
+              same width as the board (offset by the score sidebar on desktop,
+              full width on mobile). */}
+          {subHeader}
+          <div className="flex-1 flex items-center justify-center">
+            {children}
+          </div>
         </div>
         {/* Invisible spacer mirrors the score panel width on desktop only so
             the play area centers visually. Hidden on mobile (no sidebar
