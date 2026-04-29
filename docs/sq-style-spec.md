@@ -293,19 +293,21 @@ Used on every lobby page. Wider chrome, identity-forward.
 
 ### `<SQBoardHeader>`
 
-Used on every board page. Narrower padding, compact, status-forward.
+Sits beneath `<SQLobbyHeader>` on every board page as a plain inline
+row — **not** a banner. No bg, no border, no shadow. Inherits the
+page gradient from the shell.
 
 ```
-← Lobby      ✨ Your turn!              🏠  🎒 N  ⚙️
+← Lobby      ✨ Your turn!                                🎒 N
 ```
 
-- **Container**: `bg-white dark:bg-[#130c25] border-b border-purple-100 dark:border-[#2d1b55] shadow-sm` (not sticky during play)
-- **Inner**: `max-w-6xl mx-auto px-3 py-2 flex items-center gap-3`
+- **Container**: `max-w-6xl mx-auto px-4 py-3 flex items-center gap-3`
+  (no banner styling — that's the lobby header above's job)
 - **Left**: back link `← Lobby` (`text-wordy-400 hover:text-wordy-700 font-bold text-sm`)
 - **Center**: turn-status / game-state slot, `font-display text-base`,
   color shifts on `myTurn`
-- **Right**: 🏠 link, optional game-specific badge (Wordy: `🎒 N left`),
-  ⚙️ cog button
+- **Right**: optional game-specific badge (Wordy: `🎒 N left`).
+  No 🏠 / ⚙️ here — those live in the lobby header above.
 
 Differences at a glance:
 
