@@ -9,6 +9,8 @@ import HubAvatarMenu from './HubAvatarMenu.jsx';
 import AdminPanel from './AdminPanel.jsx';
 import AnnouncementBanner from './AnnouncementBanner.jsx';
 import FriendsView from './FriendsView.jsx';
+import IOSInstallPrompt from './IOSInstallPrompt.jsx';
+import AndroidInstallPrompt from './AndroidInstallPrompt.jsx';
 
 // Hardcoded fallback — used if the games_catalog query fails/errors or
 // returns zero rows, and when VITE_SQ_USE_CATALOG is explicitly false.
@@ -372,6 +374,10 @@ export default function LandingPage({ session }) {
         <>
           <AnnouncementBanner />
           <main className="max-w-[480px] mx-auto px-4 pb-12">
+            <div className="mb-4 space-y-3">
+              <IOSInstallPrompt />
+              <AndroidInstallPrompt />
+            </div>
             <div className="grid gap-4 sm:grid-cols-2">
               {games.map((game) => {
                 // Admins bypass the access gate so they can test in-development
