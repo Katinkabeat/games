@@ -219,19 +219,22 @@ Every SideQuest lobby renders these cards, in order:
 
 ### Board layout
 
-Used by every game's play surface. **Wider on desktop (max-w-6xl), full
-width on mobile.**
+Used by every game's play surface.
 
 ```
-┌────────────────────────────────────────────────────┐  ← board header (not sticky)
-│ ← Lobby      ✨ Your turn!         🏠  🎒 N  ⚙️   │
+┌────────────────────────────────────────────────────┐  ← top banner (sticky)
+│ [avatar]  Game Name                       🏠  ⚙️  │     SQLobbyHeader
 ├────────────────────────────────────────────────────┤
+│ ← Lobby                                    🎒 N    │  ← sub-header (plain row, no banner)
+├────────────────────────────────────────────────────┤     SQBoardHeader
 │                                                    │
 │   ┌────────┐  ┌──────────────────┐  ┌────────┐    │
 │   │ Score  │  │                  │  │spacer  │    │
 │   │ panel  │  │   Play area      │  │(desktop│    │
-│   │(desktop│  │  (board, etc.)   │  │ only)  │    │
-│   │ only)  │  │                  │  │        │    │
+│   │(strip  │  │  (board, etc.)   │  │ only)  │    │
+│   │ on mob,│  │                  │  │        │    │
+│   │ side   │  │                  │  │        │    │
+│   │ on lg) │  │                  │  │        │    │
 │   └────────┘  └──────────────────┘  └────────┘    │
 │                                                    │
 ├────────────────────────────────────────────────────┤  ← sticky bottom bar
@@ -241,39 +244,58 @@ width on mobile.**
 └────────────────────────────────────────────────────┘
 ```
 
+The board page **stacks two headers**: the top banner is `<SQLobbyHeader>`
+(same as on lobby pages — avatar, game title, 🏠, ⚙️), and a plain inline
+`<SQBoardHeader>` row sits beneath it for board-context navigation.
+
+The sub-header is intentionally minimal — typically just `← Lobby` on the
+left and one game-specific badge on the right (Wordy: 🎒 N left;
+Rungles: Rung X / Y; Snibble: TBD). Whose-turn / live-status info lives
+in the score panel itself (the ✨ icon next to the current player), not
+in the sub-header. This avoids duplication and keeps the sub-header
+small so the play area sits as high as possible — important on 3- and
+4-player games where the score strip eats vertical space on mobile.
+
 - **Container**: `flex-1 flex flex-col lg:flex-row gap-3 max-w-6xl mx-auto w-full px-1 py-3 lg:p-3`
 - **Background**: `bg-gradient-to-br from-wordy-50 to-pink-50 dark:bg-[#0f0a1e] dark:bg-none`
-- **Score panel** (left): `lg:w-56 shrink-0`, hidden on mobile.
-- **Right spacer**: invisible div mirroring the score panel width, so
-  the play area centers visually.
+- **Score panel** (left): `lg:w-56 shrink-0`. **Visible on both mobile**
+  (top strip via flex-col) and desktop (left sidebar via lg:flex-row).
+- **Right spacer**: invisible div mirroring the score panel width on
+  desktop only, so the play area centers visually.
+- **Sub-header placement is responsive**: rendered above the score panel
+  on mobile, inside the play column above the board on desktop (so it
+  tracks the board's left/right edges rather than the full container).
 - **Sticky bottom bar**: `sticky bottom-0 z-20 bg-white dark:bg-[#1a1130] border-t`
 - **Modals** (`fixed inset-0 bg-black/40 flex items-center justify-center z-50`)
   with a `.card` inside.
 
 The shell exposes slots:
 
-1. `header` — required, board header component
-2. `scorePanel` — optional, desktop-only sidebar
-3. `playArea` — required, the game's actual surface
-4. `actionBar` — required, sticky bottom controls
-5. `modals` — optional, overlays
+1. `header` — required, the top banner (typically `<SQLobbyHeader>`)
+2. `subHeader` — optional, the inline row beneath the banner (typically
+   `<SQBoardHeader>` with just back link + one badge)
+3. `scorePanel` — optional, sidebar on desktop / top strip on mobile
+4. `playArea` — required, the game's actual surface (passed as children)
+5. `actionBar` — required, sticky bottom controls
+6. `modals` — optional, overlays
 
 ---
 
 ## 4. Two header components
 
-Both headers share the same styling foundation (sticky-ish, white/dark
-bg, border-b, shadow-sm, gap-3 right controls) but differ in slots,
-density, and width. They are **separate components** sharing tokens,
-not one configurable header.
+Two distinct components with different roles:
 
-**Lobby pages use one header** (`<SQLobbyHeader>`).
-**Board pages stack both** — `<SQLobbyHeader>` on top for app-level
-identity (avatar, game title, 🏠, ⚙️), `<SQBoardHeader>` directly
-below for board context (back-to-lobby, turn status, game-specific
-badges like Wordy's bag count). This means the user always has avatar
-and settings access, even mid-game, and the back-to-lobby link sits
-near the gameplay status it relates to.
+- **`<SQLobbyHeader>`** is the top **banner** — sticky, white/dark bg,
+  border-b, shadow-sm. Carries app-level identity (avatar, game title,
+  🏠, ⚙️). On both lobby and board pages.
+- **`<SQBoardHeader>`** is a **plain inline row** beneath the banner on
+  board pages — no bg, no border, no shadow, inherits the page gradient.
+  Carries minimal board navigation (back to lobby + one game-specific
+  badge).
+
+**Lobby pages use one header** (`<SQLobbyHeader>` only).
+**Board pages stack both.** The avatar/settings stay accessible mid-game,
+and the back-to-lobby link sits near the play area it returns from.
 
 ### `<SQLobbyHeader>`
 
@@ -298,15 +320,16 @@ row — **not** a banner. No bg, no border, no shadow. Inherits the
 page gradient from the shell.
 
 ```
-← Lobby      ✨ Your turn!                                🎒 N
+← Lobby                                                   🎒 N
 ```
 
-- **Container**: `max-w-6xl mx-auto px-4 py-3 flex items-center gap-3`
-  (no banner styling — that's the lobby header above's job)
+- **Container**: `px-4 py-1.5 flex items-center gap-3` (parent column
+  owns max-width)
 - **Left**: back link `← Lobby` (`text-wordy-400 hover:text-wordy-700 font-bold text-sm`)
-- **Center**: turn-status / game-state slot, `font-display text-base`,
-  color shifts on `myTurn`
-- **Right**: optional game-specific badge (Wordy: `🎒 N left`).
+- **Center**: usually empty. Whose-turn / live-status info lives in the
+  score panel, not here, so the sub-header stays compact.
+- **Right**: optional game-specific badge (Wordy: `🎒 N left`;
+  Rungles: `Rung X / Y`). One thing, small, `text-xs font-bold`.
   No 🏠 / ⚙️ here — those live in the lobby header above.
 
 Differences at a glance:
