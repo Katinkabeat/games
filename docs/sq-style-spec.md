@@ -267,6 +267,14 @@ bg, border-b, shadow-sm, gap-3 right controls) but differ in slots,
 density, and width. They are **separate components** sharing tokens,
 not one configurable header.
 
+**Lobby pages use one header** (`<SQLobbyHeader>`).
+**Board pages stack both** — `<SQLobbyHeader>` on top for app-level
+identity (avatar, game title, 🏠, ⚙️), `<SQBoardHeader>` directly
+below for board context (back-to-lobby, turn status, game-specific
+badges like Wordy's bag count). This means the user always has avatar
+and settings access, even mid-game, and the back-to-lobby link sits
+near the gameplay status it relates to.
+
 ### `<SQLobbyHeader>`
 
 Used on every lobby page. Wider chrome, identity-forward.
