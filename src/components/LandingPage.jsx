@@ -32,6 +32,14 @@ const FALLBACK_GAMES = [
     gradient: 'from-wordy-600 to-wordy-800',
     _access: 'allowed',
   },
+  {
+    id: 'snibble',
+    name: 'Snibble',
+    url: '/snibble/',
+    initial: 'S',
+    gradient: 'from-wordy-600 to-wordy-800',
+    _access: 'gated',
+  },
 ];
 
 const USE_CATALOG = import.meta.env.VITE_SQ_USE_CATALOG !== 'false';
@@ -40,15 +48,31 @@ const USE_RPC = import.meta.env.VITE_SQ_USE_RPC !== 'false';
 export default function LandingPage({ session }) {
   const user = session.user;
   const usernameStorageKey = `sq:username:${user.id}`;
+  const profileStorageKey = `sq:profile:${user.id}`;
+  const gamesStorageKey = `sq:games:${user.id}`;
   const { isDark, toggle: toggleTheme } = useTheme();
   const [username, setUsername] = useState(() => {
     try { return localStorage.getItem(usernameStorageKey) || ''; } catch { return ''; }
   });
   // Full profile (id + username + avatar_hue) for the hub avatar dropdown.
-  const [profile, setProfile] = useState(null);
+  // Seeded from localStorage so the avatar paints with the correct hue +
+  // initials on first render; the network fetch silently refreshes it.
+  const [profile, setProfile] = useState(() => {
+    try {
+      const raw = localStorage.getItem(profileStorageKey);
+      return raw ? JSON.parse(raw) : null;
+    } catch { return null; }
+  });
+  const persistProfile = (p) => {
+    setProfile(p);
+    try {
+      if (p) localStorage.setItem(profileStorageKey, JSON.stringify(p));
+      else localStorage.removeItem(profileStorageKey);
+    } catch {}
+  };
   const handleUsernameChange = (name) => {
     setUsername(name);
-    setProfile((p) => (p ? { ...p, username: name } : p));
+    persistProfile(profile ? { ...profile, username: name } : profile);
     try { localStorage.setItem(usernameStorageKey, name); } catch {}
   };
   // Phase 6: unified inbox state. Each item is {game_id, count, label, url}.
@@ -62,7 +86,20 @@ export default function LandingPage({ session }) {
   const [view, setView] = useState('landing');
   const [isAdmin, setIsAdmin] = useState(false);
   const [isMaster, setIsMaster] = useState(false);
-  const [games, setGames] = useState(FALLBACK_GAMES);
+  // Seeded from localStorage so testers (and everyone else) skip the
+  // gated-flash on subsequent loads while loadCatalog() refreshes in
+  // the background.
+  const [games, setGames] = useState(() => {
+    try {
+      const raw = localStorage.getItem(gamesStorageKey);
+      const cached = raw ? JSON.parse(raw) : null;
+      return Array.isArray(cached) && cached.length > 0 ? cached : FALLBACK_GAMES;
+    } catch { return FALLBACK_GAMES; }
+  });
+  const persistGames = (g) => {
+    setGames(g);
+    try { localStorage.setItem(gamesStorageKey, JSON.stringify(g)); } catch {}
+  };
   // Count of pending incoming friend requests (not ones I sent). Surfaces
   // as a red dot on the cog and the Friends menu item.
   const [pendingFriendCount, setPendingFriendCount] = useState(0);
@@ -82,7 +119,7 @@ export default function LandingPage({ session }) {
         .eq('id', user.id)
         .single();
       if (active && profileRow) {
-        setProfile(profileRow);
+        persistProfile(profileRow);
         if (profileRow.username) {
           setUsername(profileRow.username);
           try { localStorage.setItem(usernameStorageKey, profileRow.username); } catch {}
@@ -143,7 +180,7 @@ export default function LandingPage({ session }) {
         })
         .filter((g) => g._access !== 'blocked');
 
-      setGames(enriched);
+      persistGames(enriched);
     }
 
     // Legacy fallback — runs the per-game queries the hub used before
@@ -267,7 +304,7 @@ export default function LandingPage({ session }) {
     <div className="min-h-screen bg-gradient-to-br from-wordy-100 via-pink-100 to-wordy-100">
       <header className="max-w-[480px] mx-auto px-4 pt-6 pb-4 flex items-center justify-between gap-3">
         <div className="flex items-center gap-3 min-w-0">
-          <HubAvatarMenu profile={profile} onProfileUpdate={setProfile} />
+          <HubAvatarMenu profile={profile} onProfileUpdate={persistProfile} />
           <div className="min-w-0">
             <h1 className="font-display text-2xl text-wordy-800 truncate">Rae's Side Quest</h1>
             <p className="text-sm text-wordy-600 truncate">{username ? `Hi, ${username}` : '\u00A0'}</p>
