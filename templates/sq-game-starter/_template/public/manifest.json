@@ -1,0 +1,19 @@
+{
+  "name": "{{name}}",
+  "short_name": "{{name}}",
+  "description": "{{description}}",
+  "start_url": "/{{slug}}/",
+  "scope": "/{{slug}}/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "theme_color": "{{themeColor}}",
+  "background_color": "{{backgroundColor}}",
+  "icons": [
+    {
+      "src": "favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
