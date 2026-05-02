@@ -6,6 +6,14 @@ import AccessAdmin from './AccessAdmin.jsx';
 import GroupsAdmin from './GroupsAdmin.jsx';
 import ReportsAdmin from './ReportsAdmin.jsx';
 
+const ALL_PERMISSIONS = [
+  {
+    key: 'close_games',
+    label: 'Close Games',
+    description: 'Can close old or stuck games from each game’s admin panel',
+  },
+];
+
 export default function AdminPanel({ userId, isMaster, onBack }) {
   const [admins, setAdmins] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -91,6 +99,24 @@ export default function AdminPanel({ userId, isMaster, onBack }) {
     loadAdmins();
   }
 
+  async function handleTogglePermission(profile, permKey) {
+    const current = profile.permissions || [];
+    const updated = current.includes(permKey)
+      ? current.filter((p) => p !== permKey)
+      : [...current, permKey];
+    const { error } = await supabase
+      .from('admins')
+      .update({ permissions: updated })
+      .eq('user_id', profile.user_id);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    setAdmins((prev) =>
+      prev.map((a) => (a.user_id === profile.user_id ? { ...a, permissions: updated } : a))
+    );
+  }
+
   async function handleRemoveAdmin(profile) {
     if (profile.user_id === userId) {
       toast.error("You can't remove yourself");
@@ -150,25 +176,51 @@ export default function AdminPanel({ userId, isMaster, onBack }) {
                   key={a.user_id}
                   className="flex items-center justify-between gap-2 p-2.5 rounded-lg bg-wordy-50 text-sm"
                 >
-                  <div className="min-w-0 flex-1">
-                    <div className="font-bold text-wordy-700 truncate">
-                      {a.username}
-                      {a.user_id === userId && (
-                        <span className="ml-2 text-xs font-normal text-wordy-500">(you)</span>
+                  <div className="min-w-0 flex-1 space-y-1.5">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="font-bold text-wordy-700 truncate">
+                        {a.username}
+                        {a.user_id === userId && (
+                          <span className="ml-2 text-xs font-normal text-wordy-500">(you)</span>
+                        )}
+                        {a.is_master && (
+                          <span className="ml-2 text-xs font-normal text-yellow-700">master</span>
+                        )}
+                      </div>
+                      {!a.is_master && a.user_id !== userId && (
+                        <button
+                          onClick={() => handleRemoveAdmin(a)}
+                          className="text-xs font-bold text-rose-500 hover:text-rose-700 shrink-0"
+                        >
+                          Remove
+                        </button>
                       )}
                     </div>
-                    <div className="text-xs text-wordy-500 truncate">
-                      {a.is_master ? 'master admin' : a.permissions?.length ? a.permissions.join(', ') : 'standard'}
-                    </div>
+                    {a.is_master ? (
+                      <div className="text-xs text-wordy-500">Has all permissions</div>
+                    ) : (
+                      <div className="flex flex-wrap gap-1.5">
+                        {ALL_PERMISSIONS.map((perm) => {
+                          const active = (a.permissions || []).includes(perm.key);
+                          return (
+                            <button
+                              key={perm.key}
+                              type="button"
+                              title={perm.description}
+                              onClick={() => handleTogglePermission(a, perm.key)}
+                              className={`text-xs px-2 py-0.5 rounded-md border font-bold transition-colors ${
+                                active
+                                  ? 'bg-wordy-600 text-white border-wordy-600'
+                                  : 'bg-white text-wordy-400 border-wordy-200 hover:border-wordy-400'
+                              }`}
+                            >
+                              {active ? '✓ ' : ''}{perm.label}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
                   </div>
-                  {!a.is_master && a.user_id !== userId && (
-                    <button
-                      onClick={() => handleRemoveAdmin(a)}
-                      className="text-xs font-bold text-rose-500 hover:text-rose-700 shrink-0"
-                    >
-                      Remove
-                    </button>
-                  )}
                 </li>
               ))}
             </ul>
