@@ -27,16 +27,18 @@ import HeaderRight from '../HeaderRight.jsx'
 //             ? `🏆 ${winnerName} wins!`
 //             : "🤝 It's a tie!"
 //
-// Canonical realtime-subscribe pattern (replace `your_game_table` etc.):
+// Use the `useRealtimeChannel` hook (src/hooks/useRealtimeChannel.js)
+// for realtime + polling fallback + visibility refresh. Example:
 //
-//   useEffect(() => {
-//     const channel = supabase.channel(`game-${gameId}`)
-//       .on('postgres_changes',
-//         { event: '*', schema: 'public', table: 'your_game_table', filter: `id=eq.${gameId}` },
-//         () => loadGame())
-//       .subscribe()
-//     return () => supabase.removeChannel(channel)
-//   }, [gameId])
+//   useRealtimeChannel({
+//     channelName: `game-${gameId}`,
+//     subscriptions: [
+//       { event: 'UPDATE', schema: 'public', table: '{{slug}}_games',   filter: `id=eq.${gameId}` },
+//       { event: '*',      schema: 'public', table: '{{slug}}_players', filter: `game_id=eq.${gameId}` },
+//     ],
+//     onChange: loadGame,
+//     enabled: !!gameId,
+//   })
 export default function MultiGamePage({ session, profile, isAdmin }) {
   const { gameId } = useParams()
   const navigate = useNavigate()
