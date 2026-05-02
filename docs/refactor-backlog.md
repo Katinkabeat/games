@@ -71,6 +71,7 @@ _(none)_
 - [ ] Full audit pass with Explore agent — duplication inside files, dead exports, prop-drilling, test coverage gaps.
 - [ ] Rungles `SoloGamePage.jsx` (~14 KB) standalone cleanup if MultiGamePage extraction doesn't naturally absorb it.
 - [ ] Hub `FriendsView.jsx` (~14 KB) — review for hook extraction once friends-related features stabilize.
+- [ ] **Username snapshotting on past plays — revisit before public launch.** Currently all SQ games (Rungles confirmed, Wordy assumed) store only `user_id` on game/leaderboard rows and join `profiles.username` live at render time. So a rename updates every historical row everywhere — which is the right default for a friends-and-family circle (score stays linked to the person). When SQ opens to the public, reconsider: trolls/ban-evasion, screenshot integrity, moderation/dispute trails, and deleted-account "Unknown" rows all argue for snapshotting username (and maybe avatar_hue) onto the play row at insert time. Decision deferred until there's an actual public-launch plan; flagged 2026-04-30.
 
 ---
 
