@@ -1,12 +1,16 @@
 import { SQCompletedGamesCard } from '../../../../rae-side-quest/packages/sq-ui'
 
 // Bottom lobby card — last 10 completed games (most recent first). Always
-// renders so users have a consistent place to find old games even when
-// nothing's recent. Each row is dismissable; once dismissed it shouldn't
-// reappear in the list (data layer's job, not UI's).
+// shows the 10 most-recent finished games for the current user; no dismiss
+// flow. Users have a consistent place to find their recent games.
 //
 // TODO wire up:
-//   - games array (last 10 non-dismissed finished games for the current user).
+//   - games array (last 10 finished games for the current user, sorted
+//     most-recent first). IMPORTANT: order on the parent table column,
+//     not on a joined-table column — supabase-js's `referencedTable` order
+//     only sorts the embed, not the parent rows, so combined with LIMIT
+//     you'd get the wrong 10 rows.
+//
 //     Each item should expose `headline` + optional `subtitle`. Compute
 //     the headline in the data layer using all four branches; never fall
 //     back to "highest score wins" because that mislabels admin-closed
@@ -23,13 +27,11 @@ import { SQCompletedGamesCard } from '../../../../rae-side-quest/packages/sq-ui'
 //             ? `🏆 ${winnerName} wins!`
 //             : "🤝 It's a tie!"
 //
-//   - onDismiss(gameId) — flip the dismissed flag in the DB
 //   - onView(gameId) — navigate to the game's final-board view
 const MAX_RENDERED = 10
 
 export default function CompletedGamesSection({
   games = [],
-  onDismiss,
   onView,
 }) {
   const visible = games.slice(0, MAX_RENDERED)
@@ -46,26 +48,20 @@ export default function CompletedGamesSection({
             key={g.id}
             className="flex items-center gap-2 rounded-xl px-3 py-2.5 bg-gradient-to-r from-purple-100 to-pink-50 border border-purple-200 dark:from-purple-900/40 dark:to-purple-900/30 dark:border-purple-700"
           >
-            <button
-              type="button"
-              onClick={() => onView?.(g.id)}
-              className="flex-1 min-w-0 text-left"
-            >
+            <div className="flex-1 min-w-0">
               <div className="font-display text-sm truncate">
                 {g.headline ?? '🏆 Game finished'}
               </div>
               {g.subtitle && (
                 <div className="text-xs opacity-70 truncate">{g.subtitle}</div>
               )}
-            </button>
+            </div>
             <button
               type="button"
-              onClick={() => onDismiss?.(g.id)}
-              className="text-xs opacity-60 hover:opacity-100 px-2"
-              aria-label="Dismiss"
-              title="Dismiss"
+              onClick={() => onView?.(g.id)}
+              className="shrink-0 text-xs font-bold underline hover:no-underline"
             >
-              ✕
+              View Game
             </button>
           </div>
         ))
