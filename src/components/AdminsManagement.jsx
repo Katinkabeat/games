@@ -1,0 +1,242 @@
+import { useEffect, useState } from 'react';
+import toast from 'react-hot-toast';
+import { supabase } from '../lib/supabase.js';
+
+const ALL_PERMISSIONS = [
+  {
+    key: 'close_games',
+    label: 'Close Games',
+    description: 'Can close old or stuck games from each game’s admin panel',
+  },
+];
+
+export default function AdminsManagement({ userId }) {
+  const [admins, setAdmins] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  const [search, setSearch] = useState('');
+  const [matches, setMatches] = useState([]);
+  const [searching, setSearching] = useState(false);
+  const [addingId, setAddingId] = useState(null);
+
+  async function loadAdmins() {
+    const { data: rows, error } = await supabase
+      .from('admins')
+      .select('user_id, is_master, permissions, added_by, created_at');
+    if (error) {
+      toast.error(error.message);
+      setLoading(false);
+      return;
+    }
+    const userIds = rows.map((r) => r.user_id);
+    const { data: profiles } = await supabase
+      .from('profiles')
+      .select('id, username')
+      .in('id', userIds);
+    const merged = rows.map((r) => ({
+      ...r,
+      username: profiles?.find((p) => p.id === r.user_id)?.username ?? '(unknown)',
+    }));
+    setAdmins(merged);
+    setLoading(false);
+  }
+
+  useEffect(() => {
+    loadAdmins();
+  }, []);
+
+  useEffect(() => {
+    const q = search.trim();
+    if (q.length < 2) {
+      setMatches([]);
+      setSearching(false);
+      return;
+    }
+    let cancelled = false;
+    setSearching(true);
+    const t = setTimeout(async () => {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('id, username')
+        .ilike('username', `%${q}%`)
+        .order('username')
+        .limit(10);
+      if (cancelled) return;
+      setSearching(false);
+      if (error) {
+        toast.error(error.message);
+        return;
+      }
+      const existingIds = new Set(admins.map((a) => a.user_id));
+      setMatches((data || []).map((p) => ({ ...p, alreadyAdmin: existingIds.has(p.id) })));
+    }, 250);
+    return () => {
+      cancelled = true;
+      clearTimeout(t);
+    };
+  }, [search, admins]);
+
+  async function handleAddAdmin(profile) {
+    setAddingId(profile.id);
+    const { error } = await supabase.from('admins').insert({
+      user_id: profile.id,
+      permissions: [],
+      is_master: false,
+      added_by: userId,
+    });
+    setAddingId(null);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    toast.success(`${profile.username} is now an admin`);
+    setSearch('');
+    setMatches([]);
+    loadAdmins();
+  }
+
+  async function handleTogglePermission(profile, permKey) {
+    const current = profile.permissions || [];
+    const updated = current.includes(permKey)
+      ? current.filter((p) => p !== permKey)
+      : [...current, permKey];
+    const { error } = await supabase
+      .from('admins')
+      .update({ permissions: updated })
+      .eq('user_id', profile.user_id);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    setAdmins((prev) =>
+      prev.map((a) => (a.user_id === profile.user_id ? { ...a, permissions: updated } : a))
+    );
+  }
+
+  async function handleRemoveAdmin(profile) {
+    if (profile.user_id === userId) {
+      toast.error("You can't remove yourself");
+      return;
+    }
+    if (profile.is_master) {
+      toast.error("Can't remove a master admin");
+      return;
+    }
+    if (!window.confirm(`Remove ${profile.username} as admin?`)) return;
+    const { error } = await supabase.from('admins').delete().eq('user_id', profile.user_id);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    toast.success(`${profile.username} removed`);
+    loadAdmins();
+  }
+
+  return (
+    <section className="card">
+      {loading ? (
+        <p className="text-sm text-wordy-500">Loading...</p>
+      ) : (
+        <ul className="space-y-1.5 mb-4">
+          {admins.map((a) => (
+            <li
+              key={a.user_id}
+              className="flex items-center justify-between gap-2 p-2.5 rounded-lg bg-wordy-50 text-sm"
+            >
+              <div className="min-w-0 flex-1 space-y-1.5">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="font-bold text-wordy-700 truncate">
+                    {a.username}
+                    {a.user_id === userId && (
+                      <span className="ml-2 text-xs font-normal text-wordy-500">(you)</span>
+                    )}
+                    {a.is_master && (
+                      <span className="ml-2 text-xs font-normal text-yellow-700">master</span>
+                    )}
+                  </div>
+                  {!a.is_master && a.user_id !== userId && (
+                    <button
+                      onClick={() => handleRemoveAdmin(a)}
+                      className="text-xs font-bold text-rose-500 hover:text-rose-700 shrink-0"
+                    >
+                      Remove
+                    </button>
+                  )}
+                </div>
+                {a.is_master ? (
+                  <div className="text-xs text-wordy-500">Has all permissions</div>
+                ) : (
+                  <div className="flex flex-wrap gap-1.5">
+                    {ALL_PERMISSIONS.map((perm) => {
+                      const active = (a.permissions || []).includes(perm.key);
+                      return (
+                        <button
+                          key={perm.key}
+                          type="button"
+                          title={perm.description}
+                          onClick={() => handleTogglePermission(a, perm.key)}
+                          className={`text-xs px-2 py-0.5 rounded-md border font-bold transition-colors ${
+                            active
+                              ? 'bg-wordy-600 text-white border-wordy-600'
+                              : 'bg-white text-wordy-400 border-wordy-200 hover:border-wordy-400'
+                          }`}
+                        >
+                          {active ? '✓ ' : ''}{perm.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      <div className="space-y-2">
+        <label className="block text-sm font-bold text-wordy-700">Add admin</label>
+        <div className="relative">
+          <input
+            type="text"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search by username…"
+            className="w-full px-3 py-2 border-2 border-wordy-200 rounded-xl focus:border-wordy-400 focus:outline-none text-sm"
+          />
+          {search.trim().length >= 2 && (
+            <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-purple-100 rounded-xl shadow-lg z-10 max-h-60 overflow-y-auto">
+              {searching ? (
+                <p className="px-3 py-2 text-sm text-wordy-500">Searching…</p>
+              ) : matches.length === 0 ? (
+                <p className="px-3 py-2 text-sm text-wordy-500">No users found</p>
+              ) : (
+                <ul>
+                  {matches.map((p) => (
+                    <li key={p.id}>
+                      <button
+                        type="button"
+                        onClick={() => !p.alreadyAdmin && handleAddAdmin(p)}
+                        disabled={addingId === p.id || p.alreadyAdmin}
+                        className="w-full flex items-center justify-between gap-2 px-3 py-2 text-left hover:bg-wordy-50 text-sm disabled:hover:bg-transparent"
+                      >
+                        <span className={`font-bold truncate ${p.alreadyAdmin ? 'text-wordy-400' : 'text-wordy-700'}`}>
+                          {p.username}
+                        </span>
+                        <span className="text-xs text-wordy-500 shrink-0">
+                          {addingId === p.id ? '…' : p.alreadyAdmin ? 'Already admin' : 'Add →'}
+                        </span>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          )}
+        </div>
+        <p className="text-xs text-wordy-500">
+          Start typing to find a user. Only master admins can add or remove admins.
+        </p>
+      </div>
+    </section>
+  );
+}
