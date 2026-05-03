@@ -11,24 +11,19 @@ import {
 const PW_RULES = { number: /\d/, special: /[^A-Za-z0-9]/ };
 
 export default function SettingsDropdown({
-  userId,
   email,
   username,
   isDark,
   toggleTheme,
   isAdmin,
   pendingFriendCount = 0,
-  onUsernameChange,
   onOpenAdmin,
   onOpenFriends,
   onLogout,
   onClose,
+  userId,
 }) {
-  const [newName, setNewName] = useState(username || '');
-  const [editing, setEditing] = useState(false);
-  const [saving, setSaving] = useState(false);
   const dropdownRef = useRef(null);
-  const inputRef = useRef(null);
 
   const [notifyState, setNotifyState] = useState('loading');
   const [notifyBusy, setNotifyBusy] = useState(false);
@@ -57,10 +52,6 @@ export default function SettingsDropdown({
     document.addEventListener('keydown', handleKey);
     return () => document.removeEventListener('keydown', handleKey);
   }, [onClose]);
-
-  useEffect(() => {
-    if (editing && inputRef.current) inputRef.current.focus();
-  }, [editing]);
 
   useEffect(() => {
     let active = true;
@@ -114,38 +105,6 @@ export default function SettingsDropdown({
     setNotifyBusy(false);
   }
 
-  async function handleNameSave() {
-    const trimmed = newName.trim();
-    if (!trimmed || trimmed.length < 2) {
-      toast.error('Name must be at least 2 characters');
-      return;
-    }
-    if (trimmed.length > 20) {
-      toast.error('Name must be 20 characters or less');
-      return;
-    }
-    if (trimmed === username) {
-      setEditing(false);
-      return;
-    }
-    setSaving(true);
-    const { error } = await supabase.from('profiles').update({ username: trimmed }).eq('id', userId);
-    setSaving(false);
-    if (error) {
-      if (error.code === '23505') toast.error('That name is already taken!');
-      else toast.error(error.message);
-      return;
-    }
-    toast.success('Name updated!');
-    onUsernameChange(trimmed);
-    setEditing(false);
-  }
-
-  function cancelNameEdit() {
-    setNewName(username || '');
-    setEditing(false);
-  }
-
   function cancelPwChange() {
     setOldPw('');
     setNewPw('');
@@ -190,43 +149,7 @@ export default function SettingsDropdown({
     <div ref={dropdownRef} className="settings-dropdown card">
       <div className="settings-row">
         <span className="text-sm font-bold text-wordy-600">Name</span>
-        {!editing ? (
-          <button
-            onClick={() => setEditing(true)}
-            className="text-sm font-bold text-wordy-700 hover:text-wordy-500 transition-colors flex items-center gap-1"
-          >
-            {username ?? '…'}
-            <span className="text-xs text-wordy-400">✏️</span>
-          </button>
-        ) : (
-          <div className="flex items-center gap-1.5">
-            <input
-              ref={inputRef}
-              type="text"
-              value={newName}
-              onChange={(e) => setNewName(e.target.value)}
-              maxLength={20}
-              className="w-28 px-2 py-1 rounded-lg border-2 border-wordy-200 text-sm font-bold text-wordy-700 focus:border-wordy-400 focus:outline-none"
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') handleNameSave();
-                if (e.key === 'Escape') cancelNameEdit();
-              }}
-            />
-            <button
-              onClick={handleNameSave}
-              disabled={saving}
-              className="text-xs font-bold text-white bg-wordy-600 px-2 py-1 rounded-lg hover:bg-wordy-500 disabled:opacity-60"
-            >
-              {saving ? '…' : '✓'}
-            </button>
-            <button
-              onClick={cancelNameEdit}
-              className="text-xs font-bold text-wordy-400 hover:text-wordy-600 px-1 py-1"
-            >
-              ✕
-            </button>
-          </div>
-        )}
+        <span className="text-sm font-bold text-wordy-700">{username ?? '…'}</span>
       </div>
 
       <div className={changingPw ? 'settings-section' : 'settings-row'}>

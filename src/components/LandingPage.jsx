@@ -70,11 +70,6 @@ export default function LandingPage({ session }) {
       else localStorage.removeItem(profileStorageKey);
     } catch {}
   };
-  const handleUsernameChange = (name) => {
-    setUsername(name);
-    persistProfile(profile ? { ...profile, username: name } : profile);
-    try { localStorage.setItem(usernameStorageKey, name); } catch {}
-  };
   // Phase 6: unified inbox state. Each item is {game_id, count, label, url}.
   // Populated either from sq_pending_for() RPC or, if that fails or is
   // disabled, from the legacy per-game queries (via buildLegacyItems).
@@ -392,7 +387,6 @@ export default function LandingPage({ session }) {
                 toggleTheme={toggleTheme}
                 isAdmin={isAdmin}
                 pendingFriendCount={pendingFriendCount}
-                onUsernameChange={handleUsernameChange}
                 onOpenAdmin={() => setView('admin')}
                 onOpenFriends={() => setView('friends')}
                 onLogout={handleLogout}

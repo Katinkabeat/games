@@ -52,9 +52,15 @@ user has a row in the shared `public.admins` table with `close_games` in
 `supabase/migrations/<slug>_admin_close_game.sql` and adds:
 
 - `<slug>_games.closed_by_admin BOOLEAN NOT NULL DEFAULT FALSE`
-- `<slug>_admin_close_game(uuid)` — soft-closes a game (status='finished',
-  `closed_by_admin=true`, no winner attribution)
+- `<slug>_games.closed_by UUID` — which admin closed the game
+- `<slug>_games.close_reason TEXT` — required reason supplied by the admin
+- `<slug>_admin_close_game(uuid, text)` — soft-closes a game (status='finished',
+  `closed_by_admin=true`, no winner attribution). **Reason is required** —
+  passing empty/null raises an exception, so your admin UI must collect a
+  reason before calling.
 - `<slug>_admin_list_open_games()` — lists waiting/active games for the panel
+- `<slug>_admin_list_closed_games()` — lists recently closed games with the
+  closing admin's username + reason (for a "Recently Closed" history view)
 
 **You must run this migration after you create your `<slug>_games` table** —
 the scaffold doesn't emit the table schema itself (each game's data shape
