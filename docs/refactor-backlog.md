@@ -66,6 +66,15 @@ _(none)_
 - [ ] **Push-notification dedupe** — hub `pushNotifications.js` + per-game registration code. Unified notifications shipped 2026-04-24, so this is now consolidatable.
 - [ ] **Shared game shell** — game-page chrome (header, settings menu, end-game banner) is duplicated across Wordy + Rungles + soon Snibble. House style is locked (`feedback_word_game_style`); extract once.
 
+## Notifications — settings UX (flagged 2026-05-02)
+
+The hub-as-broker push model scales fine technically (one permission prompt, one subscription per device, per-game topic tags), but at 5+ games the user-facing controls need to exist. Surfaced while reviewing why Snibble has no per-game SW: it piggybacks on the hub's subscription with topic tags `['sidequest', 'snibble']`, and that pattern works as long as users can mute granularly.
+
+- [ ] **Per-game mute toggles in hub settings** — list every SQ game the user has access to, with an on/off switch per game. Backed by the topic-tag system already in `push_subscriptions` (just remove/add the game's tag).
+- [ ] **Topic-level mute** — beyond per-game on/off, allow muting specific event types (e.g., "your turn" vs. "opponent joined" vs. "match completed"). Requires Edge Functions to send a `topic` field in payloads and the hub to filter on subscribe.
+- [ ] **Quiet hours** — user-set window (e.g., 10pm–8am local) where pushes are suppressed. Cleanest spot is server-side: store quiet-hours window on the user's profile/subscription row, Edge Functions skip sending if "now" falls inside it. Client-side suppression in the SW is a fallback but doesn't save the wake-up battery cost.
+- [ ] **First-tap onboarding** — when a user first opts into hub notifications, show a one-time sheet explaining "you'll get pings for any game you play; manage in Settings." Reduces the "why am I getting Snibble pings" surprise.
+
 ## Someday / nice-to-have
 
 - [ ] Full audit pass with Explore agent — duplication inside files, dead exports, prop-drilling, test coverage gaps.
