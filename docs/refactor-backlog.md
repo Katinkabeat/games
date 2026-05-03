@@ -34,15 +34,10 @@ _(none)_
 
 ## Next up — Tier 1: large single-file components
 
-- [ ] **Wordy `GamePage.jsx` — round 2: extract `useGameMutations` hook** (~720 lines after round 1). Move `submitWord`, `passTurn`, `confirmExchange`, `forfeitGame` into a hook so the move/DB-write logic lives next to the data hook. Would also let `mutatingRef`, `placementsRef`, `localRackRef` become private to the hooks instead of crossing the component boundary as refs.
-- [ ] **Wordy `GamePage.jsx` — round 3: lift `BlankTileModal` and `ForfeitModal`** out of GamePage.jsx into their own files under `components/game/modals/`. Small, low-risk follow-up.
-- [ ] **Rungles `MultiGamePage.jsx`** (~22 KB) — same shape as Wordy's GamePage. Likely overlaps conceptually with `SoloGamePage.jsx` (~14 KB) — candidate for shared game-shell extraction inside Rungles.
-- [ ] **Wordy `LobbyPage.jsx`** (485 lines after 2026-04-28 cleanup) — already partially split. Continue with the two items below from the same session.
+- [ ] **Rungles `MultiGamePage.jsx`** (610 lines) — same shape as Wordy's GamePage. Likely overlaps conceptually with `SoloGamePage.jsx` (417 lines) — candidate for shared game-shell extraction inside Rungles.
 
-## Next up — Tier 1.5: Wordy lobby leftovers (flagged 2026-04-28)
+## Tier 1.5 — Wordy bundle trim (only if needed)
 
-- [ ] **Extract `createGame` / `joinGame` to `wordy/src/lib/gameMutations.js`** — pure data ops sitting inside `LobbyPage.jsx` (~70 lines). Continues the LobbyPage cleanup arc.
-- [ ] **Custom hook `useUnseenResults(user, navigate)`** — `loadUnseenResults` callback, `dismissResult`, `handleGameChange`'s finish-toast block, realtime sub wiring (~80 lines). Cleanly separates result-banner feature from lobby concerns.
 - [ ] **Trim shared `index.js` chunk** — still 355 kB (105 kB gzipped) after route split. Investigate with `vite-bundle-visualizer`. Likely culprits: `@supabase/supabase-js`, `react-router-dom`, unused tailwind. Only worth doing if Wordy still feels slow in practice.
 
 ## Tier 2: hub admin sprawl
@@ -90,3 +85,8 @@ _(move shipped items here with date + commit)_
 
 - 2026-04-28: Lobby `GameRow` extracted to `LobbyGameRow.jsx`; `finalizeEndgame` extracted to `gameLogic.js` (commit dd00106).
 - 2026-04-28: GamePage round 1 — extracted `useGameData` hook (state + `loadGame` + realtime + polling + visibility). `GamePage.jsx` 871 → 721 lines (-17%). New file `wordy/src/hooks/useGameData.js` (186 lines). Bundle size +0.17 kB gzipped (acceptable hook-indirection overhead). Verified locally: load, render, settings, dark mode all confirmed by Rae.
+- 2026-05-03: Wordy Tier 1 confirmed shipped (extraction work landed earlier, backlog was stale):
+  - `useGameMutations` hook — `wordy/src/hooks/useGameMutations.js` (240 lines), wired into `GamePage.jsx`. Final GamePage size: 473 lines (-34% from round-1 baseline).
+  - `BlankTileModal` + `ForfeitModal` — lifted into `wordy/src/components/game/modals/`.
+  - `createGame` / `joinGame` — extracted to `wordy/src/lib/gameMutations.js` (72 lines), used by `LobbyPage.jsx`.
+  - `useUnseenResults` hook — `wordy/src/hooks/useUnseenResults.jsx` (131 lines), used by `LobbyPage.jsx`.
