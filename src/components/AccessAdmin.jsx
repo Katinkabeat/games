@@ -17,6 +17,7 @@ export default function AccessAdmin({ userId }) {
   const [groupMembersByGroup, setGroupMembersByGroup] = useState({});
   const [selectedGroupByGame, setSelectedGroupByGame] = useState({});
   const [bulkBusyByGame, setBulkBusyByGame] = useState({});
+  const [gateBusyByGame, setGateBusyByGame] = useState({});
 
   async function load() {
     const [catalogResp, rowsResp, groupsResp, membersResp] = await Promise.all([
@@ -52,6 +53,24 @@ export default function AccessAdmin({ userId }) {
     setGroups(groupsResp.data || []);
     setGroupMembersByGroup(grouped);
     setLoading(false);
+  }
+
+  async function toggleGate(game) {
+    const next = !game.requires_access;
+    const verb = next ? 'gate' : 'ungate';
+    if (!window.confirm(`${next ? 'Gate' : 'Ungate'} ${game.name}? ${next ? 'Only allowed users will see it.' : 'Everyone signed in will see it.'}`)) return;
+    setGateBusyByGame((prev) => ({ ...prev, [game.id]: true }));
+    const { error } = await supabase
+      .from('games_catalog')
+      .update({ requires_access: next, updated_at: new Date().toISOString() })
+      .eq('id', game.id);
+    setGateBusyByGame((prev) => ({ ...prev, [game.id]: false }));
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    toast.success(`${game.name} is now ${next ? 'gated' : 'open to everyone'}`);
+    load();
   }
 
   async function bulkGrantGroup(gameId) {
@@ -183,6 +202,14 @@ export default function AccessAdmin({ userId }) {
                       {game.is_published ? 'published' : 'unpublished'}
                     </div>
                   </div>
+                  <button
+                    type="button"
+                    onClick={() => toggleGate(game)}
+                    disabled={gateBusyByGame[game.id]}
+                    className="text-xs font-bold text-wordy-700 bg-white border-2 border-wordy-200 hover:border-wordy-400 px-2 py-1 rounded-lg disabled:opacity-60 shrink-0"
+                  >
+                    {gateBusyByGame[game.id] ? '…' : game.requires_access ? 'Ungate' : 'Gate'}
+                  </button>
                 </div>
 
                 {game.requires_access && (
