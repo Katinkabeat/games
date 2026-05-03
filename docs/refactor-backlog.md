@@ -34,7 +34,7 @@ _(none)_
 
 ## Next up — Tier 1: large single-file components
 
-- [ ] **Rungles `MultiGamePage.jsx`** (610 lines) — same shape as Wordy's GamePage. Likely overlaps conceptually with `SoloGamePage.jsx` (417 lines) — candidate for shared game-shell extraction inside Rungles.
+_(none — Rungles shipped 2026-05-03, see Done)_
 
 ## Tier 1.5 — Wordy bundle trim (only if needed)
 
@@ -90,3 +90,10 @@ _(move shipped items here with date + commit)_
   - `BlankTileModal` + `ForfeitModal` — lifted into `wordy/src/components/game/modals/`.
   - `createGame` / `joinGame` — extracted to `wordy/src/lib/gameMutations.js` (72 lines), used by `LobbyPage.jsx`.
   - `useUnseenResults` hook — `wordy/src/hooks/useUnseenResults.jsx` (131 lines), used by `LobbyPage.jsx`.
+- 2026-05-03: Rungles Tier 1 shipped — extracted three shared pieces from `SoloGamePage` and `MultiGamePage` (commits d3b875c + f392900):
+  - **Bonus bug fix first** — unified rack-reorder pattern: shared `lib/rackOrder.js` (`swapInOrder`/`shuffleOrder`), Solo and Multi both use a visual `rackOrder` permutation. Fixed Multi's silently-broken rack swap (was gated on `playable`, off-by-one math) and added localStorage persistence keyed by gameId. Solo state shape now includes `rackOrder` (backward-compatible load).
+  - `hooks/useBoardDerived.js` — pure derivation from `selected`. Returns `filled, lastFilledSlot, hasGap, currentWord, usedRackIdxs, usedCarriedIdxs`. Used by both pages.
+  - `components/BoardSlots.jsx` — the 7-slot play area. Optional `tileDisabled` (Multi gate) and `wrapperClassName` (Solo flash classes).
+  - `components/CarriedTiles.jsx` — 304px carried-letter row with empty-state + label. Caller normalizes letters to `string[]`.
+  - Final sizes: SoloGamePage 418 → 375 (-10%), MultiGamePage 610 → 582 (-5%); 126 new lines in shared files.
+  - Deliberately NOT extracted: `handleSlotTap`/`handleSourceTap` — Solo's reducer pattern vs Multi's fragmented useState would require a bigger rewrite to unify; pure-presentation extraction sidesteps this.
