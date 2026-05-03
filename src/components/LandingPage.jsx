@@ -38,7 +38,7 @@ const FALLBACK_GAMES = [
     url: '/snibble/',
     initial: 'S',
     gradient: 'from-wordy-600 to-wordy-800',
-    _access: 'gated',
+    _access: 'allowed',
   },
 ];
 
