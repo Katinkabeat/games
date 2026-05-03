@@ -28,17 +28,12 @@ export default function AdminPanel({ userId, isMaster, onBack }) {
     const Section = active.Component;
     return (
       <main className="max-w-[480px] mx-auto px-4 pb-12 space-y-4">
-        <div className="flex items-center gap-3">
-          <button
-            onClick={() => setView('index')}
-            className="text-sm font-bold text-wordy-500 hover:text-wordy-700"
-          >
-            ← Admin
-          </button>
-          <h2 className="font-display text-2xl text-wordy-800">
-            {active.icon} {active.label}
-          </h2>
-        </div>
+        <button
+          onClick={() => setView('index')}
+          className="text-sm font-bold text-wordy-500 hover:text-wordy-700"
+        >
+          ← Admin
+        </button>
         <Section userId={userId} />
       </main>
     );
