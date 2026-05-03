@@ -81,6 +81,7 @@ export default function LandingPage({ session }) {
   const [view, setView] = useState('landing');
   const [isAdmin, setIsAdmin] = useState(false);
   const [isMaster, setIsMaster] = useState(false);
+  const [adminPermissions, setAdminPermissions] = useState([]);
   // Seeded from localStorage so testers (and everyone else) skip the
   // gated-flash on subsequent loads while loadCatalog() refreshes in
   // the background.
@@ -123,12 +124,13 @@ export default function LandingPage({ session }) {
 
       const { data: adminRow } = await supabase
         .from('admins')
-        .select('is_master')
+        .select('is_master, permissions')
         .eq('user_id', user.id)
         .maybeSingle();
       if (active) {
         setIsAdmin(!!adminRow);
         setIsMaster(!!adminRow?.is_master);
+        setAdminPermissions(adminRow?.permissions ?? []);
       }
     }
 
@@ -398,7 +400,7 @@ export default function LandingPage({ session }) {
       </header>
 
       {view === 'admin' ? (
-        <AdminPanel userId={user.id} isMaster={isMaster} onBack={() => setView('landing')} />
+        <AdminPanel userId={user.id} isMaster={isMaster} permissions={adminPermissions} onBack={() => setView('landing')} />
       ) : view === 'friends' ? (
         <FriendsView userId={user.id} onBack={() => setView('landing')} />
       ) : (

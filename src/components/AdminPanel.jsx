@@ -8,9 +8,10 @@ import AdminsManagement from './AdminsManagement.jsx';
 
 // Each entry is one row on the index + the page rendered when tapped.
 // `master: true` hides the row from non-master admins.
+// `permission: 'foo'` hides the row unless the user is master OR has that permission.
 // `Component` is mounted only when the row is active (lazy = no needless RPCs).
 const SECTIONS = [
-  { key: 'reports',       icon: '📋', label: 'Reports',                Component: ReportsAdmin     },
+  { key: 'reports',       icon: '📋', label: 'Reports',                Component: ReportsAdmin,     permission: 'manage_reports' },
   { key: 'closed',        icon: '🛑', label: 'Recently Closed Games',  Component: ClosedGamesAdmin },
   { key: 'announcements', icon: '📣', label: 'Announcements',          Component: AnnouncementsAdmin, master: true },
   { key: 'access',        icon: '🔑', label: 'Access',                 Component: AccessAdmin,        master: true },
@@ -18,10 +19,14 @@ const SECTIONS = [
   { key: 'admins',        icon: '🛡️', label: 'Admins',                 Component: AdminsManagement,   master: true },
 ];
 
-export default function AdminPanel({ userId, isMaster, onBack }) {
+export default function AdminPanel({ userId, isMaster, permissions = [], onBack }) {
   const [view, setView] = useState('index');
 
-  const visibleSections = SECTIONS.filter((s) => !s.master || isMaster);
+  const visibleSections = SECTIONS.filter((s) => {
+    if (s.master)     return isMaster;
+    if (s.permission) return isMaster || permissions.includes(s.permission);
+    return true;
+  });
   const active = visibleSections.find((s) => s.key === view);
 
   if (active) {

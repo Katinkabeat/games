@@ -8,6 +8,11 @@ const ALL_PERMISSIONS = [
     label: 'Close Games',
     description: 'Can close old or stuck games from each game’s admin panel',
   },
+  {
+    key: 'manage_reports',
+    label: 'Manage Reports',
+    description: 'Can view and act on user-submitted reports',
+  },
 ];
 
 export default function AdminsManagement({ userId }) {
