@@ -4,9 +4,9 @@ import { supabase } from '../lib/supabase.js';
 const ENABLED = import.meta.env.VITE_SQ_ANNOUNCEMENTS !== 'false';
 
 const SEVERITY_STYLES = {
-  info: 'bg-purple-50 border-purple-300 text-purple-900',
-  warning: 'bg-amber-50 border-amber-300 text-amber-900',
-  success: 'bg-green-50 border-green-300 text-green-900',
+  info: 'bg-purple-50 border-purple-300 text-purple-900 dark:bg-purple-950/40 dark:border-purple-700 dark:text-white',
+  warning: 'bg-amber-50 border-amber-300 text-amber-900 dark:bg-amber-950/40 dark:border-amber-700 dark:text-white',
+  success: 'bg-green-50 border-green-300 text-green-900 dark:bg-green-950/40 dark:border-green-700 dark:text-white',
 };
 
 const SEVERITY_ICONS = {
