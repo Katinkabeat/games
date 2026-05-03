@@ -32,7 +32,7 @@ export default function AdminPanel({ userId, isMaster, onBack }) {
           onClick={() => setView('index')}
           className="text-sm font-bold text-wordy-500 hover:text-wordy-700"
         >
-          ← Admin
+          ← Back
         </button>
         <Section userId={userId} />
       </main>
