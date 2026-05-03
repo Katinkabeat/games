@@ -5,6 +5,7 @@ import AnnouncementsAdmin from './AnnouncementsAdmin.jsx';
 import AccessAdmin from './AccessAdmin.jsx';
 import GroupsAdmin from './GroupsAdmin.jsx';
 import ReportsAdmin from './ReportsAdmin.jsx';
+import ClosedGamesAdmin from './ClosedGamesAdmin.jsx';
 
 const ALL_PERMISSIONS = [
   {
@@ -156,6 +157,8 @@ export default function AdminPanel({ userId, isMaster, onBack }) {
       </section>
 
       <ReportsAdmin userId={userId} />
+
+      <ClosedGamesAdmin />
 
       {isMaster && <AnnouncementsAdmin userId={userId} />}
 
