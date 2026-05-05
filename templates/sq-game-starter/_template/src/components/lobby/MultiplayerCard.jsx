@@ -3,9 +3,41 @@
 // text (no big bubble emoji per SQ convention).
 //
 // TODO wire up:
-//   - handleCreate -> insert a new game row, navigate to /multi/:id
+//   - handleCreate -> insert a new game row, then DO NOT navigate. The new
+//     row arrives via the realtime subscription below and renders in the
+//     list — no dead-end "match posted" screen needed.
 //   - openGames    -> fetched + realtime-subscribed list of joinable games
 //   - myGames      -> fetched + realtime-subscribed list of the user's active games
+//
+// LOBBY REALTIME PATTERN (use the shared `useRealtimeChannel` hook):
+//
+//   useRealtimeChannel({
+//     channelName: `lobby_{{slug}}_${userId}`,
+//     subscriptions: [
+//       // The user's own created games:
+//       { event: '*', schema: 'public', table: '{{slug}}_games',
+//         filter: `created_by=eq.${userId}` },
+//       // Games the user was invited to:
+//       { event: '*', schema: 'public', table: '{{slug}}_games',
+//         filter: `invited_user_id=eq.${userId}` },
+//       // The user's player rows (for state-of-play changes):
+//       { event: '*', schema: 'public', table: '{{slug}}_players',
+//         filter: `user_id=eq.${userId}` },
+//     ],
+//     onChange: refetchLobby,
+//     pollMs: 30_000,
+//     enabled: !!userId,
+//   })
+//
+// IMPORTANT: realtime delivers nothing until your tables are added to the
+// `supabase_realtime` publication. Add to your initial migration:
+//
+//   alter publication supabase_realtime add table public.{{slug}}_games;
+//   alter publication supabase_realtime add table public.{{slug}}_players;
+//
+// And: also patch the SQ hub (rae-side-quest) to subscribe to your tables
+// in `LandingPage.jsx`'s `hub-inbox` channel + add a `{{slug}}_pending_for(uid)`
+// SQL function so this game's pending counts show in the hub bell.
 export default function MultiplayerCard({
   openGames = [],
   myGames = [],

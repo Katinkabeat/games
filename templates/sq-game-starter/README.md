@@ -39,7 +39,52 @@ separate explicit step.
 6. Once your `<slug>_games` table exists, run
    `supabase/migrations/<slug>_admin_close_game.sql` to enable admin
    close-game support (see "Admin close-game" below)
-7. `gh repo create` + push when ready
+7. **Enable realtime + hub inbox integration** (see "Realtime lobby" below)
+8. `gh repo create` + push when ready
+
+## Realtime lobby
+
+Every SQ game's lobby and game view should auto-update when something changes
+server-side (opponent joins, opponent submits, invite arrives). Without this,
+users sit on stale screens until they manually refresh — which they won't,
+because nothing tells them to. **This is not optional.** Snibble shipped without
+it and Player 2 appeared "blocked" until Player 1 acted.
+
+The scaffold ships with `src/hooks/useRealtimeChannel.js` already wired into the
+multi-game page. The lobby's `MultiplayerCard.jsx` has a usage example in its
+header comment — wire it up the same way.
+
+After your tables exist, you must:
+
+1. **Add tables to the realtime publication** (migration):
+
+   ```sql
+   alter publication supabase_realtime add table public.<slug>_games;
+   alter publication supabase_realtime add table public.<slug>_players;
+   ```
+
+   Without this, `postgres_changes` subscriptions silently no-op.
+
+2. **Add a `<slug>_pending_for(uid)` SQL function** so Snibble-style pending
+   counts (your turn, invites) show up in the SQ hub's bell. Pattern:
+
+   ```sql
+   create or replace function public.<slug>_pending_for(uid uuid)
+   returns table (count integer, label text, url text)
+   language sql stable
+   as $$
+     select count(*)::int, 'Your turn'::text, '/<slug>/'::text
+     from public.<slug>_games g
+     -- ... your "owes a turn" query ...
+     having count(*) > 0;
+   $$;
+   ```
+
+   The hub's `sq_pending_for(uid)` RPC calls this automatically.
+
+3. **Patch the hub's `LandingPage.jsx`** to subscribe to your tables in the
+   `hub-inbox` channel — copy the existing `sn_matches` / `sn_match_round_plays`
+   `.on(...)` lines and swap in your slug.
 
 See `docs/sq-conventions.md` for full SQ patterns.
 

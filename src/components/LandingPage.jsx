@@ -217,6 +217,37 @@ export default function LandingPage({ session }) {
         if (turn > 0) items.push({ game_id: 'rungles', count: turn, label: 'Your turn', url: '/rungles/' });
       }
 
+      // Snibble — async match model. "Your turn" = match where you owe a
+      // play (in_progress + you haven't submitted the current round) OR
+      // an invite waiting for you to accept.
+      const { data: snibbleMatches, error: snibbleErr } = await supabase
+        .from('sn_matches')
+        .select('id, status, creator_id, opponent_id, invited_user_id')
+        .or(`creator_id.eq.${user.id},opponent_id.eq.${user.id},invited_user_id.eq.${user.id}`)
+        .in('status', ['open', 'in_progress']);
+      if (!snibbleErr && snibbleMatches && snibbleMatches.length > 0) {
+        const inProgressIds = snibbleMatches.filter(m => m.status === 'in_progress').map(m => m.id);
+        let myPlaysByMatch = new Map();
+        if (inProgressIds.length > 0) {
+          const { data: snPlays } = await supabase
+            .from('sn_match_round_plays')
+            .select('match_id')
+            .in('match_id', inProgressIds)
+            .eq('user_id', user.id);
+          for (const p of snPlays ?? []) {
+            myPlaysByMatch.set(p.match_id, (myPlaysByMatch.get(p.match_id) ?? 0) + 1);
+          }
+        }
+        let turn = 0;
+        let invites = 0;
+        for (const m of snibbleMatches) {
+          if (m.status === 'open' && m.invited_user_id === user.id) invites++;
+          else if (m.status === 'in_progress' && (myPlaysByMatch.get(m.id) ?? 0) === 0) turn++;
+        }
+        if (turn > 0)    items.push({ game_id: 'snibble', count: turn,    label: 'Your turn', url: '/snibble/' });
+        if (invites > 0) items.push({ game_id: 'snibble', count: invites, label: 'Invite',    url: '/snibble/' });
+      }
+
       return items;
     }
 
@@ -250,8 +281,12 @@ export default function LandingPage({ session }) {
       .channel('hub-inbox')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'games' }, scheduleRecount)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'rg_games' }, scheduleRecount)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'sn_matches', filter: `creator_id=eq.${user.id}` }, scheduleRecount)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'sn_matches', filter: `opponent_id=eq.${user.id}` }, scheduleRecount)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'sn_matches', filter: `invited_user_id=eq.${user.id}` }, scheduleRecount)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'game_players', filter: `user_id=eq.${user.id}` }, scheduleRecount)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'rg_players', filter: `user_id=eq.${user.id}` }, scheduleRecount)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'sn_match_round_plays', filter: `user_id=eq.${user.id}` }, scheduleRecount)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'friendships' }, () => { if (active) loadPendingFriends(); })
       .subscribe((status) => {
         if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
