@@ -187,6 +187,13 @@ body {
   color: #ede0ff;
 }
 
+/* Tell the browser to render native form controls (select option
+   popups, date pickers, scrollbars) in dark mode too. Without this,
+   a <select> dropdown opens with a blinding white OS-rendered list. */
+.dark {
+  color-scheme: dark;
+}
+
 /* Page gradients → solid dark background */
 .dark .from-wordy-50  { --tw-gradient-from: #0f0a1e; }
 .dark .from-wordy-100 { --tw-gradient-from: #0f0a1e; }
