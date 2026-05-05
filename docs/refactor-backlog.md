@@ -53,14 +53,13 @@ _(none — Rungles shipped 2026-05-03, see Done)_
 - [✗] ~~Shared `@sq/game-core`~~ — **decided against 2026-05-05**. Three games are too different: Wordy is Scrabble (board placement), Rungles is linear ladder-climbing, Snibble is round-based puzzles. No shared game loop, turn shape, or state model. Forcing a shared core would be a bad abstraction.
 - [✗] ~~Push-notification dedupe~~ — **already shipped** in Phase 8.5 (2026-04-24 unified push migration). Hub `pushNotifications.js` is canonical; per-game files were removed. The hub's `migrateToSideQuestPush()` even cleans up legacy `push_subscriptions` rows where `app IN ('wordy', 'rungles')`. Nothing left to consolidate.
 
-## Notifications — settings UX (flagged 2026-05-02)
+## Notifications — settings UX (flagged 2026-05-02 → mostly shipped 2026-05-05)
 
-The hub-as-broker push model scales fine technically (one permission prompt, one subscription per device, per-game topic tags), but at 5+ games the user-facing controls need to exist. Surfaced while reviewing why Snibble has no per-game SW: it piggybacks on the hub's subscription with topic tags `['sidequest', 'snibble']`, and that pattern works as long as users can mute granularly.
-
-- [ ] **Per-game mute toggles in hub settings** — list every SQ game the user has access to, with an on/off switch per game. Backed by the topic-tag system already in `push_subscriptions` (just remove/add the game's tag).
-- [ ] **Topic-level mute** — beyond per-game on/off, allow muting specific event types (e.g., "your turn" vs. "opponent joined" vs. "match completed"). Requires Edge Functions to send a `topic` field in payloads and the hub to filter on subscribe.
-- [ ] **Quiet hours** — user-set window (e.g., 10pm–8am local) where pushes are suppressed. Cleanest spot is server-side: store quiet-hours window on the user's profile/subscription row, Edge Functions skip sending if "now" falls inside it. Client-side suppression in the SW is a fallback but doesn't save the wake-up battery cost.
-- [ ] **First-tap onboarding** — when a user first opts into hub notifications, show a one-time sheet explaining "you'll get pings for any game you play; manage in Settings." Reduces the "why am I getting Snibble pings" surprise.
+- [x] **Per-game mute toggles + per-event toggles** — shipped 2026-05-05. NotificationsPanel + `_master` topic + 5-topic vocabulary (`your_turn`, `invite`, `nudge`, `opponent_joined`, `friend_request`). All 4 Edge Functions check `sq_notification_enabled()` before sending.
+- [x] **First-tap onboarding (pre-permission primer)** — shipped 2026-05-05. Modal in NotificationsPanel that triggers when `Notification.permission === 'default'`; users can decline gracefully without burning the OS prompt.
+- [x] **Bonus: invitability privacy setting** — shipped 2026-05-05. New `profiles.invitability` enum (`everyone | friends_only | nobody`) with UI dropdown in SettingsDropdown and DB-level enforcement via BEFORE INSERT triggers on all 3 game tables.
+- [x] **Bonus: feature parity gaps** — shipped 2026-05-05. Snibble nudge (server + client button on match page) + Rungles `opponent_joined` push (DB trigger + edge function handler).
+- [✗] ~~Quiet hours~~ — **decided against 2026-05-05**. iOS Focus / Android DND already solve this for most users. Server-side quiet hours adds a column, timezone migration, edge function check, and UI for a feature most users handle at the OS level. Add later if a user explicitly asks; the only honest case for it is server-side suppression preventing badge accumulation past the quiet window.
 
 ## Someday / nice-to-have
 
@@ -75,6 +74,12 @@ The hub-as-broker push model scales fine technically (one permission prompt, one
 
 _(move shipped items here with date + commit)_
 
+- 2026-05-05: **Notification preferences platform** shipped end-to-end across all 4 repos. Schema (`user_notification_prefs` + `_master` topic + `profiles.invitability` + `sq_notification_enabled` + `sq_check_invitable` + Wordy/Rungles/Snibble BEFORE INSERT triggers); all 4 edge functions route through `sendIfOptedIn(user, app, topic)` (deployed); new triggers (Snibble nudge RPC + button, Rungles `opponent_joined`); lazy-loaded NotificationsPanel UI (3.03 kB gzipped) with per-game master + per-event toggles + browser-push toggle + pre-permission primer; invitability dropdown in SettingsDropdown with everyone/friends_only/nobody.
+  - Hub commits: 6b7792a (schema + opt-in), 64e12a7 (UI panel), 57a7a54 (invitability + DB enforcement), 45e3fde (primer)
+  - Wordy: 3cf69d9 (opt-in check)
+  - Rungles: 27f94e2 (opt-in check), f43105e (opponent_joined)
+  - Snibble: 2d8dfc1 (opt-in check), 13262af (nudge server-side), 0b9cdd5 (nudge button UI)
+  - Decided against quiet hours (OS-level DND solves it).
 - 2026-05-05: Hub admin lazy-load shipped (commit defefca). `AdminPanel` swapped from static import to `React.lazy` + `<Suspense>` in `LandingPage.jsx`. Verified locally: clicking 🔐 Open lazily fetches AdminPanel + AnnouncementsAdmin + AccessAdmin + GroupsAdmin + ReportsAdmin + ClosedGamesAdmin + AdminsManagement on demand. Production build splits into `AdminPanel-*.js` chunk (30.84 kB / **7.85 kB gzipped**); main entry unchanged at 426 kB / 121 kB gzipped. Non-admin visitors no longer download the admin code.
 - 2026-05-05: Shared admin primitives shipped. Three new shared files (`src/components/admin/AdminList.jsx`, `src/hooks/useAdminQuery.js`, `src/hooks/useUsernameSearch.js`). All 6 hub admin components migrated to use them: ClosedGamesAdmin, AnnouncementsAdmin, ReportsAdmin, AdminsManagement (uses all 3), AccessAdmin, GroupsAdmin. Net -81 lines in consumers, +94 lines in shared; future admin pages start with much less boilerplate. Per-row keyed search in AccessAdmin/GroupsAdmin left inline (would need row-component extraction to share). Lazy chunk grew to 7.97 kB gzipped (+0.12 kB).
 - 2026-04-28: Lobby `GameRow` extracted to `LobbyGameRow.jsx`; `finalizeEndgame` extracted to `gameLogic.js` (commit dd00106).
