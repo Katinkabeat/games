@@ -49,7 +49,7 @@ _(none — Rungles shipped 2026-05-03, see Done)_
 - [ReportsAdmin](../src/components/ReportsAdmin.jsx) (~6 KB)
 - [AnnouncementsAdmin](../src/components/AnnouncementsAdmin.jsx) (~6 KB)
 
-- [ ] **Lazy-load the entire admin bundle** — non-admins should never download this code. Matches the React perf rule (`feedback_react_perf_codesplit`).
+- [x] **Lazy-load the entire admin bundle** — shipped 2026-05-05 (commit defefca). `AdminPanel` swapped to `React.lazy` in `LandingPage.jsx`; AdminPanel + 5 sub-admin components now bundle into a separate 7.85 kB gzipped chunk loaded on-demand.
 - [ ] **Shared admin table/list primitive** — these 5 components likely share table/CRUD UI patterns. Extract once, reuse 5x.
 - [ ] **Hub `LandingPage.jsx`** (~17 KB) and **`SettingsDropdown.jsx`** (~14 KB) — peel logic into hooks.
 
@@ -83,6 +83,7 @@ The hub-as-broker push model scales fine technically (one permission prompt, one
 
 _(move shipped items here with date + commit)_
 
+- 2026-05-05: Hub admin lazy-load shipped (commit defefca). `AdminPanel` swapped from static import to `React.lazy` + `<Suspense>` in `LandingPage.jsx`. Verified locally: clicking 🔐 Open lazily fetches AdminPanel + AnnouncementsAdmin + AccessAdmin + GroupsAdmin + ReportsAdmin + ClosedGamesAdmin + AdminsManagement on demand. Production build splits into `AdminPanel-*.js` chunk (30.84 kB / **7.85 kB gzipped**); main entry unchanged at 426 kB / 121 kB gzipped. Non-admin visitors no longer download the admin code.
 - 2026-04-28: Lobby `GameRow` extracted to `LobbyGameRow.jsx`; `finalizeEndgame` extracted to `gameLogic.js` (commit dd00106).
 - 2026-04-28: GamePage round 1 — extracted `useGameData` hook (state + `loadGame` + realtime + polling + visibility). `GamePage.jsx` 871 → 721 lines (-17%). New file `wordy/src/hooks/useGameData.js` (186 lines). Bundle size +0.17 kB gzipped (acceptable hook-indirection overhead). Verified locally: load, render, settings, dark mode all confirmed by Rae.
 - 2026-05-03: Wordy Tier 1 confirmed shipped (extraction work landed earlier, backlog was stale):
