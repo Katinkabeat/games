@@ -66,7 +66,7 @@ export default function SQBoardShell({
         <div className="lg:hidden max-w-6xl mx-auto w-full">{subHeader}</div>
       ) : null}
 
-      <div className="flex-1 flex flex-col lg:flex-row gap-3 max-w-6xl mx-auto w-full px-1 py-3 lg:p-3">
+      <div className="flex-1 flex flex-col lg:flex-row gap-2 lg:gap-3 max-w-6xl mx-auto w-full px-1 py-2 lg:p-3">
         {scorePanel ? (
           <aside className="lg:w-56 shrink-0">{scorePanel}</aside>
         ) : null}
