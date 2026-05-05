@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import toast from 'react-hot-toast';
 import { supabase } from '../lib/supabase.js';
 import { logEvent } from '../lib/telemetry.js';
@@ -6,8 +6,9 @@ import { migrateToSideQuestPush } from '../lib/pushNotifications.js';
 import { useTheme } from '../contexts/ThemeContext.jsx';
 import SettingsDropdown from './SettingsDropdown.jsx';
 import HubAvatarMenu from './HubAvatarMenu.jsx';
-import AdminPanel from './AdminPanel.jsx';
 import AnnouncementBanner from './AnnouncementBanner.jsx';
+
+const AdminPanel = lazy(() => import('./AdminPanel.jsx'));
 import FriendsView from './FriendsView.jsx';
 import IOSInstallPrompt from './IOSInstallPrompt.jsx';
 import AndroidInstallPrompt from './AndroidInstallPrompt.jsx';
@@ -400,7 +401,9 @@ export default function LandingPage({ session }) {
       </header>
 
       {view === 'admin' ? (
-        <AdminPanel userId={user.id} isMaster={isMaster} permissions={adminPermissions} onBack={() => setView('landing')} />
+        <Suspense fallback={<p className="max-w-[480px] mx-auto px-4 pb-12 text-sm text-wordy-500">Loading admin…</p>}>
+          <AdminPanel userId={user.id} isMaster={isMaster} permissions={adminPermissions} onBack={() => setView('landing')} />
+        </Suspense>
       ) : view === 'friends' ? (
         <FriendsView userId={user.id} onBack={() => setView('landing')} />
       ) : (
