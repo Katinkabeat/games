@@ -29,6 +29,11 @@ export default function SettingsDropdown({
   const [notifyState, setNotifyState] = useState('loading');
   const [notifyBusy, setNotifyBusy] = useState(false);
 
+  // Invitability privacy setting — who can invite this user to games.
+  // 'everyone' | 'friends_only' (default) | 'nobody'.
+  const [invitability, setInvitability] = useState('friends_only');
+  const [savingInvitability, setSavingInvitability] = useState(false);
+
   const [changingPw, setChangingPw] = useState(false);
   const [oldPw, setOldPw] = useState('');
   const [newPw, setNewPw] = useState('');
@@ -53,6 +58,36 @@ export default function SettingsDropdown({
     document.addEventListener('keydown', handleKey);
     return () => document.removeEventListener('keydown', handleKey);
   }, [onClose]);
+
+  // Load current invitability from profiles.
+  useEffect(() => {
+    let active = true;
+    (async () => {
+      const { data } = await supabase
+        .from('profiles')
+        .select('invitability')
+        .eq('id', userId)
+        .maybeSingle();
+      if (active && data?.invitability) setInvitability(data.invitability);
+    })();
+    return () => { active = false; };
+  }, [userId]);
+
+  async function handleInvitabilityChange(next) {
+    if (next === invitability || savingInvitability) return;
+    const prev = invitability;
+    setInvitability(next); // optimistic
+    setSavingInvitability(true);
+    const { error } = await supabase
+      .from('profiles')
+      .update({ invitability: next })
+      .eq('id', userId);
+    setSavingInvitability(false);
+    if (error) {
+      setInvitability(prev);
+      toast.error(error.message);
+    }
+  }
 
   useEffect(() => {
     let active = true;
@@ -274,6 +309,20 @@ export default function SettingsDropdown({
         >
           🔔 Open
         </button>
+      </div>
+
+      <div className="settings-row">
+        <span className="text-sm font-bold text-wordy-600">Invites</span>
+        <select
+          value={invitability}
+          onChange={(e) => handleInvitabilityChange(e.target.value)}
+          disabled={savingInvitability}
+          className="text-sm font-bold text-wordy-700 bg-white border-2 border-wordy-200 hover:border-wordy-400 px-2 py-1 rounded-lg disabled:opacity-60 cursor-pointer"
+        >
+          <option value="everyone">Anyone</option>
+          <option value="friends_only">Friends only</option>
+          <option value="nobody">Nobody</option>
+        </select>
       </div>
 
       <div className="settings-row">
