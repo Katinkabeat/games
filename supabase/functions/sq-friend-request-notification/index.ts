@@ -23,6 +23,30 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
+// Helper: respect the recipient's notification prefs before sending.
+// Calls sq_notification_enabled(user, app, topic) — if false, skip
+// the send entirely. Fail-open on RPC error so a transient DB blip
+// doesn't break the platform.
+async function sendIfOptedIn(
+  supabase: any,
+  userId: string,
+  app: string,
+  topic: string,
+  payload: { title: string; body: string; tag: string; url: string; icon?: string }
+): Promise<{ sent: boolean; reason?: string; via?: string }> {
+  const { data: enabled, error } = await supabase.rpc('sq_notification_enabled', {
+    p_user_id: userId,
+    p_app: app,
+    p_topic: topic,
+  })
+  if (error) {
+    console.error('sq_notification_enabled failed (fail-open):', error)
+  } else if (enabled === false) {
+    return { sent: false, reason: 'opted out' }
+  }
+  return sendPushToUser(supabase, userId, payload)
+}
+
 async function sendPushToUser(
   supabase: any,
   userId: string,
@@ -99,7 +123,7 @@ serve(async (req: Request) => {
       .single()
     const requesterName = profile?.username || 'Someone'
 
-    const result = await sendPushToUser(supabase, recipientId, {
+    const result = await sendIfOptedIn(supabase, recipientId, 'sidequest', 'friend_request', {
       title: "Rae's Side Quest",
       body: `${requesterName} wants to be friends!`,
       tag: `sq-friend-${requesterId}`,
