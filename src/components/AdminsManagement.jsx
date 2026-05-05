@@ -1,6 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
 import toast from 'react-hot-toast';
 import { supabase } from '../lib/supabase.js';
+import { useAdminQuery } from '../hooks/useAdminQuery.js';
+import { useUsernameSearch } from '../hooks/useUsernameSearch.js';
+import AdminList from './admin/AdminList.jsx';
 
 const ALL_PERMISSIONS = [
   {
@@ -16,70 +19,31 @@ const ALL_PERMISSIONS = [
 ];
 
 export default function AdminsManagement({ userId }) {
-  const [admins, setAdmins] = useState([]);
-  const [loading, setLoading] = useState(true);
-
-  const [search, setSearch] = useState('');
-  const [matches, setMatches] = useState([]);
-  const [searching, setSearching] = useState(false);
   const [addingId, setAddingId] = useState(null);
 
-  async function loadAdmins() {
+  const loadAdmins = useCallback(async () => {
     const { data: rows, error } = await supabase
       .from('admins')
       .select('user_id, is_master, permissions, added_by, created_at');
     if (error) {
       toast.error(error.message);
-      setLoading(false);
-      return;
+      return [];
     }
     const userIds = rows.map((r) => r.user_id);
     const { data: profiles } = await supabase
       .from('profiles')
       .select('id, username')
       .in('id', userIds);
-    const merged = rows.map((r) => ({
+    return rows.map((r) => ({
       ...r,
       username: profiles?.find((p) => p.id === r.user_id)?.username ?? '(unknown)',
     }));
-    setAdmins(merged);
-    setLoading(false);
-  }
-
-  useEffect(() => {
-    loadAdmins();
   }, []);
 
-  useEffect(() => {
-    const q = search.trim();
-    if (q.length < 2) {
-      setMatches([]);
-      setSearching(false);
-      return;
-    }
-    let cancelled = false;
-    setSearching(true);
-    const t = setTimeout(async () => {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('id, username')
-        .ilike('username', `%${q}%`)
-        .order('username')
-        .limit(10);
-      if (cancelled) return;
-      setSearching(false);
-      if (error) {
-        toast.error(error.message);
-        return;
-      }
-      const existingIds = new Set(admins.map((a) => a.user_id));
-      setMatches((data || []).map((p) => ({ ...p, alreadyAdmin: existingIds.has(p.id) })));
-    }, 250);
-    return () => {
-      cancelled = true;
-      clearTimeout(t);
-    };
-  }, [search, admins]);
+  const { data: admins, loading, reload, setData: setAdmins } = useAdminQuery(loadAdmins, []);
+  const { term: search, setTerm: setSearch, matches: rawMatches, searching, reset: resetSearch } = useUsernameSearch();
+  const existingIds = new Set(admins.map((a) => a.user_id));
+  const matches = rawMatches.map((p) => ({ ...p, alreadyAdmin: existingIds.has(p.id) }));
 
   async function handleAddAdmin(profile) {
     setAddingId(profile.id);
@@ -95,9 +59,8 @@ export default function AdminsManagement({ userId }) {
       return;
     }
     toast.success(`${profile.username} is now an admin`);
-    setSearch('');
-    setMatches([]);
-    loadAdmins();
+    resetSearch();
+    reload();
   }
 
   async function handleTogglePermission(profile, permKey) {
@@ -134,16 +97,13 @@ export default function AdminsManagement({ userId }) {
       return;
     }
     toast.success(`${profile.username} removed`);
-    loadAdmins();
+    reload();
   }
 
   return (
     <section className="card">
-      {loading ? (
-        <p className="text-sm text-wordy-500">Loading...</p>
-      ) : (
-        <ul className="space-y-1.5 mb-4">
-          {admins.map((a) => (
+      <AdminList loading={loading} items={admins} emptyText="No admins yet." loadingText="Loading..." ulClassName="space-y-1.5 mb-4">
+        {admins.map((a) => (
             <li
               key={a.user_id}
               className="flex items-center justify-between gap-2 p-2.5 rounded-lg bg-wordy-50 text-sm"
@@ -195,8 +155,7 @@ export default function AdminsManagement({ userId }) {
               </div>
             </li>
           ))}
-        </ul>
-      )}
+      </AdminList>
 
       <div className="space-y-2">
         <label className="block text-sm font-bold text-wordy-700">Add admin</label>

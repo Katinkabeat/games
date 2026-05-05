@@ -1,6 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
 import toast from 'react-hot-toast';
 import { supabase } from '../lib/supabase.js';
+import { useAdminQuery } from '../hooks/useAdminQuery.js';
+import AdminList from './admin/AdminList.jsx';
 
 function formatDate(iso) {
   try { return new Date(iso).toLocaleString(); } catch { return iso; }
@@ -14,16 +16,13 @@ function defaultExpiresAt(daysFromNow = 7) {
 }
 
 export default function AnnouncementsAdmin({ userId }) {
-  const [rows, setRows] = useState([]);
-  const [loading, setLoading] = useState(true);
-
   const [body, setBody] = useState('');
   const [severity, setSeverity] = useState('info');
   const [expiresAt, setExpiresAt] = useState(defaultExpiresAt(7));
   const [dismissible, setDismissible] = useState(true);
   const [posting, setPosting] = useState(false);
 
-  async function load() {
+  const loadAnnouncements = useCallback(async () => {
     const { data, error } = await supabase
       .from('announcements')
       .select('id, body, severity, published_at, expires_at, dismissible')
@@ -31,14 +30,12 @@ export default function AnnouncementsAdmin({ userId }) {
       .limit(20);
     if (error) {
       toast.error(error.message);
-      setLoading(false);
-      return;
+      return [];
     }
-    setRows(data || []);
-    setLoading(false);
-  }
+    return data || [];
+  }, []);
 
-  useEffect(() => { load(); }, []);
+  const { data: rows, loading, reload } = useAdminQuery(loadAnnouncements, []);
 
   async function handlePost(e) {
     e.preventDefault();
@@ -65,7 +62,7 @@ export default function AnnouncementsAdmin({ userId }) {
     setSeverity('info');
     setExpiresAt(defaultExpiresAt(7));
     setDismissible(true);
-    load();
+    reload();
   }
 
   async function handleDelete(id) {
@@ -76,7 +73,7 @@ export default function AnnouncementsAdmin({ userId }) {
       return;
     }
     toast.success('Deleted');
-    load();
+    reload();
   }
 
   function statusOf(row) {
@@ -142,40 +139,34 @@ export default function AnnouncementsAdmin({ userId }) {
 
       <div>
         <h4 className="font-bold text-sm text-wordy-700 mb-2">Recent (latest 20)</h4>
-        {loading ? (
-          <p className="text-sm text-wordy-500">Loading…</p>
-        ) : rows.length === 0 ? (
-          <p className="text-sm text-wordy-500">No announcements yet.</p>
-        ) : (
-          <ul className="space-y-2">
-            {rows.map((row) => {
-              const status = statusOf(row);
-              return (
-                <li
-                  key={row.id}
-                  className="flex items-start gap-2 p-2.5 rounded-lg bg-wordy-50 text-sm"
-                >
-                  <div className="min-w-0 flex-1">
-                    <div className="text-wordy-800 whitespace-pre-wrap break-words">{row.body}</div>
-                    <div className="text-xs text-wordy-500 mt-1">
-                      <span className={`font-bold ${status.color}`}>{status.label}</span>
-                      {' · '}
-                      {row.severity}
-                      {' · expires '}
-                      {formatDate(row.expires_at)}
-                    </div>
+        <AdminList loading={loading} items={rows} emptyText="No announcements yet.">
+          {(rows ?? []).map((row) => {
+            const status = statusOf(row);
+            return (
+              <li
+                key={row.id}
+                className="flex items-start gap-2 p-2.5 rounded-lg bg-wordy-50 text-sm"
+              >
+                <div className="min-w-0 flex-1">
+                  <div className="text-wordy-800 whitespace-pre-wrap break-words">{row.body}</div>
+                  <div className="text-xs text-wordy-500 mt-1">
+                    <span className={`font-bold ${status.color}`}>{status.label}</span>
+                    {' · '}
+                    {row.severity}
+                    {' · expires '}
+                    {formatDate(row.expires_at)}
                   </div>
-                  <button
-                    onClick={() => handleDelete(row.id)}
-                    className="text-xs font-bold text-rose-500 hover:text-rose-700 shrink-0"
-                  >
-                    Delete
-                  </button>
-                </li>
-              );
-            })}
-          </ul>
-        )}
+                </div>
+                <button
+                  onClick={() => handleDelete(row.id)}
+                  className="text-xs font-bold text-rose-500 hover:text-rose-700 shrink-0"
+                >
+                  Delete
+                </button>
+              </li>
+            );
+          })}
+        </AdminList>
       </div>
     </section>
   );

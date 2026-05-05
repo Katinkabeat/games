@@ -1,25 +1,22 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
 import { supabase } from '../lib/supabase.js';
+import { useAdminQuery } from '../hooks/useAdminQuery.js';
+import AdminList from './admin/AdminList.jsx';
+
+const EMPTY_DATA = { games: [], accessRows: [], usernames: {}, groups: [], groupMembersByGroup: {} };
 
 export default function AccessAdmin({ userId }) {
-  const [games, setGames] = useState([]);
-  const [accessRows, setAccessRows] = useState([]);
-  const [usernames, setUsernames] = useState({}); // user_id -> username
-  const [loading, setLoading] = useState(true);
-
   const [searchByGame, setSearchByGame] = useState({}); // gameId -> term
   const [matchesByGame, setMatchesByGame] = useState({}); // gameId -> [{id, username}]
   const [busyKey, setBusyKey] = useState(null); // `${gameId}:${userId}` while writing
 
   // Phase 7.5: groups for bulk-grant
-  const [groups, setGroups] = useState([]);
-  const [groupMembersByGroup, setGroupMembersByGroup] = useState({});
   const [selectedGroupByGame, setSelectedGroupByGame] = useState({});
   const [bulkBusyByGame, setBulkBusyByGame] = useState({});
   const [gateBusyByGame, setGateBusyByGame] = useState({});
 
-  async function load() {
+  const loadAccess = useCallback(async () => {
     const [catalogResp, rowsResp, groupsResp, membersResp] = await Promise.all([
       supabase.from('games_catalog').select('id, name, requires_access, is_published').order('sort_order'),
       supabase.from('user_game_access').select('user_id, game_id, status'),
@@ -47,13 +44,17 @@ export default function AccessAdmin({ userId }) {
       grouped[m.group_id].push(m.user_id);
     }
 
-    setGames(catalogResp.data || []);
-    setAccessRows(rows);
-    setUsernames(nameMap);
-    setGroups(groupsResp.data || []);
-    setGroupMembersByGroup(grouped);
-    setLoading(false);
-  }
+    return {
+      games: catalogResp.data || [],
+      accessRows: rows,
+      usernames: nameMap,
+      groups: groupsResp.data || [],
+      groupMembersByGroup: grouped,
+    };
+  }, []);
+
+  const { data, loading, reload } = useAdminQuery(loadAccess, EMPTY_DATA);
+  const { games, accessRows, usernames, groups, groupMembersByGroup } = data;
 
   async function toggleGate(game) {
     const next = !game.requires_access;
@@ -70,7 +71,7 @@ export default function AccessAdmin({ userId }) {
       return;
     }
     toast.success(`${game.name} is now ${next ? 'gated' : 'open to everyone'}`);
-    load();
+    reload();
   }
 
   async function bulkGrantGroup(gameId) {
@@ -101,10 +102,8 @@ export default function AccessAdmin({ userId }) {
     }
     toast.success(`Granted ${memberIds.length} member${memberIds.length === 1 ? '' : 's'} access`);
     setSelectedGroupByGame((prev) => ({ ...prev, [gameId]: '' }));
-    load();
+    reload();
   }
-
-  useEffect(() => { load(); }, []);
 
   // Debounced user search per game
   useEffect(() => {
@@ -154,7 +153,7 @@ export default function AccessAdmin({ userId }) {
     toast.success(`${profile.username} can now play ${gameId}`);
     setSearchByGame((prev) => ({ ...prev, [gameId]: '' }));
     setMatchesByGame((prev) => ({ ...prev, [gameId]: [] }));
-    load();
+    reload();
   }
 
   async function removeAllow(gameId, targetUserId, username) {
@@ -169,7 +168,7 @@ export default function AccessAdmin({ userId }) {
       return;
     }
     toast.success('Removed');
-    load();
+    reload();
   }
 
   return (
@@ -180,13 +179,8 @@ export default function AccessAdmin({ userId }) {
         the rest are open to all signed-in users.
       </p>
 
-      {loading ? (
-        <p className="text-sm text-wordy-500">Loading…</p>
-      ) : games.length === 0 ? (
-        <p className="text-sm text-wordy-500">No games in catalog yet.</p>
-      ) : (
-        <ul className="space-y-4">
-          {games.map((game) => {
+      <AdminList loading={loading} items={games} emptyText="No games in catalog yet." ulClassName="space-y-4">
+        {games.map((game) => {
             const allowed = accessRows.filter((r) => r.game_id === game.id && r.status === 'allowed');
             const term = searchByGame[game.id] || '';
             const matches = matchesByGame[game.id] || [];
@@ -303,8 +297,7 @@ export default function AccessAdmin({ userId }) {
               </li>
             );
           })}
-        </ul>
-      )}
+      </AdminList>
     </section>
   );
 }

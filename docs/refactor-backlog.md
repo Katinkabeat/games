@@ -50,7 +50,7 @@ _(none — Rungles shipped 2026-05-03, see Done)_
 - [AnnouncementsAdmin](../src/components/AnnouncementsAdmin.jsx) (~6 KB)
 
 - [x] **Lazy-load the entire admin bundle** — shipped 2026-05-05 (commit defefca). `AdminPanel` swapped to `React.lazy` in `LandingPage.jsx`; AdminPanel + 5 sub-admin components now bundle into a separate 7.85 kB gzipped chunk loaded on-demand.
-- [ ] **Shared admin table/list primitive** — these 5 components likely share table/CRUD UI patterns. Extract once, reuse 5x.
+- [x] **Shared admin primitives** — shipped 2026-05-05. Three primitives in `src/components/admin/AdminList.jsx`, `src/hooks/useAdminQuery.js`, `src/hooks/useUsernameSearch.js`. All 6 hub admin components migrated. Per-row keyed search in AccessAdmin/GroupsAdmin kept inline (would need row-component extraction to share, deferred).
 - [ ] **Hub `LandingPage.jsx`** (~17 KB) and **`SettingsDropdown.jsx`** (~14 KB) — peel logic into hooks.
 
 ## Tier 3: cross-game extraction (highest leverage, highest risk)
@@ -84,6 +84,7 @@ The hub-as-broker push model scales fine technically (one permission prompt, one
 _(move shipped items here with date + commit)_
 
 - 2026-05-05: Hub admin lazy-load shipped (commit defefca). `AdminPanel` swapped from static import to `React.lazy` + `<Suspense>` in `LandingPage.jsx`. Verified locally: clicking 🔐 Open lazily fetches AdminPanel + AnnouncementsAdmin + AccessAdmin + GroupsAdmin + ReportsAdmin + ClosedGamesAdmin + AdminsManagement on demand. Production build splits into `AdminPanel-*.js` chunk (30.84 kB / **7.85 kB gzipped**); main entry unchanged at 426 kB / 121 kB gzipped. Non-admin visitors no longer download the admin code.
+- 2026-05-05: Shared admin primitives shipped. Three new shared files (`src/components/admin/AdminList.jsx`, `src/hooks/useAdminQuery.js`, `src/hooks/useUsernameSearch.js`). All 6 hub admin components migrated to use them: ClosedGamesAdmin, AnnouncementsAdmin, ReportsAdmin, AdminsManagement (uses all 3), AccessAdmin, GroupsAdmin. Net -81 lines in consumers, +94 lines in shared; future admin pages start with much less boilerplate. Per-row keyed search in AccessAdmin/GroupsAdmin left inline (would need row-component extraction to share). Lazy chunk grew to 7.97 kB gzipped (+0.12 kB).
 - 2026-04-28: Lobby `GameRow` extracted to `LobbyGameRow.jsx`; `finalizeEndgame` extracted to `gameLogic.js` (commit dd00106).
 - 2026-04-28: GamePage round 1 — extracted `useGameData` hook (state + `loadGame` + realtime + polling + visibility). `GamePage.jsx` 871 → 721 lines (-17%). New file `wordy/src/hooks/useGameData.js` (186 lines). Bundle size +0.17 kB gzipped (acceptable hook-indirection overhead). Verified locally: load, render, settings, dark mode all confirmed by Rae.
 - 2026-05-03: Wordy Tier 1 confirmed shipped (extraction work landed earlier, backlog was stale):

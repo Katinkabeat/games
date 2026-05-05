@@ -1,15 +1,13 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
 import { supabase } from '../lib/supabase.js';
+import { useAdminQuery } from '../hooks/useAdminQuery.js';
+import AdminList from './admin/AdminList.jsx';
 
 const ID_RE = /^[a-z][a-z0-9-]{1,49}$/;
+const EMPTY_DATA = { groups: [], members: [], usernames: {} };
 
 export default function GroupsAdmin({ userId }) {
-  const [groups, setGroups] = useState([]);
-  const [members, setMembers] = useState([]);
-  const [usernames, setUsernames] = useState({});
-  const [loading, setLoading] = useState(true);
-
   const [newId, setNewId] = useState('');
   const [newName, setNewName] = useState('');
   const [newDesc, setNewDesc] = useState('');
@@ -19,7 +17,7 @@ export default function GroupsAdmin({ userId }) {
   const [matchesByGroup, setMatchesByGroup] = useState({});
   const [busyKey, setBusyKey] = useState(null);
 
-  async function load() {
+  const loadGroups = useCallback(async () => {
     const [gResp, mResp] = await Promise.all([
       supabase.from('user_groups').select('id, name, description, created_at').order('created_at', { ascending: false }),
       supabase.from('user_group_members').select('group_id, user_id, expires_at, created_at'),
@@ -34,13 +32,15 @@ export default function GroupsAdmin({ userId }) {
       for (const p of profiles || []) nameMap[p.id] = p.username;
     }
 
-    setGroups(gResp.data || []);
-    setMembers(mResp.data || []);
-    setUsernames(nameMap);
-    setLoading(false);
-  }
+    return {
+      groups: gResp.data || [],
+      members: mResp.data || [],
+      usernames: nameMap,
+    };
+  }, []);
 
-  useEffect(() => { load(); }, []);
+  const { data, loading, reload } = useAdminQuery(loadGroups, EMPTY_DATA);
+  const { groups, members, usernames } = data;
 
   useEffect(() => {
     const timers = [];
@@ -98,7 +98,7 @@ export default function GroupsAdmin({ userId }) {
     setNewId('');
     setNewName('');
     setNewDesc('');
-    load();
+    reload();
   }
 
   async function deleteGroup(group) {
@@ -109,7 +109,7 @@ export default function GroupsAdmin({ userId }) {
       return;
     }
     toast.success('Deleted');
-    load();
+    reload();
   }
 
   async function addMember(groupId, profile) {
@@ -128,7 +128,7 @@ export default function GroupsAdmin({ userId }) {
     toast.success(`${profile.username} added`);
     setSearchByGroup((prev) => ({ ...prev, [groupId]: '' }));
     setMatchesByGroup((prev) => ({ ...prev, [groupId]: [] }));
-    load();
+    reload();
   }
 
   async function removeMember(groupId, targetUserId, username) {
@@ -143,7 +143,7 @@ export default function GroupsAdmin({ userId }) {
       return;
     }
     toast.success('Removed');
-    load();
+    reload();
   }
 
   return (
@@ -182,13 +182,8 @@ export default function GroupsAdmin({ userId }) {
         </button>
       </form>
 
-      {loading ? (
-        <p className="text-sm text-wordy-500">Loading…</p>
-      ) : groups.length === 0 ? (
-        <p className="text-sm text-wordy-500">No groups yet.</p>
-      ) : (
-        <ul className="space-y-3">
-          {groups.map((g) => {
+      <AdminList loading={loading} items={groups} emptyText="No groups yet." ulClassName="space-y-3">
+        {groups.map((g) => {
             const groupMembers = members.filter((m) => m.group_id === g.id);
             const term = searchByGroup[g.id] || '';
             const matches = matchesByGroup[g.id] || [];
@@ -262,8 +257,7 @@ export default function GroupsAdmin({ userId }) {
               </li>
             );
           })}
-        </ul>
-      )}
+      </AdminList>
     </section>
   );
 }

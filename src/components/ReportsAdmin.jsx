@@ -1,20 +1,19 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
 import toast from 'react-hot-toast';
 import { supabase } from '../lib/supabase.js';
+import { useAdminQuery } from '../hooks/useAdminQuery.js';
+import AdminList from './admin/AdminList.jsx';
 
 function formatDate(iso) {
   try { return new Date(iso).toLocaleString(); } catch { return iso; }
 }
 
 export default function ReportsAdmin({ userId }) {
-  const [rows, setRows] = useState([]);
-  const [usernames, setUsernames] = useState({});
-  const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState(null);
   const [showResolved, setShowResolved] = useState(false);
   const [notesById, setNotesById] = useState({});
 
-  async function load() {
+  const loadReports = useCallback(async () => {
     const { data, error } = await supabase
       .from('reports')
       .select('id, reporter, reported, reported_username, game, reason, status, reviewed_by, reviewed_at, reviewer_notes, created_at')
@@ -22,8 +21,7 @@ export default function ReportsAdmin({ userId }) {
       .limit(100);
     if (error) {
       toast.error(error.message);
-      setLoading(false);
-      return;
+      return { rows: [], usernames: {} };
     }
 
     const ids = new Set();
@@ -40,12 +38,11 @@ export default function ReportsAdmin({ userId }) {
       for (const p of profiles || []) nameMap[p.id] = p.username;
     }
 
-    setRows(data || []);
-    setUsernames(nameMap);
-    setLoading(false);
-  }
+    return { rows: data || [], usernames: nameMap };
+  }, []);
 
-  useEffect(() => { load(); }, []);
+  const { data, loading, reload } = useAdminQuery(loadReports, { rows: [], usernames: {} });
+  const { rows, usernames } = data;
 
   async function setStatus(report, newStatus) {
     setBusyId(report.id);
@@ -64,7 +61,7 @@ export default function ReportsAdmin({ userId }) {
       return;
     }
     toast.success(newStatus === 'reviewed' ? 'Marked reviewed' : 'Dismissed');
-    load();
+    reload();
   }
 
   const open = rows.filter((r) => r.status === 'open');
@@ -80,12 +77,9 @@ export default function ReportsAdmin({ userId }) {
         <p className="text-sm text-wordy-500">Loading…</p>
       ) : (
         <>
-          {open.length === 0 ? (
-            <p className="text-sm text-wordy-500 mb-3">No open reports. 🎉</p>
-          ) : (
-            <ul className="space-y-3 mb-3">
-              {open.map((r) => (
-                <li key={r.id} className="rounded-lg bg-wordy-50 p-3">
+          <AdminList loading={false} items={open} emptyText="No open reports. 🎉" ulClassName="space-y-3 mb-3">
+            {open.map((r) => (
+              <li key={r.id} className="rounded-lg bg-wordy-50 p-3">
                   <div className="text-xs text-wordy-500 mb-1">
                     <span className="font-bold text-wordy-700">{usernames[r.reporter] || '(unknown)'}</span>
                     {' reported '}
@@ -120,8 +114,7 @@ export default function ReportsAdmin({ userId }) {
                   </div>
                 </li>
               ))}
-            </ul>
-          )}
+          </AdminList>
 
           {resolved.length > 0 && (
             <div>
