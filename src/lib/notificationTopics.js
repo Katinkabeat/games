@@ -1,0 +1,48 @@
+// Central config for the notifications panel. Single source of truth
+// for which apps + topics exist and how they show in the UI.
+//
+// To add a new game: append a row to APPS. To add a new topic for
+// an existing game: extend its `topics` list. The Postgres-side
+// default-resolver (sq_notification_default) is the authority on
+// opt-in defaults; this file is just labels.
+
+export const APPS = [
+  {
+    key: 'wordy',
+    label: 'Wordy',
+    icon: 'W',
+    gradient: 'from-wordy-600 to-wordy-800',
+    topics: ['your_turn', 'invite', 'nudge', 'opponent_joined'],
+  },
+  {
+    key: 'rungles',
+    label: 'Rungles',
+    icon: 'R',
+    gradient: 'from-wordy-600 to-wordy-800',
+    topics: ['your_turn', 'invite', 'nudge', 'opponent_joined'],
+  },
+  {
+    key: 'snibble',
+    label: 'Snibble',
+    icon: 'S',
+    gradient: 'from-wordy-600 to-wordy-800',
+    topics: ['your_turn', 'invite', 'nudge', 'opponent_joined'],
+  },
+  {
+    key: 'sidequest',
+    label: 'SideQuest',
+    icon: '🎯',
+    gradient: 'from-wordy-600 to-wordy-800',
+    topics: ['friend_request'],
+  },
+];
+
+// Display label + short description per topic. Descriptions appear
+// in a smaller line under the toggle row.
+export const TOPICS = {
+  your_turn:       { label: 'Your turn',      description: 'Your opponent played; you’re up.' },
+  invite:          { label: 'Game invites',   description: 'A friend invited you to a match.' },
+  nudge:           { label: 'Nudges',         description: 'A friend pinged you to take your turn.' },
+  opponent_joined: { label: 'Opponent joined', description: 'Someone joined a match you started.' },
+  friend_request:  { label: 'Friend requests', description: 'Someone wants to be friends.' },
+};

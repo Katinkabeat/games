@@ -19,6 +19,7 @@ export default function SettingsDropdown({
   pendingFriendCount = 0,
   onOpenAdmin,
   onOpenFriends,
+  onOpenNotifications,
   onLogout,
   onClose,
   userId,
@@ -264,15 +265,14 @@ export default function SettingsDropdown({
       <div className="settings-row">
         <span className="text-sm font-bold text-wordy-600">Notifications</span>
         <button
-          onClick={handleToggleNotify}
-          disabled={notifyBusy || notifyState === 'loading' || notifyState === 'unsupported'}
-          className="text-sm font-bold text-wordy-700 hover:text-wordy-500 transition-colors disabled:opacity-60"
+          onClick={() => {
+            onOpenNotifications?.();
+            onClose();
+          }}
+          disabled={notifyState === 'unsupported'}
+          className="text-sm font-bold text-wordy-700 hover:text-wordy-500 transition-colors disabled:opacity-50"
         >
-          {notifyState === 'loading' && '…'}
-          {notifyState === 'on' && '🔔 On'}
-          {notifyState === 'off' && '🔕 Off'}
-          {notifyState === 'denied' && 'Blocked'}
-          {notifyState === 'unsupported' && 'Not supported'}
+          🔔 Open
         </button>
       </div>
 

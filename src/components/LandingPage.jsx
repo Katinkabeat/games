@@ -9,6 +9,7 @@ import HubAvatarMenu from './HubAvatarMenu.jsx';
 import AnnouncementBanner from './AnnouncementBanner.jsx';
 
 const AdminPanel = lazy(() => import('./AdminPanel.jsx'));
+const NotificationsPanel = lazy(() => import('./NotificationsPanel.jsx'));
 import FriendsView from './FriendsView.jsx';
 import IOSInstallPrompt from './IOSInstallPrompt.jsx';
 import AndroidInstallPrompt from './AndroidInstallPrompt.jsx';
@@ -427,6 +428,7 @@ export default function LandingPage({ session }) {
                 pendingFriendCount={pendingFriendCount}
                 onOpenAdmin={() => setView('admin')}
                 onOpenFriends={() => setView('friends')}
+                onOpenNotifications={() => setView('notifications')}
                 onLogout={handleLogout}
                 onClose={() => setSettingsOpen(false)}
               />
@@ -438,6 +440,10 @@ export default function LandingPage({ session }) {
       {view === 'admin' ? (
         <Suspense fallback={<p className="max-w-[480px] mx-auto px-4 pb-12 text-sm text-wordy-500">Loading admin…</p>}>
           <AdminPanel userId={user.id} isMaster={isMaster} permissions={adminPermissions} onBack={() => setView('landing')} />
+        </Suspense>
+      ) : view === 'notifications' ? (
+        <Suspense fallback={<p className="max-w-[480px] mx-auto px-4 pb-12 text-sm text-wordy-500">Loading notifications…</p>}>
+          <NotificationsPanel onBack={() => setView('landing')} />
         </Suspense>
       ) : view === 'friends' ? (
         <FriendsView userId={user.id} onBack={() => setView('landing')} />
