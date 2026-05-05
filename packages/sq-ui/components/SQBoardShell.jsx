@@ -36,12 +36,12 @@ export default function SQBoardShell({
     // wide-mode alignment). Children get their own px-4 inset.
     return (
       <div
-        className={`min-h-screen flex flex-col bg-gradient-to-br from-wordy-50 to-pink-50 dark:bg-[#0f0a1e] dark:bg-none ${className}`.trim()}
+        className={`min-h-screen min-h-dvh flex flex-col bg-gradient-to-br from-wordy-50 to-pink-50 dark:bg-[#0f0a1e] dark:bg-none ${className}`.trim()}
       >
         {header}
-        <div className="flex-1 flex flex-col max-w-[480px] mx-auto w-full">
+        <div className="flex-1 min-h-0 flex flex-col max-w-[480px] mx-auto w-full">
           {subHeader}
-          <div className="flex-1 flex flex-col px-4 pb-3">
+          <div className="flex-1 min-h-0 flex flex-col px-4 pb-3">
             {children}
           </div>
         </div>
@@ -57,7 +57,7 @@ export default function SQBoardShell({
   // Wide layout — Wordy's pattern. max-w-6xl with optional score sidebar.
   return (
     <div
-      className={`min-h-screen flex flex-col bg-gradient-to-br from-wordy-50 to-pink-50 dark:bg-[#0f0a1e] dark:bg-none ${className}`.trim()}
+      className={`min-h-screen min-h-dvh flex flex-col bg-gradient-to-br from-wordy-50 to-pink-50 dark:bg-[#0f0a1e] dark:bg-none ${className}`.trim()}
     >
       {header}
 
@@ -66,16 +66,16 @@ export default function SQBoardShell({
         <div className="lg:hidden max-w-6xl mx-auto w-full">{subHeader}</div>
       ) : null}
 
-      <div className="flex-1 flex flex-col lg:flex-row gap-2 lg:gap-3 max-w-6xl mx-auto w-full px-1 py-2 lg:p-3">
+      <div className="flex-1 min-h-0 flex flex-col lg:flex-row gap-2 lg:gap-3 max-w-6xl mx-auto w-full px-1 py-2 lg:p-3">
         {scorePanel ? (
           <aside className="lg:w-56 shrink-0">{scorePanel}</aside>
         ) : null}
-        <div className="flex-1 min-w-0 flex flex-col">
+        <div className="flex-1 min-w-0 min-h-0 flex flex-col">
           {/* Desktop sub-header: inside the play column. */}
           {subHeader ? (
             <div className="hidden lg:block">{subHeader}</div>
           ) : null}
-          <div className="flex-1 flex items-center justify-center">
+          <div className="flex-1 min-h-0 flex items-center justify-center">
             {children}
           </div>
         </div>
