@@ -42,24 +42,16 @@ _(none — Rungles shipped 2026-05-03, see Done)_
 
 ## Tier 2: hub admin sprawl
 
-5 admin components totaling ~50 KB on the hub:
-- [AccessAdmin](../src/components/AccessAdmin.jsx) (~12 KB)
-- [GroupsAdmin](../src/components/GroupsAdmin.jsx) (~10 KB)
-- [AdminPanel](../src/components/AdminPanel.jsx) (~8 KB)
-- [ReportsAdmin](../src/components/ReportsAdmin.jsx) (~6 KB)
-- [AnnouncementsAdmin](../src/components/AnnouncementsAdmin.jsx) (~6 KB)
+- [x] **Lazy-load the entire admin bundle** — shipped 2026-05-05 (commit defefca). See Done.
+- [x] **Shared admin primitives** — shipped 2026-05-05 (commit 050aa87). See Done.
+- [ ] **Hub `LandingPage.jsx`** (~17 KB) and **`SettingsDropdown.jsx`** (~14 KB) — peel logic into hooks. **Lower priority** (2026-05-05): file works fine, no current pain when editing it. Revisit when the next hub feature feels gnarly to add. Risks (`useEffect` realtime+polling state machine, stale closures on `userId`) > current pain.
+- [ ] **Per-row keyed search in AccessAdmin/GroupsAdmin** — left inline during the admin primitives shipped 2026-05-05. Sharing it would require extracting `<AccessAdminRow>` / `<GroupsAdminRow>` sub-components so each row can call `useUsernameSearch` directly. Do this if a 7th admin page wants per-row search; otherwise skip.
 
-- [x] **Lazy-load the entire admin bundle** — shipped 2026-05-05 (commit defefca). `AdminPanel` swapped to `React.lazy` in `LandingPage.jsx`; AdminPanel + 5 sub-admin components now bundle into a separate 7.85 kB gzipped chunk loaded on-demand.
-- [x] **Shared admin primitives** — shipped 2026-05-05. Three primitives in `src/components/admin/AdminList.jsx`, `src/hooks/useAdminQuery.js`, `src/hooks/useUsernameSearch.js`. All 6 hub admin components migrated. Per-row keyed search in AccessAdmin/GroupsAdmin kept inline (would need row-component extraction to share, deferred).
-- [ ] **Hub `LandingPage.jsx`** (~17 KB) and **`SettingsDropdown.jsx`** (~14 KB) — peel logic into hooks.
+## Tier 3: cross-game extraction (audited 2026-05-05 — most are shipped or not worth doing)
 
-## Tier 3: cross-game extraction (highest leverage, highest risk)
-
-**Defer until after Snibble ships** — designing shared abstractions from 2 examples is premature; 3 clarifies the shape.
-
-- [ ] **Shared `@sq/game-core`** — Wordy's `gameLogic.js` + Rungles' `lobbyService.js` / `matchService.js` likely have overlapping primitives (turn state, move validation shells, game lifecycle).
-- [ ] **Push-notification dedupe** — hub `pushNotifications.js` + per-game registration code. Unified notifications shipped 2026-04-24, so this is now consolidatable.
-- [ ] **Shared game shell** — game-page chrome (header, settings menu, end-game banner) is duplicated across Wordy + Rungles + soon Snibble. House style is locked (`feedback_word_game_style`); extract once.
+- [~] **Shared lobby header** — only real remaining cross-game duplication. `RunglesHeader.jsx` + `SnibbleHeader.jsx` are nearly identical (sticky bar with avatar + title + 🏠 + ⚙️). `sq-ui` already ships `SQLobbyHeader` (Wordy uses it). Fix: extend `SQLobbyHeader` to accept `title` + dropdown slot props, migrate both games. ~40 lines saved per game; low-risk, ~1-2 hours.
+- [✗] ~~Shared `@sq/game-core`~~ — **decided against 2026-05-05**. Three games are too different: Wordy is Scrabble (board placement), Rungles is linear ladder-climbing, Snibble is round-based puzzles. No shared game loop, turn shape, or state model. Forcing a shared core would be a bad abstraction.
+- [✗] ~~Push-notification dedupe~~ — **already shipped** in Phase 8.5 (2026-04-24 unified push migration). Hub `pushNotifications.js` is canonical; per-game files were removed. The hub's `migrateToSideQuestPush()` even cleans up legacy `push_subscriptions` rows where `app IN ('wordy', 'rungles')`. Nothing left to consolidate.
 
 ## Notifications — settings UX (flagged 2026-05-02)
 
