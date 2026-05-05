@@ -24,6 +24,12 @@ export default function NotificationsPanel({ onBack }) {
   const [notifyState, setNotifyState] = useState('loading');
   const [notifyBusy, setNotifyBusy] = useState(false);
 
+  // Pre-permission primer — shown the first time a user taps "Turn on"
+  // before we trigger the OS dialog. Doubles opt-in rate per industry
+  // research (Mixpanel, Leanplum). Only fires when permission is
+  // 'default' (never been asked).
+  const [showPrimer, setShowPrimer] = useState(false);
+
   useEffect(() => {
     let active = true;
     (async () => {
@@ -44,27 +50,52 @@ export default function NotificationsPanel({ onBack }) {
 
   async function handleToggleNotify() {
     if (notifyBusy) return;
-    setNotifyBusy(true);
-    try {
-      if (notifyState === 'on') {
+    if (notifyState === 'on') {
+      setNotifyBusy(true);
+      try {
         await unsubscribeFromPush();
         setNotifyState('off');
         toast.success('Notifications turned off');
-      } else {
-        const result = await subscribeToPush();
-        if (result === 'denied') {
-          setNotifyState('denied');
-          toast.error('Permission denied — enable in your browser settings');
-        } else if (result) {
-          setNotifyState('on');
-          toast.success('Notifications turned on');
-        }
+      } catch (err) {
+        toast.error(err.message || String(err));
+      } finally {
+        setNotifyBusy(false);
+      }
+      return;
+    }
+    // Turning on: show the primer first if we've never asked the OS yet.
+    // For users who previously granted then unsubscribed, skip straight
+    // to subscribe — they already know what they signed up for.
+    const perm = getPushPermissionState();
+    if (perm === 'default') {
+      setShowPrimer(true);
+      return;
+    }
+    await actuallySubscribe();
+  }
+
+  async function actuallySubscribe() {
+    if (notifyBusy) return;
+    setNotifyBusy(true);
+    try {
+      const result = await subscribeToPush();
+      if (result === 'denied') {
+        setNotifyState('denied');
+        toast.error('Permission denied — enable in your browser settings');
+      } else if (result) {
+        setNotifyState('on');
+        toast.success('Notifications turned on');
       }
     } catch (err) {
       toast.error(err.message || String(err));
     } finally {
       setNotifyBusy(false);
     }
+  }
+
+  function handlePrimerConfirm() {
+    setShowPrimer(false);
+    actuallySubscribe();
   }
 
   if (prefs.loading) {
@@ -97,6 +128,13 @@ export default function NotificationsPanel({ onBack }) {
 
   return (
     <main className="max-w-[480px] mx-auto px-4 pb-12 space-y-4">
+      {showPrimer && (
+        <PrimerModal
+          onConfirm={handlePrimerConfirm}
+          onCancel={() => setShowPrimer(false)}
+        />
+      )}
+
       <div className="flex items-center justify-between">
         <h2 className="font-display text-2xl text-wordy-800">Notifications</h2>
         <button
@@ -168,5 +206,60 @@ export default function NotificationsPanel({ onBack }) {
         })}
       </ul>
     </main>
+  );
+}
+
+// Pre-permission primer. Shown ONCE the first time a user taps
+// "Turn on" — explains what they'll get pinged about and gives a
+// graceful out (Cancel doesn't burn the OS permission prompt, so
+// they can be re-asked later). After "Got it", the OS permission
+// dialog fires.
+function PrimerModal({ onConfirm, onCancel }) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 p-4">
+      <div className="w-full max-w-sm card p-6 space-y-4">
+        <div className="text-center">
+          <div className="text-5xl mb-2">🔔</div>
+          <h3 className="font-display text-xl text-wordy-800">
+            Get pings when it's your turn
+          </h3>
+        </div>
+
+        <ul className="space-y-2 text-sm text-wordy-700">
+          <li className="flex items-start gap-2">
+            <span className="text-wordy-500">•</span>
+            <span>A friend takes their turn and you're up next</span>
+          </li>
+          <li className="flex items-start gap-2">
+            <span className="text-wordy-500">•</span>
+            <span>Someone invites you to a match</span>
+          </li>
+          <li className="flex items-start gap-2">
+            <span className="text-wordy-500">•</span>
+            <span>A friend request arrives</span>
+          </li>
+        </ul>
+
+        <p className="text-xs text-wordy-500">
+          You can pick exactly which games and events to ping you about
+          on the next screen, and change anytime in Settings.
+        </p>
+
+        <div className="flex flex-col gap-2 pt-1">
+          <button
+            onClick={onConfirm}
+            className="btn-primary w-full text-sm"
+          >
+            Got it — ask my browser
+          </button>
+          <button
+            onClick={onCancel}
+            className="text-sm font-bold text-wordy-500 hover:text-wordy-700 transition-colors"
+          >
+            Not now
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }
