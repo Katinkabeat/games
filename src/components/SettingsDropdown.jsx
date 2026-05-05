@@ -313,16 +313,11 @@ export default function SettingsDropdown({
 
       <div className="settings-row">
         <span className="text-sm font-bold text-wordy-600">Invites</span>
-        <select
+        <InvitabilityPicker
           value={invitability}
-          onChange={(e) => handleInvitabilityChange(e.target.value)}
           disabled={savingInvitability}
-          className="text-sm font-bold text-wordy-700 bg-white border-2 border-wordy-200 hover:border-wordy-400 px-2 py-1 rounded-lg disabled:opacity-60 cursor-pointer"
-        >
-          <option value="everyone">Anyone</option>
-          <option value="friends_only">Friends only</option>
-          <option value="nobody">Nobody</option>
-        </select>
+          onChange={handleInvitabilityChange}
+        />
       </div>
 
       <div className="settings-row">
@@ -369,6 +364,79 @@ export default function SettingsDropdown({
           Log out
         </button>
       </div>
+    </div>
+  );
+}
+
+// Custom three-option picker for profiles.invitability. We use this
+// instead of a native <select> because the OS-rendered open popup
+// doesn't reliably respect color-scheme: dark across browsers, and
+// the result is a blinding white menu in dark mode.
+const INVITE_OPTIONS = [
+  { value: 'everyone',     label: 'Anyone' },
+  { value: 'friends_only', label: 'Friends only' },
+  { value: 'nobody',       label: 'Nobody' },
+];
+
+function InvitabilityPicker({ value, disabled, onChange }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+
+  useEffect(() => {
+    if (!open) return;
+    function handleClick(e) {
+      if (ref.current && !ref.current.contains(e.target)) setOpen(false);
+    }
+    function handleKey(e) {
+      if (e.key === 'Escape') setOpen(false);
+    }
+    document.addEventListener('mousedown', handleClick);
+    document.addEventListener('keydown', handleKey);
+    return () => {
+      document.removeEventListener('mousedown', handleClick);
+      document.removeEventListener('keydown', handleKey);
+    };
+  }, [open]);
+
+  const current = INVITE_OPTIONS.find((o) => o.value === value) ?? INVITE_OPTIONS[1];
+
+  return (
+    <div className="relative" ref={ref}>
+      <button
+        type="button"
+        onClick={() => !disabled && setOpen((v) => !v)}
+        disabled={disabled}
+        className="text-sm font-bold text-wordy-700 bg-white border-2 border-wordy-200 hover:border-wordy-400 px-2 py-1 rounded-lg disabled:opacity-60 cursor-pointer flex items-center gap-1"
+      >
+        <span>{current.label}</span>
+        <span className="text-xs text-wordy-400">▾</span>
+      </button>
+      {open && (
+        <ul className="absolute right-0 top-full mt-1 w-32 card dropdown-surface p-1 z-50 shadow-lg space-y-0.5">
+          {INVITE_OPTIONS.map((opt) => {
+            const selected = opt.value === value;
+            return (
+              <li key={opt.value}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setOpen(false);
+                    onChange(opt.value);
+                  }}
+                  className={`w-full text-left text-sm font-bold px-2 py-1.5 rounded-md transition-colors ${
+                    selected
+                      ? 'text-wordy-700 bg-wordy-50'
+                      : 'text-wordy-700 hover:bg-wordy-50'
+                  }`}
+                >
+                  {selected ? '✓ ' : '   '}
+                  {opt.label}
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+      )}
     </div>
   );
 }
