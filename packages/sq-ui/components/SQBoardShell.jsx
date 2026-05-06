@@ -16,13 +16,14 @@
 //     board, so it tracks the board's left/right edges.
 // In narrow mode, subHeader always sits between top banner and content.
 //
-// Layout note (2026-05-06): Shell is CSS Grid, not flex-col. Firefox has
-// a known bug where `position: sticky` children inside a flex container
-// aren't subtracted from flex layout (Mozilla bugs 1488080, 946235), so
-// the main row would grow into the sticky action bar's space — board
-// overflowed behind the action bar on Firefox Android even though Chrome
-// handled it fine. Grid gives each child an explicit row, so the action
-// bar's height is always reserved.
+// Layout note (2026-05-06): Shell is CSS Grid, not flex-col, AND the
+// action bar is plain `position: static` (not sticky). Firefox has a
+// known bug (Mozilla 1585254) where `position: sticky bottom: 0` inside
+// flex OR grid containers hides content / fails to reserve space. With
+// grid `grid-rows-[auto_(auto)_minmax(0,1fr)_auto]`, the action bar
+// already lives in the last row at the bottom of the shell, and the
+// shell is `min-h-dvh` (viewport height), so we don't need sticky to
+// keep it visible — the layout puts it there.
 //
 // Style spec: ../../../docs/sq-style-spec.md §3
 
@@ -54,7 +55,7 @@ export default function SQBoardShell({
           </div>
         </div>
         {actionBar ? (
-          <div className="sticky bottom-0 z-20 bg-white dark:bg-[#1a1130] border-t border-purple-100 dark:border-[#2d1b55]">
+          <div className="z-20 bg-white dark:bg-[#1a1130] border-t border-purple-100 dark:border-[#2d1b55]">
             {actionBar}
           </div>
         ) : null}
