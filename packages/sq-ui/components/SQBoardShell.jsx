@@ -1,6 +1,8 @@
+import { useState, useCallback, useRef, useEffect } from 'react';
+
 // Board page shell — wraps the standard SQ in-game chrome.
 // Top banner header, optional inline sub-header (back link + status +
-// game-specific badges), flexible play area, sticky action bar.
+// game-specific badges), flexible play area, fixed-position action bar.
 //
 // Two width modes:
 //   width="wide"   (default) — Wordy's pattern. max-w-6xl, lg:flex-row
@@ -16,16 +18,18 @@
 //     board, so it tracks the board's left/right edges.
 // In narrow mode, subHeader always sits between top banner and content.
 //
-// Layout note (2026-05-06): Shell is CSS Grid (rows = header,
-// optional sub-header, main 1fr, action bar), height EXACTLY h-dvh
-// (not min-h-dvh) with overflow hidden so the grid can't grow past
-// the viewport and push the action bar off-screen. Action bar is
-// plain `position: static` (not sticky). Firefox has a known bug
-// (Mozilla 1585254) where `position: sticky bottom: 0` inside flex
-// OR grid containers hides content / fails to reserve space — grid
-// rows give us the bottom-pinned action bar without needing sticky
-// at all. The board is sized to the measured main-row height by
-// GamePage's ResizeObserver, so the board never overflows it.
+// Action bar — Firefox bug workaround (2026-05-06):
+//   Firefox has a known bug (Mozilla 1488080, 946235, 1585254) where
+//   `position: sticky bottom: 0` inside flex OR grid containers fails
+//   to reserve space — the wrapper grows past the action bar's row,
+//   the centred board overflows behind it, and the bottom row appears
+//   mashed against the action bar. Chrome handles all of this fine.
+//
+//   Workaround: action bar is `position: fixed bottom: 0` (anchored to
+//   viewport, never participates in shell layout). The shell measures
+//   the action bar's offsetHeight via ResizeObserver and sets a CSS
+//   custom property + matching paddingBottom so the play area never
+//   overlaps it.
 //
 // Style spec: ../../../docs/sq-style-spec.md §3
 
@@ -40,6 +44,38 @@ export default function SQBoardShell({
 }) {
   const isNarrow = width === 'narrow';
 
+  // Measure the action bar so the shell can reserve matching
+  // padding-bottom. Default 0 when no action bar.
+  const [actionBarH, setActionBarH] = useState(actionBar ? 160 : 0);
+  const observerRef = useRef(null);
+  const actionBarRefCallback = useCallback((el) => {
+    if (observerRef.current) {
+      observerRef.current.disconnect();
+      observerRef.current = null;
+    }
+    if (!el) {
+      setActionBarH(0);
+      return;
+    }
+    const update = () => setActionBarH(el.offsetHeight);
+    update();
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    observerRef.current = ro;
+  }, []);
+  useEffect(() => () => {
+    if (observerRef.current) observerRef.current.disconnect();
+  }, []);
+
+  const fixedActionBar = actionBar ? (
+    <div
+      ref={actionBarRefCallback}
+      className="fixed bottom-0 left-0 right-0 z-20 bg-white dark:bg-[#1a1130] border-t border-purple-100 dark:border-[#2d1b55]"
+    >
+      {actionBar}
+    </div>
+  ) : null;
+
   if (isNarrow) {
     // Narrow column layout — no sidebar, no responsive sub-header
     // duplication. Sub-header sits flush with the max-w-[480px] container
@@ -47,41 +83,35 @@ export default function SQBoardShell({
     // wide-mode alignment). Children get their own px-4 inset.
     return (
       <div
-        className={`h-screen h-dvh overflow-hidden grid grid-rows-[auto_minmax(0,1fr)_auto] bg-gradient-to-br from-wordy-50 to-pink-50 dark:bg-[#0f0a1e] dark:bg-none ${className}`.trim()}
+        className={`min-h-screen min-h-dvh flex flex-col bg-gradient-to-br from-wordy-50 to-pink-50 dark:bg-[#0f0a1e] dark:bg-none ${className}`.trim()}
+        style={{ paddingBottom: actionBarH }}
       >
         {header}
-        <div className="min-h-0 flex flex-col max-w-[480px] mx-auto w-full">
+        <div className="flex-1 min-h-0 flex flex-col max-w-[480px] mx-auto w-full">
           {subHeader}
           <div className="flex-1 min-h-0 flex flex-col px-4 pb-3">
             {children}
           </div>
         </div>
-        {actionBar ? (
-          <div className="z-20 bg-white dark:bg-[#1a1130] border-t border-purple-100 dark:border-[#2d1b55]">
-            {actionBar}
-          </div>
-        ) : null}
+        {fixedActionBar}
       </div>
     );
   }
 
   // Wide layout — Wordy's pattern. max-w-6xl with optional score sidebar.
-  // 4 grid rows: header, mobile sub-header (always rendered, may be empty —
-  // empty divs collapse to 0 in `auto`), main content, action bar.
   return (
     <div
-      className={`h-screen h-dvh overflow-hidden grid grid-rows-[auto_auto_minmax(0,1fr)_auto] bg-gradient-to-br from-wordy-50 to-pink-50 dark:bg-[#0f0a1e] dark:bg-none ${className}`.trim()}
+      className={`min-h-screen min-h-dvh flex flex-col bg-gradient-to-br from-wordy-50 to-pink-50 dark:bg-[#0f0a1e] dark:bg-none ${className}`.trim()}
+      style={{ paddingBottom: actionBarH }}
     >
       {header}
 
-      {/* Mobile sub-header: above the score strip + board. Always
-          rendered as a grid-row placeholder so the row count stays
-          consistent; collapses to 0 when subHeader is null. */}
-      <div className="lg:hidden max-w-6xl mx-auto w-full">
-        {subHeader}
-      </div>
+      {/* Mobile sub-header: above the score strip + board. */}
+      {subHeader ? (
+        <div className="lg:hidden max-w-6xl mx-auto w-full">{subHeader}</div>
+      ) : null}
 
-      <div className="min-h-0 flex flex-col lg:flex-row gap-2 lg:gap-3 max-w-6xl mx-auto w-full px-1 py-2 lg:p-3">
+      <div className="flex-1 min-h-0 flex flex-col lg:flex-row gap-2 lg:gap-3 max-w-6xl mx-auto w-full px-1 py-2 lg:p-3">
         {scorePanel ? (
           <aside className="lg:w-56 shrink-0">{scorePanel}</aside>
         ) : null}
@@ -99,11 +129,7 @@ export default function SQBoardShell({
         ) : null}
       </div>
 
-      {actionBar ? (
-        <div className="z-20 bg-white dark:bg-[#1a1130] border-t border-purple-100 dark:border-[#2d1b55]">
-          {actionBar}
-        </div>
-      ) : null}
+      {fixedActionBar}
     </div>
   );
 }
