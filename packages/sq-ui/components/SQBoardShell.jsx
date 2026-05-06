@@ -98,7 +98,7 @@ export default function SQBoardShell({
       </div>
 
       {actionBar ? (
-        <div className="sticky bottom-0 z-20 bg-white dark:bg-[#1a1130] border-t border-purple-100 dark:border-[#2d1b55]">
+        <div className="z-20 bg-white dark:bg-[#1a1130] border-t border-purple-100 dark:border-[#2d1b55]">
           {actionBar}
         </div>
       ) : null}
