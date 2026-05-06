@@ -120,7 +120,7 @@ export default function SQBoardShell({
           {subHeader ? (
             <div className="hidden lg:block">{subHeader}</div>
           ) : null}
-          <div className="flex-1 min-h-0 flex items-center justify-center">
+          <div className="flex-1 min-h-0 flex items-start justify-center">
             {children}
           </div>
         </div>
