@@ -16,14 +16,16 @@
 //     board, so it tracks the board's left/right edges.
 // In narrow mode, subHeader always sits between top banner and content.
 //
-// Layout note (2026-05-06): Shell is CSS Grid, not flex-col, AND the
-// action bar is plain `position: static` (not sticky). Firefox has a
-// known bug (Mozilla 1585254) where `position: sticky bottom: 0` inside
-// flex OR grid containers hides content / fails to reserve space. With
-// grid `grid-rows-[auto_(auto)_minmax(0,1fr)_auto]`, the action bar
-// already lives in the last row at the bottom of the shell, and the
-// shell is `min-h-dvh` (viewport height), so we don't need sticky to
-// keep it visible — the layout puts it there.
+// Layout note (2026-05-06): Shell is CSS Grid (rows = header,
+// optional sub-header, main 1fr, action bar), height EXACTLY h-dvh
+// (not min-h-dvh) with overflow hidden so the grid can't grow past
+// the viewport and push the action bar off-screen. Action bar is
+// plain `position: static` (not sticky). Firefox has a known bug
+// (Mozilla 1585254) where `position: sticky bottom: 0` inside flex
+// OR grid containers hides content / fails to reserve space — grid
+// rows give us the bottom-pinned action bar without needing sticky
+// at all. The board is sized to the measured main-row height by
+// GamePage's ResizeObserver, so the board never overflows it.
 //
 // Style spec: ../../../docs/sq-style-spec.md §3
 
@@ -45,7 +47,7 @@ export default function SQBoardShell({
     // wide-mode alignment). Children get their own px-4 inset.
     return (
       <div
-        className={`min-h-screen min-h-dvh grid grid-rows-[auto_minmax(0,1fr)_auto] bg-gradient-to-br from-wordy-50 to-pink-50 dark:bg-[#0f0a1e] dark:bg-none ${className}`.trim()}
+        className={`h-screen h-dvh overflow-hidden grid grid-rows-[auto_minmax(0,1fr)_auto] bg-gradient-to-br from-wordy-50 to-pink-50 dark:bg-[#0f0a1e] dark:bg-none ${className}`.trim()}
       >
         {header}
         <div className="min-h-0 flex flex-col max-w-[480px] mx-auto w-full">
@@ -68,7 +70,7 @@ export default function SQBoardShell({
   // empty divs collapse to 0 in `auto`), main content, action bar.
   return (
     <div
-      className={`min-h-screen min-h-dvh grid grid-rows-[auto_auto_minmax(0,1fr)_auto] bg-gradient-to-br from-wordy-50 to-pink-50 dark:bg-[#0f0a1e] dark:bg-none ${className}`.trim()}
+      className={`h-screen h-dvh overflow-hidden grid grid-rows-[auto_auto_minmax(0,1fr)_auto] bg-gradient-to-br from-wordy-50 to-pink-50 dark:bg-[#0f0a1e] dark:bg-none ${className}`.trim()}
     >
       {header}
 
