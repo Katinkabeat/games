@@ -42,6 +42,14 @@ const FALLBACK_GAMES = [
     gradient: 'from-wordy-600 to-wordy-800',
     _access: 'allowed',
   },
+  {
+    id: 'yahdle',
+    name: 'Yahdle',
+    url: '/yahdle/',
+    initial: 'Y',
+    gradient: 'from-wordy-600 to-wordy-800',
+    _access: 'gated',
+  },
 ];
 
 const USE_CATALOG = import.meta.env.VITE_SQ_USE_CATALOG !== 'false';
