@@ -27,6 +27,11 @@ export default defineConfig({
         changeOrigin: true,
         ws: true,
       },
+      '/yahdle': {
+        target: 'http://localhost:5186',
+        changeOrigin: true,
+        ws: true,
+      },
     },
   },
 });

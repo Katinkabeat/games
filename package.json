@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "dev:all": "concurrently --names SQ,WORDY,RUNGLES,SNIBBLE --prefix-colors magenta,cyan,yellow,green --kill-others-on-fail \"npm run dev\" \"npm --prefix ../wordy run dev\" \"npm --prefix ../rungles run dev\" \"npm --prefix ../snibble run dev\"",
+    "dev:all": "concurrently --names SQ,WORDY,RUNGLES,SNIBBLE,YAHDLE --prefix-colors magenta,cyan,yellow,green,blue --kill-others-on-fail \"npm run dev\" \"npm --prefix ../wordy run dev\" \"npm --prefix ../rungles run dev\" \"npm --prefix ../snibble run dev\" \"npm --prefix ../yahdle run dev\"",
     "build": "vite build",
     "preview": "vite preview"
   },
