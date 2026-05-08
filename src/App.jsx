@@ -9,7 +9,7 @@ import StyleGuidePage from './components/StyleGuidePage.jsx';
 // Allowlist of path prefixes the post-login ?return= redirect will honor.
 // Add new SQ games here when scaffolding them so notifications and bookmarks
 // survive a logged-out re-entry.
-const ALLOWED_RETURN_PREFIXES = ['/wordy/', '/rungles/'];
+const ALLOWED_RETURN_PREFIXES = ['/wordy/', '/rungles/', '/snibble/', '/yahdle/'];
 
 function getValidatedReturn() {
   const params = new URLSearchParams(window.location.search);
