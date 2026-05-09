@@ -296,6 +296,9 @@ export default function LandingPage({ session }) {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'game_players', filter: `user_id=eq.${user.id}` }, scheduleRecount)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'rg_players', filter: `user_id=eq.${user.id}` }, scheduleRecount)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'sn_match_round_plays', filter: `user_id=eq.${user.id}` }, scheduleRecount)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'yahdle_games', filter: `created_by=eq.${user.id}` }, scheduleRecount)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'yahdle_games', filter: `invited_user_id=eq.${user.id}` }, scheduleRecount)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'yahdle_players', filter: `user_id=eq.${user.id}` }, scheduleRecount)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'friendships' }, () => { if (active) loadPendingFriends(); })
       .subscribe((status) => {
         if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
