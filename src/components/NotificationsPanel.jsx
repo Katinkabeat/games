@@ -6,6 +6,7 @@ import {
   subscribeToPush,
   unsubscribeFromPush,
 } from '../lib/pushNotifications.js';
+import { supabase } from '../lib/supabase.js';
 import { APPS } from '../lib/notificationTopics.js';
 import { useNotificationPrefs } from '../hooks/useNotificationPrefs.js';
 import NotificationsGameSection from './notifications/NotificationsGameSection.jsx';
@@ -53,7 +54,16 @@ export default function NotificationsPanel({ onBack }) {
     if (notifyState === 'on') {
       setNotifyBusy(true);
       try {
-        await unsubscribeFromPush();
+        const userId = (await supabase.auth.getUser()).data.user?.id;
+        if (!userId) {
+          toast.error('Not signed in');
+          return;
+        }
+        const ok = await unsubscribeFromPush(userId);
+        if (!ok) {
+          toast.error("Couldn't turn off notifications");
+          return;
+        }
         setNotifyState('off');
         toast.success('Notifications turned off');
       } catch (err) {
@@ -78,13 +88,20 @@ export default function NotificationsPanel({ onBack }) {
     if (notifyBusy) return;
     setNotifyBusy(true);
     try {
-      const result = await subscribeToPush();
+      const userId = (await supabase.auth.getUser()).data.user?.id;
+      if (!userId) {
+        toast.error('Not signed in');
+        return;
+      }
+      const result = await subscribeToPush(userId);
       if (result === 'denied') {
         setNotifyState('denied');
         toast.error('Permission denied — enable in your browser settings');
       } else if (result) {
         setNotifyState('on');
         toast.success('Notifications turned on');
+      } else {
+        toast.error("Couldn't turn on notifications");
       }
     } catch (err) {
       toast.error(err.message || String(err));

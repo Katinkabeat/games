@@ -134,11 +134,27 @@ export async function migrateToSideQuestPush(userId) {
   if (typeof Notification === 'undefined') return;
   if (Notification.permission !== 'granted') return;
   if (!('serviceWorker' in navigator)) return;
+  if (!userId) return;
 
   try {
     // Already on SideQuest? Nothing to do.
     const sqReg = await navigator.serviceWorker.ready;
     if (await sqReg.pushManager.getSubscription()) return;
+
+    // Only migrate if a wordy/rungles row exists for this user. Without
+    // this guard, every hub mount would silently re-subscribe a user
+    // who explicitly turned notifications off, since OS permission
+    // stays 'granted' and the SW subscription is gone — exactly the
+    // conditions above. Gating on a real legacy row makes this a true
+    // migration.
+    const { data: legacy, error: legacyErr } = await supabase
+      .from('push_subscriptions')
+      .select('app')
+      .eq('user_id', userId)
+      .in('app', ['wordy', 'rungles'])
+      .limit(1);
+    if (legacyErr) return;
+    if (!legacy || legacy.length === 0) return;
 
     // Subscribe via SideQuest's SW. No prompt because permission is granted.
     const ok = await subscribeToPush(userId);
