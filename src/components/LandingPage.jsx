@@ -504,7 +504,7 @@ export default function LandingPage({ session }) {
                   >
                     {dailyReady && (
                       <span
-                        className="absolute top-2 right-2 w-2.5 h-2.5 rounded-full bg-amber-400 ring-2 ring-white dark:ring-[#181c25]"
+                        className="absolute top-2 right-2 w-2.5 h-2.5 rounded-full bg-red-500 ring-2 ring-white dark:ring-[#181c25]"
                         aria-label="Daily puzzle ready"
                         title="Daily puzzle ready"
                       />
