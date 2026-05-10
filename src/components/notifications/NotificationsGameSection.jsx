@@ -9,7 +9,7 @@ export default function NotificationsGameSection({ app, prefs, onBack }) {
     <div className="space-y-3">
       <button
         onClick={onBack}
-        className="text-sm font-bold text-wordy-500 hover:text-wordy-700"
+        className="text-sm font-bold text-wordy-500 hover:text-wordy-700 dark:hover:text-wordy-200"
       >
         ← Back
       </button>
@@ -60,7 +60,7 @@ function ToggleRow({ label, description, checked, onChange, dim }) {
   return (
     <label
       className={`flex items-start gap-3 p-2 rounded-lg cursor-pointer transition-opacity ${
-        dim ? 'opacity-50' : 'hover:bg-wordy-50'
+        dim ? 'opacity-50' : 'hover:bg-wordy-50 dark:hover:bg-wordy-700/30'
       }`}
     >
       <input

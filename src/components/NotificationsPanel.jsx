@@ -120,7 +120,7 @@ export default function NotificationsPanel({ onBack }) {
       <main className="max-w-[480px] mx-auto px-4 pb-12">
         <button
           onClick={onBack}
-          className="text-sm font-bold text-wordy-500 hover:text-wordy-700"
+          className="text-sm font-bold text-wordy-500 hover:text-wordy-700 dark:hover:text-wordy-200"
         >
           ← Back
         </button>
@@ -156,7 +156,7 @@ export default function NotificationsPanel({ onBack }) {
         <h2 className="font-display text-2xl text-wordy-800">Notifications</h2>
         <button
           onClick={onBack}
-          className="text-sm font-bold text-wordy-500 hover:text-wordy-700"
+          className="text-sm font-bold text-wordy-500 hover:text-wordy-700 dark:hover:text-wordy-200"
         >
           ← Back
         </button>
@@ -191,7 +191,7 @@ export default function NotificationsPanel({ onBack }) {
           <button
             onClick={handleToggleNotify}
             disabled={notifyBusy}
-            className="text-xs font-bold text-wordy-700 bg-white border-2 border-wordy-200 hover:border-wordy-400 px-2 py-1 rounded-lg disabled:opacity-60 shrink-0"
+            className="text-xs font-bold text-wordy-700 bg-white dark:bg-wordy-100 border-2 border-wordy-200 hover:border-wordy-400 px-2 py-1 rounded-lg disabled:opacity-60 shrink-0"
           >
             {notifyBusy ? '…' : notifyState === 'on' ? 'Turn off' : 'Turn on'}
           </button>
@@ -271,7 +271,7 @@ function PrimerModal({ onConfirm, onCancel }) {
           </button>
           <button
             onClick={onCancel}
-            className="text-sm font-bold text-wordy-500 hover:text-wordy-700 transition-colors"
+            className="text-sm font-bold text-wordy-500 hover:text-wordy-700 dark:hover:text-wordy-200 transition-colors"
           >
             Not now
           </button>
