@@ -29,6 +29,13 @@ export const APPS = [
     topics: ['your_turn', 'invite', 'nudge', 'opponent_joined'],
   },
   {
+    key: 'yahdle',
+    label: 'Yahdle',
+    icon: 'Y',
+    gradient: 'from-wordy-600 to-wordy-800',
+    topics: ['your_turn', 'invite', 'opponent_joined', 'game_finished'],
+  },
+  {
     key: 'sidequest',
     label: 'SideQuest',
     icon: '🎯',
@@ -45,4 +52,5 @@ export const TOPICS = {
   nudge:           { label: 'Nudges',         description: 'A friend pinged you to take your turn.' },
   opponent_joined: { label: 'Opponent joined', description: 'Someone joined a match you started.' },
   friend_request:  { label: 'Friend requests', description: 'Someone wants to be friends.' },
+  game_finished:   { label: 'Game finished',   description: 'A match you’re in just ended.' },
 };
