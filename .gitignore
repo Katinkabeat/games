@@ -11,3 +11,6 @@ snapshots/*
 .claude/
 memory/
 supabase/.temp/
+
+# Personal spot-check notes — keep local, don't commit
+docs/rls-fix-verification.md
