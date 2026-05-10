@@ -1,4 +1,5 @@
 import { APPS, TOPICS } from '../../lib/notificationTopics.js';
+import DailyReminderTimeRow from './DailyReminderTimeRow.jsx';
 
 // Per-game sub-page: master toggle at top, then per-topic toggles.
 // Master OFF silences the whole game regardless of per-topic state.
@@ -39,15 +40,20 @@ export default function NotificationsGameSection({ app, prefs, onBack }) {
           {app.topics.map((topic) => {
             const t = TOPICS[topic];
             if (!t) return null;
+            const enabled = prefs.getEnabled(app.key, topic);
             return (
-              <ToggleRow
-                key={topic}
-                label={t.label}
-                description={t.description}
-                checked={prefs.getEnabled(app.key, topic)}
-                onChange={(enabled) => prefs.setEnabled(app.key, topic, enabled)}
-                dim={!masterOn}
-              />
+              <div key={topic}>
+                <ToggleRow
+                  label={t.label}
+                  description={t.description}
+                  checked={enabled}
+                  onChange={(v) => prefs.setEnabled(app.key, topic, v)}
+                  dim={!masterOn}
+                />
+                {topic === 'daily_reminder' && (
+                  <DailyReminderTimeRow dim={!masterOn || !enabled} />
+                )}
+              </div>
             );
           })}
         </div>

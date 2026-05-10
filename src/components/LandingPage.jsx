@@ -1,6 +1,7 @@
 import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import toast from 'react-hot-toast';
 import { supabase } from '../lib/supabase.js';
+import { useUnplayedDailies } from '../hooks/useUnplayedDailies.js';
 import { logEvent } from '../lib/telemetry.js';
 import { migrateToSideQuestPush } from '../lib/pushNotifications.js';
 import { useTheme } from '../contexts/ThemeContext.jsx';
@@ -92,6 +93,9 @@ export default function LandingPage({ session }) {
   const [isAdmin, setIsAdmin] = useState(false);
   const [isMaster, setIsMaster] = useState(false);
   const [adminPermissions, setAdminPermissions] = useState([]);
+  // Set of game ids whose daily the user hasn't completed today.
+  // Drives the corner-dot indicator on the tile.
+  const { unplayed: unplayedDailies } = useUnplayedDailies(user.id);
   // Seeded from localStorage so testers (and everyone else) skip the
   // gated-flash on subsequent loads while loadCatalog() refreshes in
   // the background.
@@ -491,12 +495,20 @@ export default function LandingPage({ session }) {
                     </div>
                   );
                 }
+                const dailyReady = unplayedDailies.has(game.id);
                 return (
                   <a
                     key={game.id}
                     href={game.url}
-                    className="card hover:shadow-lg transition-shadow flex items-center gap-4 p-5"
+                    className="card hover:shadow-lg transition-shadow flex items-center gap-4 p-5 relative"
                   >
+                    {dailyReady && (
+                      <span
+                        className="absolute top-2 right-2 w-2.5 h-2.5 rounded-full bg-amber-400 ring-2 ring-white dark:ring-[#181c25]"
+                        aria-label="Daily puzzle ready"
+                        title="Daily puzzle ready"
+                      />
+                    )}
                     <div
                       className={`w-14 h-14 rounded-2xl bg-gradient-to-br ${game.gradient} flex items-center justify-center shrink-0 shadow-sm`}
                     >

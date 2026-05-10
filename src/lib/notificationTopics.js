@@ -40,7 +40,7 @@ export const APPS = [
     label: 'SideQuest',
     icon: '🎯',
     gradient: 'from-wordy-600 to-wordy-800',
-    topics: ['friend_request'],
+    topics: ['friend_request', 'daily_reminder'],
   },
 ];
 
@@ -53,4 +53,5 @@ export const TOPICS = {
   opponent_joined: { label: 'Opponent joined', description: 'Someone joined a match you started.' },
   friend_request:  { label: 'Friend requests', description: 'Someone wants to be friends.' },
   game_finished:   { label: 'Game finished',   description: 'A match you’re in just ended.' },
+  daily_reminder:  { label: 'Daily reminder',  description: 'One ping per day if you have unplayed dailies (Yahdle, Snibble, etc.).' },
 };
