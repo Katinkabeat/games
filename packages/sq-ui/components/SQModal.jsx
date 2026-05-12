@@ -35,9 +35,19 @@ export default function SQModal({
         role="dialog"
         aria-modal="true"
       >
-        {title && (
-          <h3 className="font-display text-lg mb-3">{title}</h3>
-        )}
+        <div className="sticky top-0 -mt-1 pt-1 pb-2 bg-white dark:bg-[#1a1130] flex items-start justify-between gap-3 mb-3">
+          {title ? (
+            <h3 className="font-display text-lg leading-tight">{title}</h3>
+          ) : <span />}
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close"
+            className="shrink-0 -mt-1 -mr-1 w-8 h-8 inline-flex items-center justify-center rounded-full text-current/70 hover:bg-black/5 text-xl leading-none"
+          >
+            ×
+          </button>
+        </div>
         {children}
         {actions && (
           <div className="mt-4 flex items-center justify-end gap-2">
