@@ -30,7 +30,7 @@ export default function SQModal({
       onClick={closeOnBackdrop ? onClose : undefined}
     >
       <div
-        className={`card dropdown-surface w-full max-w-sm shadow-xl ${className}`.trim()}
+        className={`card dropdown-surface w-full max-w-sm shadow-xl max-h-[calc(100dvh-2rem)] overflow-y-auto overscroll-contain ${className}`.trim()}
         onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-modal="true"
