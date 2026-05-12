@@ -49,7 +49,7 @@ const FALLBACK_GAMES = [
     url: '/yahdle/',
     initial: 'Y',
     gradient: 'from-wordy-600 to-wordy-800',
-    _access: 'gated',
+    _access: 'allowed',
   },
 ];
 
