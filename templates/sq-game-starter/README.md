@@ -88,6 +88,42 @@ After your tables exist, you must:
 
 See `docs/sq-conventions.md` for full SQ patterns.
 
+## Stats page + extended leaderboards (c92 pattern)
+
+The scaffold ships with a working **StatsPage** at `/stats` (linked from the
+avatar menu) that includes the c92 extended-leaderboard pattern out of the box:
+**Day / Week / Month / All-time** tabs with a date stepper on Day for scrolling
+back through past days. Identical chrome to Yahdle / Snibble / Rungles.
+
+It comes with two matching migrations:
+
+- `supabase/migrations/<slug>_solo_results.sql` — minimal one-row-per-user-per-day
+  table (`user_id`, `play_date`, `score`, `completed_at`). Apply this first.
+- `supabase/migrations/<slug>_solo_leaderboards.sql` — the two RPCs
+  (`<slug>_solo_leaderboard` and `<slug>_solo_my_rank`) the StatsPage calls.
+  Default: **per-user SUM across the window** (each user appears once;
+  Week = sum of daily scores, etc).
+
+**To light it up:** apply both migrations, then INSERT a row into
+`<slug>_solo_results` whenever a player finishes a session. The leaderboard
+fills in automatically.
+
+**When to deviate from the default:**
+
+- **Game allows many plays per day** (Rungles-style): swap the per-user SUM to
+  per-user BEST single game. See `rungles/supabase/migration-015-leaderboard-per-user-best.sql`
+  for the `DISTINCT ON (user_id) ORDER BY user_id, score DESC` pattern, and
+  use `played_at timestamptz` instead of `play_date` for the window with
+  `AT TIME ZONE 'America/Halifax'` math.
+- **Play-to-see gate** (Snibble-style: caller must have submitted to view
+  today): add a server-side check inside the day-tab branch — see
+  `snibble/supabase/migrations/sn_extended_leaderboards.sql`. Past days and
+  aggregate windows always stay open per the c92 decision.
+- **Per-row extras** (word lists, breakdown columns): add columns to the RPC's
+  RETURNS and the StatsPage's `LeaderboardRow`.
+
+The card spec and rationale live on Raeban as c92.
+
 ## Admin close-game
 
 The scaffold ships with a working **Close Games** admin panel out of the box
