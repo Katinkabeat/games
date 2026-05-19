@@ -12,6 +12,11 @@ Living list of refactor candidates across the SQ platform (hub + Wordy + Rungles
 
 _(none)_
 
+## Candidates surfaced 2026-05-19 (c92 leaderboard rollout)
+
+- [ ] **Shared SQ leaderboard component** — c92 shipped near-identical leaderboard UIs across Yahdle / Snibble / Rungles (segmented control Day/Week/Month/All-time + date stepper on Day). All three render a top-10 list with the "your rank #N" tail row. **Why not done in c92:** the three games' row shapes diverge enough (Snibble has word-expansion + percent vs puzzle, Rungles has multi-row-per-user per-game ranking, Yahdle is plain) that the abstraction would have been premature without three real implementations to compare. Revisit now that they exist — likely candidates: extract `SegmentedControl`, `DateStepper`, `formatIso`/`addDays`/`todayInHalifax` helpers into sq-ui. Row component probably stays per-game.
+- [ ] **Halifax-tz date helpers** are now duplicated 3× (`todayInHalifax`, `formatIso`, `addDays` in each of Yahdle StatsPage, Snibble StatsModal, Rungles StatsModal). Trivial extraction into sq-ui.
+
 ## Shipped — sq-ui shared design system rollout (2026-04-28 → 2026-04-29)
 
 - [x] Extract design tokens, layouts, and primitives into `packages/sq-ui/`
