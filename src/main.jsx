@@ -1,6 +1,7 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App.jsx';
+import { SQErrorBoundary } from '../packages/sq-ui/index.js';
 import './index.css';
 
 if ('serviceWorker' in navigator) {
@@ -11,6 +12,8 @@ if ('serviceWorker' in navigator) {
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
-    <App />
+    <SQErrorBoundary label="hub">
+      <App />
+    </SQErrorBoundary>
   </React.StrictMode>
 );

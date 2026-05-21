@@ -20,3 +20,4 @@ export {
 export { default as SQAvatarButton } from './components/SQAvatarButton.jsx';
 export { default as SQAvatarDropdown } from './components/SQAvatarDropdown.jsx';
 export { default as SQAvatarMenuItem } from './components/SQAvatarMenuItem.jsx';
+export { default as SQErrorBoundary } from './components/SQErrorBoundary.jsx';

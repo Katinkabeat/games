@@ -8,6 +8,7 @@ import { useTheme } from '../contexts/ThemeContext.jsx';
 import SettingsDropdown from './SettingsDropdown.jsx';
 import HubAvatarMenu from './HubAvatarMenu.jsx';
 import AnnouncementBanner from './AnnouncementBanner.jsx';
+import { SQErrorBoundary } from '../../packages/sq-ui/index.js';
 
 const AdminPanel = lazy(() => import('./AdminPanel.jsx'));
 const NotificationsPanel = lazy(() => import('./NotificationsPanel.jsx'));
@@ -463,7 +464,7 @@ export default function LandingPage({ session }) {
       ) : view === 'friends' ? (
         <FriendsView userId={user.id} onBack={() => setView('landing')} />
       ) : (
-        <>
+        <SQErrorBoundary variant="inline" label="hub-grid">
           <AnnouncementBanner />
           <main className="max-w-[480px] mx-auto px-4 pb-12">
             <div className="mb-4 space-y-3">
@@ -522,7 +523,7 @@ export default function LandingPage({ session }) {
               })}
             </div>
           </main>
-        </>
+        </SQErrorBoundary>
       )}
     </div>
   );
