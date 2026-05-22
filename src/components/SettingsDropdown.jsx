@@ -20,6 +20,7 @@ export default function SettingsDropdown({
   onOpenAdmin,
   onOpenFriends,
   onOpenNotifications,
+  onOpenFeedback,
   onLogout,
   onClose,
   userId,
@@ -338,6 +339,19 @@ export default function SettingsDropdown({
           className="text-sm font-bold text-wordy-700 hover:text-wordy-500 transition-colors"
         >
           👥 Open
+        </button>
+      </div>
+
+      <div className="settings-row">
+        <span className="text-sm font-bold text-wordy-600">Feedback</span>
+        <button
+          onClick={() => {
+            onOpenFeedback?.();
+            onClose();
+          }}
+          className="text-sm font-bold text-wordy-700 hover:text-wordy-500 transition-colors"
+        >
+          ✉️ Send
         </button>
       </div>
 

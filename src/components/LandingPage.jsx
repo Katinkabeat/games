@@ -13,6 +13,7 @@ import { SQErrorBoundary } from '../../packages/sq-ui/index.js';
 const AdminPanel = lazy(() => import('./AdminPanel.jsx'));
 const NotificationsPanel = lazy(() => import('./NotificationsPanel.jsx'));
 import FriendsView from './FriendsView.jsx';
+import FeedbackView from './FeedbackView.jsx';
 import IOSInstallPrompt from './IOSInstallPrompt.jsx';
 import AndroidInstallPrompt from './AndroidInstallPrompt.jsx';
 
@@ -445,6 +446,7 @@ export default function LandingPage({ session }) {
                 onOpenAdmin={() => setView('admin')}
                 onOpenFriends={() => setView('friends')}
                 onOpenNotifications={() => setView('notifications')}
+                onOpenFeedback={() => setView('feedback')}
                 onLogout={handleLogout}
                 onClose={() => setSettingsOpen(false)}
               />
@@ -463,6 +465,8 @@ export default function LandingPage({ session }) {
         </Suspense>
       ) : view === 'friends' ? (
         <FriendsView userId={user.id} onBack={() => setView('landing')} />
+      ) : view === 'feedback' ? (
+        <FeedbackView onBack={() => setView('landing')} />
       ) : (
         <SQErrorBoundary variant="inline" label="hub-grid">
           <AnnouncementBanner />
