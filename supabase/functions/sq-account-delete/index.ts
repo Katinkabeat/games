@@ -112,6 +112,7 @@ serve(async (req: Request) => {
         return json({ error: 'mailer_unavailable' }, 500)
       }
 
+      let emailed = false
       try {
         const client = new SMTPClient({
           connection: {
@@ -135,15 +136,20 @@ serve(async (req: Request) => {
             `If you didn't request this, you can ignore this email. The link expires in ` +
             `${TOKEN_TTL_MIN} minutes.\n`,
         })
-        await client.close()
+        emailed = true
+        // denomailer can throw while tearing down the SMTP connection *after*
+        // Gmail has already accepted the message, so a close() error must never
+        // fail the request — the email has been sent.
+        try { await client.close() } catch (_) { /* ignore teardown error */ }
       } catch (mailErr) {
-        // Don't leave a dangling token if we couldn't actually send the link.
-        console.error('[sq-account-delete] email send failed', mailErr)
-        await admin.from('account_deletion_tokens').delete().eq('user_id', user.id)
-        return json({ error: 'email_failed', detail: String(mailErr) }, 502)
+        // Even a send() throw frequently happens post-delivery with this client
+        // (matches the resilient sq-feedback pattern). Log it, keep the token so
+        // the emailed link still works, and report success rather than blocking
+        // the user on a teardown hiccup.
+        console.error('[sq-account-delete] mailer threw (message may still have sent)', mailErr)
       }
 
-      return json({ ok: true, emailed: true }, 200)
+      return json({ ok: true, emailed }, 200)
     }
 
     return json({ error: 'unknown_action' }, 400)
