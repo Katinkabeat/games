@@ -112,44 +112,51 @@ serve(async (req: Request) => {
         return json({ error: 'mailer_unavailable' }, 500)
       }
 
-      let emailed = false
-      try {
-        const client = new SMTPClient({
-          connection: {
-            hostname: 'smtp.gmail.com',
-            port: 465,
-            tls: true,
-            auth: { username: GMAIL_USER, password: GMAIL_APP_PASSWORD },
-          },
-        })
-        await client.send({
-          from: GMAIL_USER,
-          to: user.email,
-          subject: 'Confirm your account deletion',
-          content:
-            `Hi ${profile?.username ?? 'there'},\n\n` +
-            `We received a request to delete your Rae's Side Quest account.\n\n` +
-            `To confirm, open this link:\n${link}\n\n` +
-            `Once confirmed, your account is locked immediately and permanently deleted ` +
-            `after ${GRACE_DAYS} days. You can cancel any time before then by simply logging back in.\n\n` +
-            `Your scores stay on the leaderboards but are anonymized (shown as a "Deleted player").\n\n` +
-            `If you didn't request this, you can ignore this email. The link expires in ` +
-            `${TOKEN_TTL_MIN} minutes.\n`,
-        })
-        emailed = true
-        // denomailer can throw while tearing down the SMTP connection *after*
-        // Gmail has already accepted the message, so a close() error must never
-        // fail the request — the email has been sent.
-        try { await client.close() } catch (_) { /* ignore teardown error */ }
-      } catch (mailErr) {
-        // Even a send() throw frequently happens post-delivery with this client
-        // (matches the resilient sq-feedback pattern). Log it, keep the token so
-        // the emailed link still works, and report success rather than blocking
-        // the user on a teardown hiccup.
-        console.error('[sq-account-delete] mailer threw (message may still have sent)', mailErr)
+      // Send the email as a BACKGROUND task and return to the client immediately.
+      // denomailer's SMTP teardown to Gmail can be slow or hang after the message
+      // is delivered; if we awaited it, the browser request would stall or time
+      // out (the email still arrives, but the client sees a failure). The token
+      // is already persisted, so the emailed link works regardless.
+      const sendEmail = async () => {
+        try {
+          const client = new SMTPClient({
+            connection: {
+              hostname: 'smtp.gmail.com',
+              port: 465,
+              tls: true,
+              auth: { username: GMAIL_USER, password: GMAIL_APP_PASSWORD },
+            },
+          })
+          await client.send({
+            from: GMAIL_USER,
+            to: user.email!,
+            subject: 'Confirm your account deletion',
+            content:
+              `Hi ${profile?.username ?? 'there'},\n\n` +
+              `We received a request to delete your Rae's Side Quest account.\n\n` +
+              `To confirm, open this link:\n${link}\n\n` +
+              `Once confirmed, your account is locked immediately and permanently deleted ` +
+              `after ${GRACE_DAYS} days. You can cancel any time before then by simply logging back in.\n\n` +
+              `Your scores stay on the leaderboards but are anonymized (shown as a "Deleted player").\n\n` +
+              `If you didn't request this, you can ignore this email. The link expires in ` +
+              `${TOKEN_TTL_MIN} minutes.\n`,
+          })
+          try { await client.close() } catch (_) { /* ignore teardown error */ }
+        } catch (mailErr) {
+          console.error('[sq-account-delete] background email send failed', mailErr)
+        }
       }
 
-      return json({ ok: true, emailed }, 200)
+      // @ts-ignore EdgeRuntime is provided by the Supabase edge runtime
+      if (typeof EdgeRuntime !== 'undefined' && EdgeRuntime.waitUntil) {
+        // @ts-ignore
+        EdgeRuntime.waitUntil(sendEmail())
+      } else {
+        // Local/dev fallback: best-effort, don't block on teardown.
+        sendEmail()
+      }
+
+      return json({ ok: true, emailed: true }, 200)
     }
 
     return json({ error: 'unknown_action' }, 400)
