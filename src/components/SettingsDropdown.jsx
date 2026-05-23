@@ -355,6 +355,28 @@ export default function SettingsDropdown({
         </button>
       </div>
 
+      <div className="settings-row">
+        <span className="text-sm font-bold text-wordy-600">Legal</span>
+        <span className="flex items-center gap-3">
+          <a
+            href="/games/privacy.html"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-sm font-bold text-wordy-700 hover:text-wordy-500 transition-colors"
+          >
+            Privacy
+          </a>
+          <a
+            href="/games/terms.html"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-sm font-bold text-wordy-700 hover:text-wordy-500 transition-colors"
+          >
+            Terms
+          </a>
+        </span>
+      </div>
+
       {isAdmin && (
         <div className="settings-row">
           <span className="text-sm font-bold text-wordy-600">Admin</span>

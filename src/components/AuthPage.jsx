@@ -218,6 +218,11 @@ export default function AuthPage({ isRecovery = false, onPasswordReset = () => {
             </button>
           </div>
         </form>
+
+        <div className="flex justify-center gap-4 text-xs text-wordy-500 mt-6 pt-4 border-t border-wordy-100">
+          <a href="/games/privacy.html" className="hover:text-wordy-700 underline">Privacy</a>
+          <a href="/games/terms.html" className="hover:text-wordy-700 underline">Terms</a>
+        </div>
       </div>
     </div>
   );

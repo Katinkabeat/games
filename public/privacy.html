@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#9333ea" />
+    <title>Privacy Policy — Rae's Side Quest</title>
+    <link rel="icon" href="/games/favicon.svg" type="image/svg+xml" />
+    <!-- Match the hub's dark-mode preference so coming from Settings isn't a flash of white. -->
+    <script>if((localStorage.getItem('sq-theme')||localStorage.getItem('wordy-theme')||localStorage.getItem('rungles-theme')||localStorage.getItem('snibble-theme'))==='dark')document.documentElement.classList.add('dark')</script>
+    <style>
+      :root {
+        --bg: #faf7fd;
+        --surface: #ffffff;
+        --text: #2a2433;
+        --heading: #1a1320;
+        --muted: #6b6477;
+        --accent: #9333ea;
+        --border: #ece4f5;
+      }
+      html.dark {
+        --bg: #161220;
+        --surface: #1f1830;
+        --text: #d8d2e4;
+        --heading: #f3eefb;
+        --muted: #9a90ad;
+        --accent: #c084fc;
+        --border: #2c2440;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--text);
+        font-family: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        line-height: 1.65;
+        font-size: 16px;
+      }
+      .wrap { max-width: 720px; margin: 0 auto; padding: 24px 20px 64px; }
+      .topbar { display: flex; align-items: center; gap: 10px; margin-bottom: 28px; }
+      .mark {
+        width: 36px; height: 36px; border-radius: 10px; background: var(--accent);
+        color: #fff; display: flex; align-items: center; justify-content: center;
+        font-weight: 800; font-size: 20px; flex: 0 0 auto;
+      }
+      .back { margin-left: auto; font-size: 14px; }
+      a { color: var(--accent); }
+      h1 { color: var(--heading); font-size: 28px; margin: 0 0 4px; }
+      h2 { color: var(--heading); font-size: 19px; margin: 32px 0 8px; }
+      .updated { color: var(--muted); font-size: 14px; margin: 0 0 8px; }
+      p, li { color: var(--text); }
+      ul { padding-left: 22px; }
+      li { margin: 4px 0; }
+      .card {
+        background: var(--surface); border: 1px solid var(--border);
+        border-radius: 14px; padding: 4px 22px 18px; margin-top: 8px;
+      }
+      .note { color: var(--muted); font-size: 14px; }
+      footer { margin-top: 40px; font-size: 14px; color: var(--muted); }
+      footer a { margin-right: 16px; }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <div class="topbar">
+        <div class="mark">R</div>
+        <strong>Rae's Side Quest</strong>
+        <a class="back" href="/games/">&larr; Back to games</a>
+      </div>
+
+      <h1>Privacy Policy</h1>
+      <p class="updated">Last updated: May 23, 2026</p>
+
+      <div class="card">
+        <h2>Who we are</h2>
+        <p>Rae's Side Quest ("we", "us", "our") is a small collection of free word games. This policy explains what information we collect when you use the games, why, and what we do (and don't do) with it. We aim to collect as little as possible.</p>
+
+        <h2>What we collect</h2>
+        <ul>
+          <li><strong>Account details.</strong> Your email address, a password (stored securely in hashed form by our authentication provider, never in plain text), and a display name you choose.</li>
+          <li><strong>Profile.</strong> Your username, an avatar colour, and your invite and privacy preferences.</li>
+          <li><strong>Gameplay data.</strong> Your games, moves, scores, and match history with other players.</li>
+          <li><strong>Notifications.</strong> If you turn on push notifications, we store a device push token so we can send them. You can turn this off at any time, which removes the token.</li>
+          <li><strong>Technical basics.</strong> The minimal information needed to keep you signed in and the site working.</li>
+        </ul>
+
+        <h2>What we don't do</h2>
+        <ul>
+          <li>No advertising.</li>
+          <li>No analytics, tracking pixels, or third-party tracking cookies.</li>
+          <li>We never sell or rent your data, and we don't share it with advertisers.</li>
+        </ul>
+
+        <h2>Cookies and local storage</h2>
+        <p>We do not use cookies for tracking or advertising, and we do not set any analytics or advertising cookies.</p>
+        <p>To keep you signed in and remember your settings, we store a small amount of functional data in your browser's local storage:</p>
+        <ul>
+          <li>your login session (so you stay signed in),</li>
+          <li>your theme choice (light or dark),</li>
+          <li>a cached copy of your profile and games list, so pages load faster,</li>
+          <li>which announcements or prompts you've already dismissed.</li>
+        </ul>
+        <p>This data stays on your device and is not used to track you across other websites. Clearing your browser's storage removes it (and signs you out).</p>
+
+        <h2>Service providers</h2>
+        <p>We rely on a few trusted providers to run the games. They only process your data to provide their service to us:</p>
+        <ul>
+          <li><strong>Supabase</strong> — our database and authentication provider, which stores your account and gameplay data on our behalf.</li>
+          <li><strong>Cloudflare Turnstile</strong> — a privacy-respecting "are you human" check on the sign-in screen, used to prevent bots and abuse. It does not track you across sites.</li>
+          <li><strong>GitHub Pages</strong> — hosts the website files.</li>
+          <li><strong>Email delivery</strong> — we send account-related emails (such as password resets and, if you opt in, notifications) through an email service.</li>
+        </ul>
+
+        <h2>Where your data is stored</h2>
+        <p>Your data may be stored on our providers' servers, which can be located outside Canada. This is standard for cloud-based services.</p>
+
+        <h2>How long we keep it</h2>
+        <p>We keep your information for as long as your account is active. If you delete your account, we remove your personal information, except for anything we're required to retain by law.</p>
+
+        <h2>Your choices and rights</h2>
+        <p>Under Canada's Personal Information Protection and Electronic Documents Act (PIPEDA), you can ask to access, correct, or delete your personal information, and you can withdraw your consent at any time.</p>
+        <p>To delete your account and associated data, or to make any other request, contact us at <a href="mailto:thescatterednest@gmail.com">thescatterednest@gmail.com</a> or use the in-app Feedback form. We'll respond within a reasonable time.</p>
+
+        <h2>Children</h2>
+        <p>The games are not directed at children under 13, and we do not knowingly collect personal information from them.</p>
+
+        <h2>Changes to this policy</h2>
+        <p>If we update this policy, we'll change the "last updated" date above. We'll flag any significant changes.</p>
+
+        <h2>Contact</h2>
+        <p>Questions about your privacy? Reach us at <a href="mailto:thescatterednest@gmail.com">thescatterednest@gmail.com</a> or through the Feedback form in the app.</p>
+      </div>
+
+      <footer>
+        <a href="/games/terms.html">Terms of Service</a>
+        <a href="/games/">Back to games</a>
+      </footer>
+    </div>
+  </body>
+</html>
