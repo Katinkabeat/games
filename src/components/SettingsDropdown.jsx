@@ -211,15 +211,23 @@ export default function SettingsDropdown({
 
   async function handleRequestDelete() {
     setAcctBusy(true);
+    toast.dismiss(); // clear any stale toasts so the result is unambiguous
     try {
       const { data, error } = await supabase.functions.invoke('sq-account-delete', {
         body: { action: 'request' },
       });
-      if (error || data?.error) throw new Error(data?.error || 'request_failed');
+      if (error) {
+        let status, body;
+        try { status = error.context?.status; } catch { /* noop */ }
+        try { body = await error.context?.json(); } catch { /* noop */ }
+        console.error('[delete request] invoke error', { name: error.name, status, body, error });
+        throw new Error(`${error.name || 'error'}${status ? ' ' + status : ''}${body?.error ? ' ' + body.error : ''}`);
+      }
+      if (data?.error) throw new Error(data.error);
       toast.success('Check your email for a link to confirm deletion.');
       cancelAcct();
-    } catch {
-      toast.error('Could not start deletion. Please try again.');
+    } catch (e) {
+      toast.error(`Could not start deletion: ${e.message}`);
     } finally {
       setAcctBusy(false);
     }
