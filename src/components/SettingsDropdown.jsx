@@ -46,8 +46,7 @@ export default function SettingsDropdown({
 
   // Account lifecycle: 'deactivate' (password-confirmed) | 'delete' (email-confirmed).
   const [acctMode, setAcctMode] = useState(null);
-  const [acctPw, setAcctPw] = useState('');
-  const [showAcctPw, setShowAcctPw] = useState(false);
+  const [acctPw, setAcctPw] = useState(''); // holds the typed "DEACTIVATE" confirmation
   const [acctBusy, setAcctBusy] = useState(false);
 
   useEffect(() => {
@@ -190,14 +189,15 @@ export default function SettingsDropdown({
   }
 
   async function handleDeactivate() {
-    if (!acctPw) return toast.error('Enter your password to confirm');
+    // Typed confirmation rather than password re-auth: the project enforces a
+    // Turnstile captcha on signInWithPassword, which can't be satisfied from this
+    // dropdown. Deactivation is fully reversible, so a deliberate typed confirm is
+    // an appropriate gate.
+    if (acctPw.trim().toUpperCase() !== 'DEACTIVATE') {
+      return toast.error('Type DEACTIVATE to confirm');
+    }
     setAcctBusy(true);
     try {
-      const { error: signErr } = await supabase.auth.signInWithPassword({ email, password: acctPw });
-      if (signErr) {
-        toast.error('Password is incorrect');
-        return;
-      }
       const { error } = await supabase.rpc('deactivate_account');
       if (error) throw error;
       toast.success('Account deactivated. Log in any time to reactivate.');
@@ -466,26 +466,19 @@ export default function SettingsDropdown({
           </div>
           <p className="text-xs text-wordy-500">
             Locks your account and hides you from games. Nothing is deleted — log back in any time to reactivate.
+            Type <span className="font-bold">DEACTIVATE</span> to confirm.
           </p>
-          <div className="relative">
-            <input
-              type={showAcctPw ? 'text' : 'password'}
-              value={acctPw}
-              onChange={(e) => setAcctPw(e.target.value)}
-              placeholder="Confirm your password"
-              className="w-full px-2 py-1.5 pr-8 rounded-lg border-2 border-wordy-200 text-xs font-bold text-wordy-700 focus:border-wordy-400 focus:outline-none"
-            />
-            <button
-              type="button"
-              onClick={() => setShowAcctPw((v) => !v)}
-              className="absolute right-2 top-1/2 -translate-y-1/2 text-wordy-400 hover:text-wordy-700 text-xs"
-            >
-              {showAcctPw ? '🙈' : '👁️'}
-            </button>
-          </div>
+          <input
+            type="text"
+            value={acctPw}
+            onChange={(e) => setAcctPw(e.target.value)}
+            placeholder="Type DEACTIVATE"
+            autoCapitalize="characters"
+            className="w-full px-2 py-1.5 rounded-lg border-2 border-wordy-200 text-xs font-bold text-wordy-700 focus:border-wordy-400 focus:outline-none"
+          />
           <button
             onClick={handleDeactivate}
-            disabled={acctBusy}
+            disabled={acctBusy || acctPw.trim().toUpperCase() !== 'DEACTIVATE'}
             className="w-full text-xs font-bold text-white bg-wordy-600 px-2 py-1.5 rounded-lg hover:bg-wordy-500 disabled:opacity-60"
           >
             {acctBusy ? '⏳ Working…' : 'Deactivate my account'}
