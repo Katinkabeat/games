@@ -112,29 +112,36 @@ serve(async (req: Request) => {
         return json({ error: 'mailer_unavailable' }, 500)
       }
 
-      const client = new SMTPClient({
-        connection: {
-          hostname: 'smtp.gmail.com',
-          port: 465,
-          tls: true,
-          auth: { username: GMAIL_USER, password: GMAIL_APP_PASSWORD },
-        },
-      })
-      await client.send({
-        from: `Rae's Side Quest <${GMAIL_USER}>`,
-        to: user.email,
-        subject: 'Confirm your account deletion',
-        content:
-          `Hi ${profile?.username ?? 'there'},\n\n` +
-          `We received a request to delete your Rae's Side Quest account.\n\n` +
-          `To confirm, open this link:\n${link}\n\n` +
-          `Once confirmed, your account is locked immediately and permanently deleted ` +
-          `after ${GRACE_DAYS} days. You can cancel any time before then by simply logging back in.\n\n` +
-          `Your scores stay on the leaderboards but are anonymized (shown as a "Deleted player").\n\n` +
-          `If you didn't request this, you can ignore this email. The link expires in ` +
-          `${TOKEN_TTL_MIN} minutes.\n`,
-      })
-      await client.close()
+      try {
+        const client = new SMTPClient({
+          connection: {
+            hostname: 'smtp.gmail.com',
+            port: 465,
+            tls: true,
+            auth: { username: GMAIL_USER, password: GMAIL_APP_PASSWORD },
+          },
+        })
+        await client.send({
+          from: GMAIL_USER,
+          to: user.email,
+          subject: 'Confirm your account deletion',
+          content:
+            `Hi ${profile?.username ?? 'there'},\n\n` +
+            `We received a request to delete your Rae's Side Quest account.\n\n` +
+            `To confirm, open this link:\n${link}\n\n` +
+            `Once confirmed, your account is locked immediately and permanently deleted ` +
+            `after ${GRACE_DAYS} days. You can cancel any time before then by simply logging back in.\n\n` +
+            `Your scores stay on the leaderboards but are anonymized (shown as a "Deleted player").\n\n` +
+            `If you didn't request this, you can ignore this email. The link expires in ` +
+            `${TOKEN_TTL_MIN} minutes.\n`,
+        })
+        await client.close()
+      } catch (mailErr) {
+        // Don't leave a dangling token if we couldn't actually send the link.
+        console.error('[sq-account-delete] email send failed', mailErr)
+        await admin.from('account_deletion_tokens').delete().eq('user_id', user.id)
+        return json({ error: 'email_failed', detail: String(mailErr) }, 502)
+      }
 
       return json({ ok: true, emailed: true }, 200)
     }
