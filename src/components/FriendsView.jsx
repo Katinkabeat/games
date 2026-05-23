@@ -61,6 +61,8 @@ export default function FriendsView({ userId, onBack }) {
         .select('id, username')
         .ilike('username', `%${q}%`)
         .neq('id', userId)
+        .is('deactivated_at', null)   // hide deactivated / deleted accounts from friend search
+        .eq('is_anonymized', false)
         .order('username')
         .limit(10);
       if (cancelled) return;

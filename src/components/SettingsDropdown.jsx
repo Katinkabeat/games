@@ -44,6 +44,12 @@ export default function SettingsDropdown({
   const [showNewPw, setShowNewPw] = useState(false);
   const [showConfirmPw, setShowConfirmPw] = useState(false);
 
+  // Account lifecycle: 'deactivate' (password-confirmed) | 'delete' (email-confirmed).
+  const [acctMode, setAcctMode] = useState(null);
+  const [acctPw, setAcctPw] = useState('');
+  const [showAcctPw, setShowAcctPw] = useState(false);
+  const [acctBusy, setAcctBusy] = useState(false);
+
   useEffect(() => {
     function handleClick(e) {
       if (dropdownRef.current && !dropdownRef.current.contains(e.target)) onClose();
@@ -174,6 +180,48 @@ export default function SettingsDropdown({
       toast.error(err.message);
     } finally {
       setSavingPw(false);
+    }
+  }
+
+  function cancelAcct() {
+    setAcctMode(null);
+    setAcctPw('');
+    setShowAcctPw(false);
+  }
+
+  async function handleDeactivate() {
+    if (!acctPw) return toast.error('Enter your password to confirm');
+    setAcctBusy(true);
+    try {
+      const { error: signErr } = await supabase.auth.signInWithPassword({ email, password: acctPw });
+      if (signErr) {
+        toast.error('Password is incorrect');
+        return;
+      }
+      const { error } = await supabase.rpc('deactivate_account');
+      if (error) throw error;
+      toast.success('Account deactivated. Log in any time to reactivate.');
+      await supabase.auth.signOut();
+    } catch (err) {
+      toast.error(err.message);
+    } finally {
+      setAcctBusy(false);
+    }
+  }
+
+  async function handleRequestDelete() {
+    setAcctBusy(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('sq-account-delete', {
+        body: { action: 'request' },
+      });
+      if (error || data?.error) throw new Error(data?.error || 'request_failed');
+      toast.success('Check your email for a link to confirm deletion.');
+      cancelAcct();
+    } catch {
+      toast.error('Could not start deletion. Please try again.');
+    } finally {
+      setAcctBusy(false);
     }
   }
 
@@ -388,6 +436,78 @@ export default function SettingsDropdown({
             className="text-sm font-bold text-wordy-700 hover:text-wordy-500 transition-colors"
           >
             🔐 Open
+          </button>
+        </div>
+      )}
+
+      {acctMode === null ? (
+        <div className="settings-row">
+          <span className="text-sm font-bold text-wordy-600">Account</span>
+          <span className="flex items-center gap-3">
+            <button
+              onClick={() => setAcctMode('deactivate')}
+              className="text-sm font-bold text-wordy-700 hover:text-wordy-500 transition-colors"
+            >
+              Deactivate
+            </button>
+            <button
+              onClick={() => setAcctMode('delete')}
+              className="text-sm font-bold text-rose-500 hover:text-rose-700 transition-colors"
+            >
+              Delete
+            </button>
+          </span>
+        </div>
+      ) : acctMode === 'deactivate' ? (
+        <div className="settings-section space-y-2.5">
+          <div className="flex items-center justify-between">
+            <span className="text-sm font-bold text-wordy-600">Deactivate account</span>
+            <button onClick={cancelAcct} className="text-xs font-bold text-wordy-400 hover:text-wordy-600">✕</button>
+          </div>
+          <p className="text-xs text-wordy-500">
+            Locks your account and hides you from games. Nothing is deleted — log back in any time to reactivate.
+          </p>
+          <div className="relative">
+            <input
+              type={showAcctPw ? 'text' : 'password'}
+              value={acctPw}
+              onChange={(e) => setAcctPw(e.target.value)}
+              placeholder="Confirm your password"
+              className="w-full px-2 py-1.5 pr-8 rounded-lg border-2 border-wordy-200 text-xs font-bold text-wordy-700 focus:border-wordy-400 focus:outline-none"
+            />
+            <button
+              type="button"
+              onClick={() => setShowAcctPw((v) => !v)}
+              className="absolute right-2 top-1/2 -translate-y-1/2 text-wordy-400 hover:text-wordy-700 text-xs"
+            >
+              {showAcctPw ? '🙈' : '👁️'}
+            </button>
+          </div>
+          <button
+            onClick={handleDeactivate}
+            disabled={acctBusy}
+            className="w-full text-xs font-bold text-white bg-wordy-600 px-2 py-1.5 rounded-lg hover:bg-wordy-500 disabled:opacity-60"
+          >
+            {acctBusy ? '⏳ Working…' : 'Deactivate my account'}
+          </button>
+        </div>
+      ) : (
+        <div className="settings-section space-y-2.5">
+          <div className="flex items-center justify-between">
+            <span className="text-sm font-bold text-rose-500">Delete account</span>
+            <button onClick={cancelAcct} className="text-xs font-bold text-wordy-400 hover:text-wordy-600">✕</button>
+          </div>
+          <p className="text-xs text-wordy-500">
+            We’ll email you a confirmation link. After you confirm, your account is locked and permanently
+            deleted in 30 days (cancel any time by logging back in). Your scores stay on the leaderboards but
+            are anonymized.
+          </p>
+          <button
+            onClick={handleRequestDelete}
+            disabled={acctBusy}
+            className="w-full text-xs font-bold text-white bg-rose-500 px-2 py-1.5 rounded-lg hover:bg-rose-600 disabled:opacity-60"
+          >
+            {acctBusy ? '⏳ Sending…' : 'Email me a confirmation link'}
           </button>
         </div>
       )}

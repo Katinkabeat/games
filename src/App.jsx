@@ -5,6 +5,8 @@ import { ThemeProvider } from './contexts/ThemeContext.jsx';
 import AuthPage from './components/AuthPage.jsx';
 import LandingPage from './components/LandingPage.jsx';
 import StyleGuidePage from './components/StyleGuidePage.jsx';
+import ReactivateScreen from './components/ReactivateScreen.jsx';
+import DeleteConfirmPage from './components/DeleteConfirmPage.jsx';
 
 // Allowlist of path prefixes the post-login ?return= redirect will honor.
 // Add new SQ games here when scaffolding them so notifications and bookmarks
@@ -30,11 +32,24 @@ function getValidatedReturn() {
 // renders static UI with no data access.
 const isStyleGuide = new URLSearchParams(window.location.search).has('styleguide');
 
+// ?delete_confirm=TOKEN is the email confirmation link for account deletion.
+// Handled before auth: the token is the proof, so it works logged out too.
+const deleteConfirmToken = new URLSearchParams(window.location.search).get('delete_confirm');
+
 export default function App() {
   if (isStyleGuide) {
     return (
       <ThemeProvider>
         <StyleGuidePage />
+      </ThemeProvider>
+    );
+  }
+
+  if (deleteConfirmToken) {
+    return (
+      <ThemeProvider>
+        <Toaster position="top-center" />
+        <DeleteConfirmPage token={deleteConfirmToken} />
       </ThemeProvider>
     );
   }
@@ -46,6 +61,10 @@ export default function App() {
   const [isRecovery, setIsRecovery] = useState(
     () => window.location.hash.includes('type=recovery')
   );
+  // Account lifecycle: null = not yet loaded for this session. When the row has
+  // deactivated_at set, we gate to ReactivateScreen instead of the lobby.
+  const [lifecycle, setLifecycle] = useState(null);
+  const [lifecycleLoading, setLifecycleLoading] = useState(false);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
@@ -76,13 +95,39 @@ export default function App() {
     return () => navigator.serviceWorker.removeEventListener('message', handleSWMessage);
   }, []);
 
-  // Honor a validated ?return= redirect once we have a session and the user
-  // isn't in the middle of a password recovery flow.
+  // Load the account lifecycle state whenever we have a (non-recovery) session.
+  const userId = session?.user?.id ?? null;
+  useEffect(() => {
+    if (!userId || isRecovery) {
+      setLifecycle(null);
+      return;
+    }
+    let active = true;
+    setLifecycleLoading(true);
+    supabase
+      .from('profiles')
+      .select('deactivated_at, delete_after, is_anonymized')
+      .eq('id', userId)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (!active) return;
+        setLifecycle(data ?? {});
+        setLifecycleLoading(false);
+      });
+    return () => { active = false; };
+  }, [userId, isRecovery]);
+
+  const deactivated = !!lifecycle?.deactivated_at;
+
+  // Honor a validated ?return= redirect once we have a session, the user isn't
+  // mid password-recovery, and the account is active (never bounce a deactivated
+  // account straight into a game).
   useEffect(() => {
     if (loading || !session || isRecovery) return;
+    if (!lifecycle || deactivated) return;
     const ret = getValidatedReturn();
     if (ret) window.location.replace(ret);
-  }, [loading, session, isRecovery]);
+  }, [loading, session, isRecovery, lifecycle, deactivated]);
 
   if (loading) {
     return (
@@ -94,17 +139,38 @@ export default function App() {
     );
   }
 
-  return (
-    <ThemeProvider>
-      <Toaster position="top-center" />
-      {session && !isRecovery ? (
-        <LandingPage session={session} />
-      ) : (
+  function renderMain() {
+    if (!session || isRecovery) {
+      return (
         <AuthPage
           isRecovery={isRecovery}
           onPasswordReset={() => setIsRecovery(false)}
         />
-      )}
+      );
+    }
+    // Wait for the lifecycle row so we never flash the lobby for a deactivated account.
+    if (lifecycleLoading || !lifecycle) {
+      return (
+        <div className="min-h-screen flex items-center justify-center bg-wordy-50">
+          <div className="text-wordy-600 font-body">Loading...</div>
+        </div>
+      );
+    }
+    if (deactivated) {
+      return (
+        <ReactivateScreen
+          profile={lifecycle}
+          onReactivated={() => setLifecycle({ ...lifecycle, deactivated_at: null, delete_after: null })}
+        />
+      );
+    }
+    return <LandingPage session={session} />;
+  }
+
+  return (
+    <ThemeProvider>
+      <Toaster position="top-center" />
+      {renderMain()}
     </ThemeProvider>
   );
 }
