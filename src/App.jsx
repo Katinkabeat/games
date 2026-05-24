@@ -118,7 +118,9 @@ export default function App() {
         // Only act on a definitive answer (no query error), so a transient
         // fetch failure never logs anyone out.
         if (!error && (data === null || data?.is_anonymized)) {
-          supabase.auth.signOut();
+          // scope:'local' clears the session without a server round-trip, which
+          // would otherwise fail when the underlying auth user is already gone.
+          supabase.auth.signOut({ scope: 'local' });
           return;
         }
         setLifecycle(data ?? {});
