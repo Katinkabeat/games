@@ -109,8 +109,18 @@ export default function App() {
       .select('deactivated_at, delete_after, is_anonymized')
       .eq('id', userId)
       .maybeSingle()
-      .then(({ data }) => {
+      .then(({ data, error }) => {
         if (!active) return;
+        // Precaution for a stale session: the token is still valid but the
+        // account's profile is gone or already anonymized (e.g. a tab left open
+        // past the deletion sweep, or the row removed out-of-band). Sign out
+        // cleanly rather than rendering the app for an account that's gone.
+        // Only act on a definitive answer (no query error), so a transient
+        // fetch failure never logs anyone out.
+        if (!error && (data === null || data?.is_anonymized)) {
+          supabase.auth.signOut();
+          return;
+        }
         setLifecycle(data ?? {});
         setLifecycleLoading(false);
       });
