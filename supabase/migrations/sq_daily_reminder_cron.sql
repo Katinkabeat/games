@@ -44,11 +44,12 @@ grant execute on function public.sq_daily_reminder_candidates()
   to authenticated, service_role;
 
 -- ── 2. pg_cron schedule ──────────────────────────────────────
--- Runs at HH:00 and HH:30 every hour. The edge function base URL comes
--- from public.sq_functions_base_url() (see sq_functions_base_url.sql) so
--- it's defined in one place. The anon JWT below is the project's public
--- anon key (safe to embed; it just prevents random unauthenticated
--- callers) — it still needs updating by hand if the project ref changes.
+-- Runs at HH:00 and HH:30 every hour. Both per-project values come from
+-- helpers in sq_functions_base_url.sql: the base URL from
+-- public.sq_functions_base_url() and the gateway bearer from
+-- public.sq_anon_key() (the public anon key — it just blocks random
+-- unauthenticated callers). Neither is inlined here anymore, so a host
+-- move only needs those two helpers updated.
 create extension if not exists pg_cron;
 
 -- Idempotent: drop any existing schedule with this name first.
@@ -67,7 +68,7 @@ select cron.schedule(
       url := public.sq_functions_base_url() || '/sq-daily-reminder',
       headers := jsonb_build_object(
         'Content-Type', 'application/json',
-        'Authorization', 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl5aGV3bmRibHJ1d3hzcnF6YXJ0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM1MDk4MjAsImV4cCI6MjA4OTA4NTgyMH0.vwL4iipf5e_bm8rsW_dECSv640s8Kds5c2tYCOJqEnQ'
+        'Authorization', 'Bearer ' || public.sq_anon_key()
       ),
       body := jsonb_build_object('source', 'pg_cron')
     );

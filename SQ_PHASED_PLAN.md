@@ -388,8 +388,8 @@ When the Supabase project moves to a different host (different URL or project re
 1. **Push subscriptions break.**
    Browsers' push subscription endpoints are bound to the original Supabase URL's VAPID keys. Every existing row in `push_subscriptions` will be invalid after migration. Users must re-enable notifications on each device once.
 
-2. **Edge Functions base URL (now centralized — c122).**
-   The base URL is no longer inlined per-trigger. It lives in one place: `public.sq_functions_base_url()` (`supabase/migrations/sq_functions_base_url.sql`), which both the friend-request trigger and the daily-reminder cron read from. On migration, update the single return value in that function and re-apply the file — both consumers pick it up automatically. (Note: the daily-reminder cron also embeds the project's public anon JWT for `Authorization`; that's not a secret but still needs updating by hand if the project ref changes.)
+2. **Edge Functions base URL + anon key (now centralized — c122).**
+   Neither value is inlined in any DB trigger/cron anymore. Both live in one file, `supabase/migrations/sq_functions_base_url.sql`: `public.sq_functions_base_url()` returns the base URL and `public.sq_anon_key()` returns the public anon key (the daily-reminder cron's gateway bearer). The friend-request trigger reads the URL helper; the daily-reminder cron reads both. On migration, update the two return values in that one file and re-apply it — all consumers pick them up automatically.
 
 3. **Hardcoded project ref in `rungles/js/supabase-client.js`.**
    The Rungles client has the URL and anon key inlined. Wordy and SideQuest both use Vite env vars (cleaner). When migrating, update Rungles's hardcoded values to match.
