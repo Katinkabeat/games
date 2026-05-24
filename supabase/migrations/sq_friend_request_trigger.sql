@@ -3,6 +3,9 @@
 --
 -- Wires a DB trigger that fires fire-and-forget HTTP POSTs to the edge function
 -- on each new pending friendship row. Uses the pg_net extension (already installed).
+--
+-- The edge function base URL comes from public.sq_functions_base_url()
+-- (see sq_functions_base_url.sql) so it lives in one place across migrations.
 
 CREATE OR REPLACE FUNCTION public.notify_friend_request()
 RETURNS TRIGGER
@@ -13,7 +16,7 @@ AS $$
 BEGIN
   IF NEW.status = 'pending' THEN
     PERFORM net.http_post(
-      url := 'https://yyhewndblruwxsrqzart.supabase.co/functions/v1/sq-friend-request-notification',
+      url := public.sq_functions_base_url() || '/sq-friend-request-notification',
       headers := jsonb_build_object('Content-Type', 'application/json'),
       body := jsonb_build_object('record', row_to_json(NEW))
     );
