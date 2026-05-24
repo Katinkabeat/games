@@ -45,7 +45,7 @@ export default function DeleteConfirmPage({ token }) {
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-wordy-100 via-pink-100 to-wordy-100 p-4">
       <div className="card w-full max-w-md text-center">
         <div className="w-16 h-16 rounded-2xl bg-wordy-600 flex items-center justify-center mb-4 mx-auto shadow-md">
-          <span className="font-display text-3xl text-white">R</span>
+          <span className="font-display text-2xl text-white">SQ</span>
         </div>
 
         {state === 'working' && (
