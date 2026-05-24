@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Hub first-run mockup</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Fredoka+One&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --wordy-50:#faf5ff; --wordy-100:#f3e8ff; --wordy-200:#e9d5ff;
+    --wordy-300:#d8b4fe; --wordy-400:#c084fc; --wordy-500:#a855f7;
+    --wordy-600:#9333ea; --wordy-700:#7e22ce; --wordy-800:#6b21a8;
+    --wordy-900:#581c87; --pink-100:#fce7f3;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Nunito', sans-serif;
+    background:#cbb8e0;
+    min-height:100vh;
+    display:flex; flex-direction:column; align-items:center;
+    padding:24px 12px 60px;
+    color:#333;
+  }
+  .display { font-family:'Fredoka One', cursive; font-weight:400; }
+
+  /* ---- top control bar (not part of the design, just to switch states) ---- */
+  .controls {
+    width:100%; max-width:480px; margin-bottom:18px;
+    background:#fff; border-radius:16px; padding:12px 14px;
+    box-shadow:0 2px 8px rgba(88,28,135,0.12);
+    display:flex; align-items:center; gap:10px; flex-wrap:wrap;
+  }
+  .controls .lbl { font-size:12px; font-weight:800; color:var(--wordy-700); text-transform:uppercase; letter-spacing:.04em; }
+  .seg { display:inline-flex; background:var(--wordy-100); border-radius:999px; padding:3px; }
+  .seg button {
+    border:0; background:transparent; cursor:pointer; font-family:'Nunito'; font-weight:800;
+    font-size:13px; color:var(--wordy-600); padding:6px 14px; border-radius:999px;
+  }
+  .seg button.active { background:var(--wordy-600); color:#fff; box-shadow:0 1px 3px rgba(88,28,135,.4); }
+  .hint { font-size:12px; color:#7c6f8a; }
+
+  /* ---- phone frame ---- */
+  .phone {
+    width:100%; max-width:480px;
+    background:linear-gradient(135deg, var(--wordy-100), var(--pink-100), var(--wordy-100));
+    border-radius:28px;
+    box-shadow:0 12px 40px rgba(88,28,135,0.25);
+    overflow:hidden;
+    min-height:680px;
+    position:relative;
+  }
+  header {
+    padding:24px 16px 16px;
+    display:flex; align-items:center; justify-content:space-between; gap:12px;
+  }
+  .avatar {
+    width:44px; height:44px; border-radius:50%;
+    background:linear-gradient(135deg,var(--wordy-400),var(--wordy-600));
+    display:flex; align-items:center; justify-content:center;
+    color:#fff; font-family:'Fredoka One'; font-size:18px; flex-shrink:0;
+  }
+  .title h1 { font-family:'Fredoka One'; font-size:22px; color:var(--wordy-800); line-height:1.1; }
+  .title p { font-size:13px; color:var(--wordy-600); }
+  .icons { display:flex; align-items:center; gap:4px; flex-shrink:0; }
+  .iconbtn {
+    width:40px; height:40px; border:0; background:transparent; cursor:pointer;
+    font-size:20px; position:relative; border-radius:10px;
+  }
+  .iconbtn:hover { background:rgba(255,255,255,.5); }
+  .dot { position:absolute; top:6px; right:6px; width:10px; height:10px; background:#ef4444; border-radius:50%; }
+
+  main { padding:0 16px 28px; }
+
+  /* ---- welcome banner (new players only) ---- */
+  .welcome {
+    background:#fff; border-radius:18px; padding:16px 16px 14px; margin-bottom:16px;
+    box-shadow:0 2px 10px rgba(88,28,135,0.10);
+    border:1.5px solid var(--wordy-200);
+    position:relative;
+  }
+  .welcome h2 { font-family:'Fredoka One'; font-size:18px; color:var(--wordy-800); margin-bottom:6px; }
+  .welcome p { font-size:13.5px; line-height:1.5; color:#5a4a6a; }
+  .welcome .close { position:absolute; top:10px; right:12px; border:0; background:transparent; font-size:18px; color:var(--wordy-400); cursor:pointer; }
+  .welcome .legend { margin-top:10px; display:flex; gap:16px; flex-wrap:wrap; font-size:12.5px; color:#6b5b7a; }
+  .welcome .legend span b { color:var(--wordy-700); }
+
+  /* ---- game grid ---- */
+  .grid { display:grid; gap:14px; }
+  @media (min-width:420px){ .grid { grid-template-columns:1fr 1fr; } }
+  .tile {
+    background:#fff; border-radius:18px; padding:18px 16px;
+    display:flex; align-items:center; gap:14px;
+    text-decoration:none; position:relative;
+    box-shadow:0 2px 10px rgba(88,28,135,0.10);
+    transition:transform .08s, box-shadow .12s;
+  }
+  .tile:hover { box-shadow:0 5px 16px rgba(88,28,135,0.18); transform:translateY(-1px); }
+  .glyph {
+    width:56px; height:56px; border-radius:18px;
+    background:linear-gradient(135deg,var(--wordy-600),var(--wordy-800));
+    display:flex; align-items:center; justify-content:center; flex-shrink:0;
+    box-shadow:0 2px 4px rgba(88,28,135,0.3);
+  }
+  .glyph span { font-family:'Fredoka One'; font-size:26px; color:#fff; }
+  .tile .meta { min-width:0; }
+  .tile .name { font-family:'Fredoka One'; font-size:19px; color:var(--wordy-800); line-height:1.1; }
+  .tile .blurb { font-size:12.5px; color:#8a7a9a; font-weight:600; margin-top:3px; }
+  .tile .ready { position:absolute; top:10px; right:10px; width:10px; height:10px; border-radius:50%; background:#ef4444; box-shadow:0 0 0 2px #fff; }
+
+  /* ---- bell dropdown ---- */
+  .bellwrap { position:relative; }
+  .panel {
+    position:absolute; right:0; top:46px; width:280px;
+    background:#fff; border-radius:16px; padding:10px; z-index:20;
+    box-shadow:0 8px 24px rgba(88,28,135,0.22); border:1px solid var(--wordy-100);
+    display:none; text-align:left;
+  }
+  .panel.open { display:block; }
+  .panel h3 { font-family:'Fredoka One'; font-size:15px; color:var(--wordy-800); padding:4px 6px 8px; }
+  .panel .empty { font-size:13px; color:#8a7a9a; padding:0 6px 6px; line-height:1.5; }
+  .panel .cta { display:flex; flex-direction:column; gap:7px; margin-top:10px; }
+  .panel .cta a {
+    display:flex; align-items:center; gap:8px; text-decoration:none;
+    background:var(--wordy-50); border:1px solid var(--wordy-200); border-radius:12px;
+    padding:9px 11px; font-size:13px; font-weight:800; color:var(--wordy-700);
+  }
+  .panel .cta a:hover { background:var(--wordy-100); }
+  .panel .row { display:flex; align-items:center; gap:10px; padding:8px; border-radius:10px; text-decoration:none; }
+  .panel .row:hover { background:var(--wordy-50); }
+  .panel .row .g { width:32px; height:32px; border-radius:10px; background:linear-gradient(135deg,var(--wordy-600),var(--wordy-800)); display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+  .panel .row .g span { font-family:'Fredoka One'; font-size:14px; color:#fff; }
+  .panel .row .t .n { font-size:13px; font-weight:800; color:var(--wordy-800); }
+  .panel .row .t .s { font-size:11px; color:#8a7a9a; }
+  .panel .row .badge { margin-left:auto; min-width:22px; height:22px; padding:0 6px; border-radius:999px; background:#ef4444; color:#fff; font-size:11px; font-weight:800; display:flex; align-items:center; justify-content:center; }
+
+  /* state visibility */
+  body.returning .welcome { display:none; }
+  body.returning .bell-dot { display:none; }
+  body.newplayer .pop-returning { display:none; }
+  body.returning .pop-new { display:none; }
+</style>
+</head>
+<body class="newplayer">
+
+  <div class="controls">
+    <span class="lbl">Preview as</span>
+    <div class="seg">
+      <button id="btn-new" class="active" onclick="setView('new')">New player</button>
+      <button id="btn-ret" onclick="setView('returning')">Returning player</button>
+    </div>
+    <span class="hint">Tap the 🔔 to see the inbox state. Blurbs show in both views.</span>
+  </div>
+
+  <div class="phone">
+    <header>
+      <div style="display:flex; align-items:center; gap:12px; min-width:0;">
+        <div class="avatar">R</div>
+        <div class="title">
+          <h1>Rae's Side Quest</h1>
+          <p>Hi, Rae</p>
+        </div>
+      </div>
+      <div class="icons">
+        <div class="bellwrap">
+          <button class="iconbtn" onclick="toggleBell()">🔔<span class="dot bell-dot"></span></button>
+          <div class="panel" id="bellpanel">
+            <h3>Inbox</h3>
+            <!-- NEW PLAYER: empty + first-move CTA (friends not required) -->
+            <div class="pop-new">
+              <p class="empty">Nothing waiting yet. Pick a game above to play today's daily or start a match.</p>
+            </div>
+            <!-- RETURNING PLAYER: populated -->
+            <div class="pop-returning">
+              <a class="row" href="#"><div class="g"><span>W</span></div><div class="t"><div class="n">Wordy</div><div class="s">Your turn</div></div><div class="badge">2</div></a>
+              <a class="row" href="#"><div class="g"><span>S</span></div><div class="t"><div class="n">Snibble</div><div class="s">Invite</div></div><div class="badge">1</div></a>
+            </div>
+          </div>
+        </div>
+        <button class="iconbtn">⚙️</button>
+      </div>
+    </header>
+
+    <main>
+      <div class="welcome">
+        <button class="close" title="Dismiss (shown once)">&times;</button>
+        <h2>Welcome to Side Quest 👋</h2>
+        <p>Pick a game below to start. Play today's daily on your own, or open a game for anyone to join.</p>
+        <div class="legend">
+          <span>🔔 <b>whose turn it is</b></span>
+          <span>⚙️ <b>settings &amp; friends</b></span>
+        </div>
+      </div>
+
+      <div class="grid">
+        <a class="tile" href="#">
+          <div class="glyph"><span>W</span></div>
+          <div class="meta"><div class="name">Wordy</div><div class="blurb">Word tile game · multiplayer</div></div>
+        </a>
+        <a class="tile" href="#">
+          <div class="glyph"><span>R</span></div>
+          <div class="meta"><div class="name">Rungles</div><div class="blurb">Word game · solo &amp; multiplayer</div></div>
+        </a>
+        <a class="tile" href="#">
+          <span class="ready pop-returning"></span>
+          <div class="glyph"><span>S</span></div>
+          <div class="meta"><div class="name">Snibble</div><div class="blurb">Cozy daily word game · 1v1</div></div>
+        </a>
+        <a class="tile" href="#">
+          <span class="ready pop-returning"></span>
+          <div class="glyph"><span>Y</span></div>
+          <div class="meta"><div class="name">Yahdle</div><div class="blurb">Letter-dice · daily &amp; 1v1</div></div>
+        </a>
+      </div>
+    </main>
+  </div>
+
+<script>
+  function setView(v){
+    document.body.className = v === 'new' ? 'newplayer' : 'returning';
+    document.getElementById('btn-new').classList.toggle('active', v === 'new');
+    document.getElementById('btn-ret').classList.toggle('active', v !== 'new');
+    document.getElementById('bellpanel').classList.remove('open');
+  }
+  function toggleBell(){
+    document.getElementById('bellpanel').classList.toggle('open');
+  }
+</script>
+</body>
+</html>

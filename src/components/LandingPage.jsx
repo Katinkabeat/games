@@ -8,6 +8,7 @@ import { useTheme } from '../contexts/ThemeContext.jsx';
 import SettingsDropdown from './SettingsDropdown.jsx';
 import HubAvatarMenu from './HubAvatarMenu.jsx';
 import AnnouncementBanner from './AnnouncementBanner.jsx';
+import WelcomeBanner from './WelcomeBanner.jsx';
 import { SQErrorBoundary } from '../../packages/sq-ui/index.js';
 
 const AdminPanel = lazy(() => import('./AdminPanel.jsx'));
@@ -27,6 +28,7 @@ const FALLBACK_GAMES = [
     url: '/wordy/',
     initial: 'W',
     gradient: 'from-wordy-600 to-wordy-800',
+    description: 'Word tile game · multiplayer',
     _access: 'allowed',
   },
   {
@@ -35,6 +37,7 @@ const FALLBACK_GAMES = [
     url: '/rungles/',
     initial: 'R',
     gradient: 'from-wordy-600 to-wordy-800',
+    description: 'Word game · solo & multiplayer',
     _access: 'allowed',
   },
   {
@@ -43,6 +46,7 @@ const FALLBACK_GAMES = [
     url: '/snibble/',
     initial: 'S',
     gradient: 'from-wordy-600 to-wordy-800',
+    description: 'Cozy daily word game · 1v1',
     _access: 'allowed',
   },
   {
@@ -51,6 +55,7 @@ const FALLBACK_GAMES = [
     url: '/yahdle/',
     initial: 'Y',
     gradient: 'from-wordy-600 to-wordy-800',
+    description: 'Letter-dice · daily & 1v1',
     _access: 'allowed',
   },
 ];
@@ -166,7 +171,7 @@ export default function LandingPage({ session }) {
       const [catalogResp, accessResp] = await Promise.all([
         supabase
           .from('games_catalog')
-          .select('id, name, url, initial, gradient, requires_access')
+          .select('id, name, url, initial, gradient, requires_access, description')
           .eq('is_published', true)
           .order('sort_order', { ascending: true }),
         supabase
@@ -384,7 +389,7 @@ export default function LandingPage({ session }) {
                 {loading ? (
                   <p className="text-sm text-wordy-500 px-2 pb-2">Loading...</p>
                 ) : inboxTotal === 0 ? (
-                  <p className="text-sm text-wordy-500 px-2 pb-2">Nothing waiting for you.</p>
+                  <p className="text-sm text-wordy-500 px-2 pb-2">Nothing waiting yet. Pick a game below to play today's daily or start a match.</p>
                 ) : (
                   <ul className="space-y-1">
                     {inboxItems.filter((it) => (it.count || 0) > 0).map((it, idx) => {
@@ -470,6 +475,7 @@ export default function LandingPage({ session }) {
       ) : (
         <SQErrorBoundary variant="inline" label="hub-grid">
           <AnnouncementBanner />
+          <WelcomeBanner userId={user.id} />
           <main className="max-w-[480px] mx-auto px-4 pb-12">
             <div className="mb-4 space-y-3">
               <IOSInstallPrompt />
@@ -519,9 +525,14 @@ export default function LandingPage({ session }) {
                     >
                       <span className="font-display text-2xl text-white">{game.initial}</span>
                     </div>
-                    <h3 className="font-display text-xl text-wordy-800 flex-1 min-w-0 truncate">
-                      {game.name}
-                    </h3>
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-display text-xl text-wordy-800 truncate">
+                        {game.name}
+                      </h3>
+                      {game.description && (
+                        <p className="text-xs text-wordy-500">{game.description}</p>
+                      )}
+                    </div>
                   </a>
                 );
               })}
