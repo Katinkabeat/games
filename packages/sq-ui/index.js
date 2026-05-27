@@ -17,6 +17,7 @@ export {
   SQSettingsRow,
   SQSettingsSection,
 } from './components/SQSettingsMenu.jsx';
+export { default as SQReportPlayer } from './components/SQReportPlayer.jsx';
 export { default as SQAvatarButton } from './components/SQAvatarButton.jsx';
 export { default as SQAvatarDropdown } from './components/SQAvatarDropdown.jsx';
 export { default as SQAvatarMenuItem } from './components/SQAvatarMenuItem.jsx';
