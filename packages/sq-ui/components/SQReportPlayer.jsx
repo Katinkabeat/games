@@ -9,15 +9,20 @@
 // modal down mid-flow. The modal's fixed/z-50 overlay covers the dropdown.
 //
 // Props:
-//   supabase — the host game's configured client (carries its auth session).
-//   game     — slug written to the report row (e.g. "wordy").
+//   supabase     — the host game's configured client (carries its auth session).
+//   game         — slug written to the report row (e.g. "wordy").
+//   renderTrigger — optional. Render-prop for the menu row, called with
+//                   { open }. Use it when the host menu doesn't use the
+//                   .settings-dropdown container (e.g. Rungles styles its own
+//                   buttons), so the row can match the surrounding rows.
+//                   Defaults to a standard SQSettingsRow.
 
 import { useEffect, useRef, useState } from 'react';
 import SQModal from './SQModal.jsx';
 import SQButton from './SQButton.jsx';
 import { SQSettingsRow } from './SQSettingsMenu.jsx';
 
-export default function SQReportPlayer({ supabase, game }) {
+export default function SQReportPlayer({ supabase, game, renderTrigger }) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
   const [matches, setMatches] = useState([]);
@@ -94,7 +99,9 @@ export default function SQReportPlayer({ supabase, game }) {
 
   return (
     <>
-      <SQSettingsRow label="🚩 Report a player" onClick={() => setOpen(true)} />
+      {renderTrigger
+        ? renderTrigger({ open: () => setOpen(true) })
+        : <SQSettingsRow label="🚩 Report a player" onClick={() => setOpen(true)} />}
       <SQModal open={open} onClose={close} title="Report a player">
         {status.kind === 'done' ? (
           <div className="space-y-4">
