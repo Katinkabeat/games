@@ -31,60 +31,85 @@ separate explicit step.
 
 1. Add the new game to `rae-side-quest`'s `dev:all` script
 2. Add it to the SQ hub landing page game grid + post-login allowlist
-3. Wire it into the shared notification system (`src/lib/pushNotifications.js`,
-   the edge function, any DB schema)
-4. Update the theme-flash localStorage fallback list in OTHER games' `index.html`
+3. **Stand up multiplayer** — run `supabase/migrations/<slug>_multiplayer.sql`
+   then `<slug>_nudge.sql` in the Supabase SQL editor, fill in the push-trigger
+   `<PROJECT_REF>` / `<ANON_JWT>` placeholders, run `<slug>_admin_close_game.sql`,
+   and deploy the `<slug>-push-notification` edge function (see "Multiplayer"
+   below)
+4. Wire it into the shared notification system (subscription side:
+   `src/lib/pushNotifications.js` / the hub) — the edge function + DB triggers
+   already ship
+5. Update the theme-flash localStorage fallback list in OTHER games' `index.html`
    to include the new `<slug>-theme` key (so users mid-migration don't flash)
-5. Build the actual game
-6. Once your `<slug>_games` table exists, run
-   `supabase/migrations/<slug>_admin_close_game.sql` to enable admin
-   close-game support (see "Admin close-game" below)
-7. **Enable realtime + hub inbox integration** (see "Realtime lobby" below)
+6. Build the actual game (replace the MP turn stub + play-area placeholder)
+7. Patch the hub's `LandingPage.jsx` `hub-inbox` channel to subscribe to your
+   tables (see "Multiplayer")
 8. `gh repo create` + push when ready
 
-## Realtime lobby
+## Multiplayer (baked in)
 
-Every SQ game's lobby and game view should auto-update when something changes
-server-side (opponent joins, opponent submits, invite arrives). Without this,
-users sit on stale screens until they manually refresh — which they won't,
-because nothing tells them to. **This is not optional.** Snibble shipped without
-it and Player 2 appeared "blocked" until Player 1 acted.
+The scaffold ships a **complete N-player (2–4) multiplayer** engine ported
+generically from Yahdle — you don't retrofit it, you just plug your gameplay
+into the one stubbed seam. It includes:
 
-The scaffold ships with `src/hooks/useRealtimeChannel.js` already wired into the
-multi-game page. The lobby's `MultiplayerCard.jsx` has a usage example in its
-header comment — wire it up the same way.
+- Open games **and** friend invites (single + multi-friend via
+  `invited_user_ids uuid[]`), one open game per creator, auto-start when seats fill
+- Modulo turn rotation `(idx + 1) % N` that skips forfeited seats
+- **Top-score-group-wins** finalize (sole top = win; tied top = all win; ties
+  are never recorded), forfeit-continue (others play on, last one standing
+  wins), claim-inactive-win after 7 days, per-pair W/L matchups
+- The 🔔 **nudge** feature (12h server-side cooldown) and all 5 push types
+  (`game_invited` fan-out, `opponent_joined`, `turn_change`, `game_finished`
+  fan-out, `nudge`)
+- `<slug>_is_participant()` + N-player RLS, realtime publication, invite
+  expiry, and `<slug>_pending_for(uid)` for the hub bell
 
-After your tables exist, you must:
+**Files:**
 
-1. **Add tables to the realtime publication** (migration):
+- Backend: `supabase/migrations/<slug>_multiplayer.sql` (schema + RPCs + RLS +
+  expiry + push triggers + realtime publication), `<slug>_nudge.sql`, and the
+  `supabase/functions/<slug>-push-notification/` edge function.
+- Frontend: `src/lib/multiplayerActions.js`, `src/hooks/useMultiplayerLobby.js`,
+  `src/hooks/useFriends.js`, `src/components/lobby/MultiplayerCard.jsx` +
+  `CreateGameSheet.jsx`, `src/components/game/MultiGamePage.jsx`.
+  `LobbyPage.jsx` already wires `useMultiplayerLobby` and passes the buckets in.
 
-   ```sql
-   alter publication supabase_realtime add table public.<slug>_games;
-   alter publication supabase_realtime add table public.<slug>_players;
-   ```
+**Setup after scaffolding:**
 
-   Without this, `postgres_changes` subscriptions silently no-op.
+1. Run `<slug>_multiplayer.sql`, then `<slug>_nudge.sql`, then
+   `<slug>_admin_close_game.sql` in the SQL editor. The first one adds both
+   tables to the `supabase_realtime` publication and creates
+   `<slug>_pending_for(uid)` — so there's no separate "enable realtime" step.
+2. In `<slug>_multiplayer.sql` **section 20**, replace `<PROJECT_REF>` and
+   `<ANON_JWT>` in the push triggers (the SQ shared project ref is
+   `yyhewndblruwxsrqzart`). The edge function only needs a valid JWT to verify;
+   it uses its own service-role key.
+3. Deploy the edge function: `supabase functions deploy <slug>-push-notification`
+   (reuses the shared `VAPID_*` secrets).
+4. Patch the hub's `LandingPage.jsx` `hub-inbox` channel to subscribe to
+   `<slug>_games` / `<slug>_players` — copy the existing `sn_matches` /
+   `sn_match_round_plays` `.on(...)` lines and swap in your slug. (The hub's
+   `sq_pending_for(uid)` already calls `<slug>_pending_for` automatically.)
 
-2. **Add a `<slug>_pending_for(uid)` SQL function** so Snibble-style pending
-   counts (your turn, invites) show up in the SQ hub's bell. Pattern:
+**The ONLY game-specific seams (replace these with real gameplay):**
 
-   ```sql
-   create or replace function public.<slug>_pending_for(uid uuid)
-   returns table (count integer, label text, url text)
-   language sql stable
-   as $$
-     select count(*)::int, 'Your turn'::text, '/<slug>/'::text
-     from public.<slug>_games g
-     -- ... your "owes a turn" query ...
-     having count(*) > 0;
-   $$;
-   ```
+- `<slug>_submit_turn(p_game_id uuid, p_score int)` in the migration is a
+  **STUB**: it verifies it's the caller's turn + the game is active, adds the
+  passed-in integer to `total_score`, bumps `turns_taken`, and advances the
+  turn. It exists so the engine is playable end-to-end (turns rotate, the game
+  finishes, a winner is picked) before you build gameplay. Replace `p_score`
+  with your real move payload + server-side validation + scoring.
+- The **GAME-SPECIFIC PLAY AREA** block in `MultiGamePage.jsx` is a demo
+  number-input + "Submit turn" button calling that stub. Replace it with your
+  board / dice / cards. (Also replace the minimal `OpponentSheet` inspector.)
+- `<slug>_total_turns()` (default `1`) defines how many turns each player takes
+  before the game finalizes — bump it (Yahdle uses 12) once gameplay is defined,
+  or rework the "everyone done" check in `<slug>_advance_turn` if your game ends
+  differently.
+- Add your own per-player columns to `<slug>_players` as your gameplay needs.
 
-   The hub's `sq_pending_for(uid)` RPC calls this automatically.
-
-3. **Patch the hub's `LandingPage.jsx`** to subscribe to your tables in the
-   `hub-inbox` channel — copy the existing `sn_matches` / `sn_match_round_plays`
-   `.on(...)` lines and swap in your slug.
+`src/hooks/useRealtimeChannel.js` (the connection-resilience wrapper) is shared
+infra and is already wired into both the lobby hook and the game page.
 
 See `docs/sq-conventions.md` for full SQ patterns.
 
