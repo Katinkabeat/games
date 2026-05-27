@@ -307,7 +307,7 @@ If a phase goes sideways, the rollback is always:
 **What to build:** (shipped 2026-04-25)
 - `public.rate_limits(user_id, action, window_start, count)` with PK `(user_id, action, window_start)`. RLS enabled but no user-facing policies — only callable via the SECURITY DEFINER function.
 - `public.check_and_bump_rate_limit(uid, action, limit_per_hour) returns boolean`. Atomically upserts a row for the current hour bucket (`date_trunc('hour', now())`), returns `true` if the user is still under the limit, `false` if they hit it. Cleans up windows >24h old on every call (cheap, table stays small).
-- **Not yet wired into any call sites.** Available for future use in edge functions (invite creation, report submission, profile updates, etc.). Start with generous limits (100/hour) and tighten based on real data from `sq_events`. Currently log-only — when you add a call site, you can choose whether to enforce (return error) or just log (insert into `sq_events` with `event='rate_limit_exceeded'`).
+- **Wired up 2026-05-26** (`sq_rate_limit_wiring.sql`, card c118). Log-only via `public.note_rate_limit(action, limit)` — bumps the counter and, if over, logs `sq_events.event='rate_limit_exceeded'`; never raises, so no user action is ever blocked. Attached via BEFORE triggers (`sq_rate_limit_trigger`, action+limit in `TG_ARGV`): friend_request 20/hr (friendships), submit_report 10/hr (reports), create_game 20/hr (games/rg_games/sn_matches — all new games), update_profile 30/hr (profiles). Thresholds are signal lines for now, not caps; review `sq_events` then set real enforce limits. Flipping one action to hard-enforce = point its trigger at a raising variant. NB: also fixed a latent bug — the `action` parameter shadowed the column, so every call raised "ambiguous column" (never seen because there were no callers); param renamed to `p_action`.
 
 **Risks:**
 | Type | Detail | Workaround |
@@ -371,12 +371,7 @@ These items were intentionally not done during the initial 11-phase rollout (202
 3. **Game-side friend filtering / prioritization.**
    `are_friends(uid1, uid2)` exists for games to call. Optional UX improvement — Wordy/Rungles could surface "your friends" first in invite dropdowns or restrict invites to friends only.
 
-4. **Rate-limit call sites in edge functions.**
-   `check_and_bump_rate_limit(uid, action, limit_per_hour)` exists with no callers. Likely candidates when scaling up:
-   - Wordy/Rungles edge functions: cap moves per hour per user
-   - Friend request RPC: cap requests per day
-   - Report submission: already has 24h-per-pair cooldown built in; rate-limit is for bulk-sending across many targets
-   Start permissive (e.g. 100/hour), tighten based on real `sq_events` data.
+4. **Rate-limit call sites.** ✅ Done 2026-05-26 (card c118) — see Phase 10 above. friend_request, submit_report, create_game, and update_profile are wired log-only via triggers. Still open if we scale further: capping moves per hour per user in the Wordy/Rungles move RPCs (not yet wired). Review `sq_events` data before setting real enforce limits.
 
 5. **In-game "Report player" buttons.**
    Currently reports come only from the hub's Friends view. For better moderation coverage during gameplay, each game could show a small `⋯ Report` link on opponent profile chips. Calls `submit_report` RPC same as the hub.
