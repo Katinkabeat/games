@@ -373,8 +373,7 @@ These items were intentionally not done during the initial 11-phase rollout (202
 
 4. **Rate-limit call sites.** ✅ Done 2026-05-26 (card c118) — see Phase 10 above. friend_request, submit_report, create_game, and update_profile are wired log-only via triggers. Still open if we scale further: capping moves per hour per user in the Wordy/Rungles move RPCs (not yet wired). Review `sq_events` data before setting real enforce limits.
 
-5. **In-game "Report player" buttons.**
-   Currently reports come only from the hub's Friends view. For better moderation coverage during gameplay, each game could show a small `⋯ Report` link on opponent profile chips. Calls `submit_report` RPC same as the hub.
+5. **In-game "Report a player".** ✅ Done 2026-05-27 (card c123). Shipped as a shared `SQReportPlayer` sq-ui component — a "🚩 Report a player" row in each game's Settings menu opens a modal with a type-to-search username field (mirrors the hub Friends search, resolves to a UUID) + reason box, calling `submit_report`. Chosen over per-opponent profile-chip links to avoid cluttering user pills. Wired into all four MP games (Wordy, Rungles, Snibble, Yahdle) and baked into the sq-game-starter scaffolder so new games include it automatically.
 
 ### Migration notes for moving Supabase off the free tier (e.g., to Dean's server)
 
