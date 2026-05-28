@@ -5,6 +5,11 @@ import { supabase } from '../lib/supabase.js';
 
 const TURNSTILE_SITE_KEY = import.meta.env.VITE_TURNSTILE_SITE_KEY || '0x4AAAAAACrUqndWqt4-0ExK';
 
+// Gates the public Sign up tab. Keep false until signups are intentionally
+// opened — must be flipped in lockstep with the server's disable_signup flag
+// (see c131). Defaults off so the tab never shows to the public by accident.
+const SIGNUPS_OPEN = import.meta.env.VITE_SIGNUPS_OPEN === 'true';
+
 export default function AuthPage({ isRecovery = false, onPasswordReset = () => {} }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -12,6 +17,9 @@ export default function AuthPage({ isRecovery = false, onPasswordReset = () => {
   const [submitting, setSubmitting] = useState(false);
   const [captchaToken, setCaptchaToken] = useState('');
   const captchaRef = useRef(null);
+  const [mode, setMode] = useState('signin');
+  const [pendingEmail, setPendingEmail] = useState('');
+  const [unconfirmed, setUnconfirmed] = useState(false);
   const [newPass, setNewPass] = useState('');
   const [newConfirm, setNewConfirm] = useState('');
   const [showNewPass, setShowNewPass] = useState(false);
@@ -53,11 +61,69 @@ export default function AuthPage({ isRecovery = false, onPasswordReset = () => {
     });
 
     if (error) {
-      toast.error(error.message);
+      if (/not confirmed/i.test(error.message)) {
+        setUnconfirmed(true);
+      } else {
+        toast.error(error.message);
+      }
       captchaRef.current?.reset();
       setCaptchaToken('');
       setSubmitting(false);
     }
+  }
+
+  async function handleSignUp(e) {
+    e.preventDefault();
+    if (submitting) return;
+    if (password.length < 6) {
+      toast.error('Password must be at least 6 characters');
+      return;
+    }
+    setSubmitting(true);
+
+    const { error } = await supabase.auth.signUp({
+      email: email.trim(),
+      password,
+      options: {
+        emailRedirectTo: `${window.location.origin}/games/`,
+        ...(captchaToken ? { captchaToken } : {}),
+      },
+    });
+
+    captchaRef.current?.reset();
+    setCaptchaToken('');
+    setSubmitting(false);
+
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    setPendingEmail(email.trim());
+  }
+
+  async function handleResend() {
+    const target = (pendingEmail || email).trim();
+    if (!target) {
+      toast.error('Enter your email first');
+      return;
+    }
+    const { error } = await supabase.auth.resend({
+      type: 'signup',
+      email: target,
+      options: {
+        emailRedirectTo: `${window.location.origin}/games/`,
+        ...(captchaToken ? { captchaToken } : {}),
+      },
+    });
+    captchaRef.current?.reset();
+    setCaptchaToken('');
+    if (error) toast.error(error.message);
+    else toast.success('Confirmation email sent');
+  }
+
+  function switchMode(next) {
+    setMode(next);
+    setUnconfirmed(false);
   }
 
   async function handleReset() {
@@ -150,6 +216,36 @@ export default function AuthPage({ isRecovery = false, onPasswordReset = () => {
     );
   }
 
+  if (pendingEmail) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-wordy-100 via-pink-100 to-wordy-100 p-4">
+        <div className="card w-full max-w-md text-center">
+          <div className="text-5xl mb-2">✉️</div>
+          <h1 className="font-display text-2xl text-wordy-800 mb-2">Check your email</h1>
+          <p className="text-sm text-wordy-600">We sent a confirmation link to</p>
+          <p className="text-sm font-bold text-wordy-700 mb-3">{pendingEmail}</p>
+          <p className="text-sm text-wordy-600 mb-5">
+            Click the link in that email to verify your account, then come back and sign in.
+          </p>
+          <button type="button" onClick={handleResend} className="btn-secondary w-full">
+            Resend confirmation email
+          </button>
+          <div className="flex justify-center text-sm pt-3">
+            <button
+              type="button"
+              onClick={() => { setPendingEmail(''); switchMode('signin'); }}
+              className="text-wordy-600 hover:text-wordy-800 underline"
+            >
+              Back to sign in
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  const isSignUp = SIGNUPS_OPEN && mode === 'signup';
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-wordy-100 via-pink-100 to-wordy-100 p-4">
       <div className="card w-full max-w-md">
@@ -158,10 +254,50 @@ export default function AuthPage({ isRecovery = false, onPasswordReset = () => {
             <span className="font-display text-3xl text-white">R</span>
           </div>
           <h1 className="font-display text-3xl text-wordy-800">Rae's Side Quest</h1>
-          <p className="text-sm text-wordy-600 mt-1">Sign in to play</p>
+          <p className="text-sm text-wordy-600 mt-1">
+            {isSignUp ? 'Create an account to play' : 'Sign in to play'}
+          </p>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        {SIGNUPS_OPEN && (
+          <div className="flex bg-wordy-100 rounded-xl p-1 mb-5">
+            <button
+              type="button"
+              onClick={() => switchMode('signin')}
+              className={`flex-1 py-2 rounded-lg text-sm font-bold transition-all ${
+                !isSignUp ? 'bg-white text-wordy-800 shadow-sm' : 'text-wordy-600'
+              }`}
+            >
+              Sign in
+            </button>
+            <button
+              type="button"
+              onClick={() => switchMode('signup')}
+              className={`flex-1 py-2 rounded-lg text-sm font-bold transition-all ${
+                isSignUp ? 'bg-white text-wordy-800 shadow-sm' : 'text-wordy-600'
+              }`}
+            >
+              Sign up
+            </button>
+          </div>
+        )}
+
+        {unconfirmed && (
+          <div className="bg-amber-50 border border-amber-300 rounded-xl px-4 py-3 mb-4 text-sm text-amber-800">
+            <strong className="block mb-1">Your email isn't confirmed yet</strong>
+            Check your inbox for the confirmation link, or{' '}
+            <button
+              type="button"
+              onClick={handleResend}
+              className="font-bold underline"
+            >
+              resend it
+            </button>
+            .
+          </div>
+        )}
+
+        <form onSubmit={isSignUp ? handleSignUp : handleSubmit} className="space-y-4">
           <div>
             <label className="block text-sm font-bold text-wordy-700 mb-1">Email</label>
             <input
@@ -180,6 +316,7 @@ export default function AuthPage({ isRecovery = false, onPasswordReset = () => {
               <input
                 type={showPassword ? 'text' : 'password'}
                 required
+                minLength={isSignUp ? 6 : undefined}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 className="w-full px-3 py-2 pr-14 border-2 border-wordy-200 rounded-xl focus:border-wordy-400 focus:outline-none"
@@ -192,6 +329,9 @@ export default function AuthPage({ isRecovery = false, onPasswordReset = () => {
                 {showPassword ? 'Hide' : 'Show'}
               </button>
             </div>
+            {isSignUp && (
+              <p className="text-xs text-wordy-500 mt-1">At least 6 characters</p>
+            )}
           </div>
 
           {TURNSTILE_SITE_KEY && (
@@ -205,18 +345,22 @@ export default function AuthPage({ isRecovery = false, onPasswordReset = () => {
           )}
 
           <button type="submit" disabled={submitting} className="btn-primary w-full">
-            {submitting ? 'Signing in...' : 'Sign in'}
+            {submitting
+              ? (isSignUp ? 'Creating account...' : 'Signing in...')
+              : (isSignUp ? 'Sign up' : 'Sign in')}
           </button>
 
-          <div className="flex justify-center text-sm pt-1">
-            <button
-              type="button"
-              onClick={handleReset}
-              className="text-wordy-600 hover:text-wordy-800 underline"
-            >
-              Forgot password?
-            </button>
-          </div>
+          {!isSignUp && (
+            <div className="flex justify-center text-sm pt-1">
+              <button
+                type="button"
+                onClick={handleReset}
+                className="text-wordy-600 hover:text-wordy-800 underline"
+              >
+                Forgot password?
+              </button>
+            </div>
+          )}
         </form>
 
         <div className="flex justify-center gap-4 text-xs text-wordy-500 mt-6 pt-4 border-t border-wordy-100">

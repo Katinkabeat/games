@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>c131 — SQ Signup Form Mockup</title>
+<style>
+  /* ── wordy palette (purple scale, matched to globals.css) ── */
+  :root{
+    --wordy-100:#f3e8ff; --wordy-200:#e9d5ff; --wordy-300:#d8b4fe;
+    --wordy-400:#c084fc; --wordy-500:#a855f7; --wordy-600:#9333ea;
+    --wordy-700:#7e22ce; --wordy-800:#6b21a8; --pink-100:#fce7f3;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+    color:#1f2937; background:#faf5ff; padding:24px;
+  }
+  h2.section{font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:#9333ea;margin:32px 0 12px;}
+  .toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:8px;}
+  .toolbar button{
+    border:2px solid var(--wordy-300); background:#fff;color:var(--wordy-700);
+    font-weight:700;font-size:13px;padding:6px 12px;border-radius:10px;cursor:pointer;
+  }
+  .toolbar button.active{background:var(--wordy-600);color:#fff;border-color:var(--wordy-600);}
+  .note{font-size:12px;color:#6b7280;max-width:680px;margin:0 0 16px;}
+
+  /* ── the auth surface (mirrors AuthPage.jsx) ── */
+  .stage{
+    min-height:560px;display:flex;align-items:center;justify-content:center;
+    background:linear-gradient(135deg,var(--wordy-100),var(--pink-100),var(--wordy-100));
+    border-radius:20px;padding:24px;
+  }
+  .card{
+    width:100%;max-width:400px;background:#fff;border-radius:16px;
+    box-shadow:0 4px 14px rgba(0,0,0,.08);border:1px solid var(--wordy-100);padding:24px;
+  }
+  .logo-wrap{display:flex;flex-direction:column;align-items:center;margin-bottom:24px;}
+  .logo{
+    width:64px;height:64px;border-radius:18px;background:var(--wordy-600);color:#fff;
+    display:flex;align-items:center;justify-content:center;font-size:30px;font-weight:800;
+    box-shadow:0 4px 10px rgba(147,51,234,.3);margin-bottom:12px;
+  }
+  .title{font-size:26px;font-weight:800;color:var(--wordy-800);margin:0;}
+  .subtitle{font-size:13px;color:var(--wordy-600);margin:4px 0 0;}
+
+  /* segmented sign-in/sign-up toggle */
+  .seg{
+    display:flex;background:var(--wordy-100);border-radius:12px;padding:4px;margin-bottom:20px;
+  }
+  .seg button{
+    flex:1;border:none;background:transparent;font-weight:700;font-size:14px;color:var(--wordy-600);
+    padding:8px;border-radius:9px;cursor:pointer;transition:all .15s;
+  }
+  .seg button.on{background:#fff;color:var(--wordy-800);box-shadow:0 1px 3px rgba(0,0,0,.1);}
+
+  label{display:block;font-size:13px;font-weight:700;color:var(--wordy-700);margin-bottom:4px;}
+  .field{margin-bottom:16px;}
+  .field input{
+    width:100%;padding:9px 12px;border:2px solid var(--wordy-200);border-radius:12px;
+    font-size:14px;outline:none;
+  }
+  .field input:focus{border-color:var(--wordy-400);}
+  .pw{position:relative;}
+  .pw .toggle{
+    position:absolute;right:12px;top:50%;transform:translateY(-50%);
+    border:none;background:none;color:var(--wordy-500);font-weight:700;font-size:13px;cursor:pointer;
+  }
+  .hint{font-size:11px;color:#6b7280;margin-top:4px;}
+  .captcha{
+    height:60px;border:1px dashed var(--wordy-300);border-radius:10px;display:flex;
+    align-items:center;justify-content:center;color:var(--wordy-500);font-size:12px;margin-bottom:16px;
+  }
+  .btn-primary{
+    width:100%;padding:11px;border:none;border-radius:12px;color:#fff;font-weight:800;font-size:15px;
+    background:linear-gradient(135deg,#9333ea,#7e22ce);box-shadow:0 3px 0 #581c87;cursor:pointer;
+  }
+  .links{display:flex;justify-content:center;font-size:13px;margin-top:14px;}
+  .links a,.links button{color:var(--wordy-600);text-decoration:underline;background:none;border:none;cursor:pointer;font-size:13px;}
+  .footer{display:flex;justify-content:center;gap:16px;font-size:12px;color:var(--wordy-500);
+    margin-top:24px;padding-top:16px;border-top:1px solid var(--wordy-100);}
+  .footer a{color:inherit;text-decoration:underline;}
+
+  /* pending / confirm state */
+  .pending{text-align:center;}
+  .pending .big-icon{font-size:48px;margin-bottom:8px;}
+  .pending h3{font-size:20px;color:var(--wordy-800);margin:0 0 8px;font-weight:800;}
+  .pending p{font-size:14px;color:#4b5563;line-height:1.5;margin:0 0 6px;}
+  .pending .email{font-weight:700;color:var(--wordy-700);}
+  .pending .resend{margin-top:18px;}
+
+  /* unconfirmed sign-in error banner */
+  .banner{
+    background:#fef3c7;border:1px solid #fcd34d;border-radius:12px;padding:12px 14px;
+    font-size:13px;color:#92400e;margin-bottom:16px;
+  }
+  .banner strong{display:block;margin-bottom:4px;}
+  .banner .resend-link{color:#92400e;font-weight:700;text-decoration:underline;background:none;border:none;cursor:pointer;font-size:13px;padding:0;}
+</style>
+</head>
+<body>
+
+<h2 class="section">State A — Sign up tab (segmented toggle at top)</h2>
+<div class="toolbar" data-group="a">
+  <button data-mode="signin" class="active">Sign in selected</button>
+  <button data-mode="signup">Sign up selected</button>
+</div>
+<p class="note">One form, two tabs. Same card, logo, captcha and footer as today's sign-in screen — we just add the toggle. Sign up has the same fields (email + password); confirm-email handles the rest, so no extra "confirm password" field needed.</p>
+<div class="stage">
+  <div class="card">
+    <div class="logo-wrap">
+      <div class="logo">R</div>
+      <h1 class="title">Rae's Side Quest</h1>
+      <p class="subtitle" id="a-sub">Sign in to play</p>
+    </div>
+    <div class="seg">
+      <button id="a-tab-in" class="on" onclick="setA('signin')">Sign in</button>
+      <button id="a-tab-up" onclick="setA('signup')">Sign up</button>
+    </div>
+    <div class="field"><label>Email</label><input type="email" placeholder="you@example.com" /></div>
+    <div class="field">
+      <label>Password</label>
+      <div class="pw"><input type="password" value="••••••••" /><button class="toggle">Show</button></div>
+      <p class="hint" id="a-hint" style="display:none;">At least 6 characters</p>
+    </div>
+    <div class="captcha">[ Turnstile captcha ]</div>
+    <button class="btn-primary" id="a-submit">Sign in</button>
+    <div class="links" id="a-forgot"><button>Forgot password?</button></div>
+    <div class="footer"><a href="#">Privacy</a><a href="#">Terms</a></div>
+  </div>
+</div>
+
+<h2 class="section">State B — "Check your email" pending state (after sign up succeeds)</h2>
+<p class="note">After a successful sign-up the session is null until they verify, so we replace the form with this confirmation panel instead of dropping them into the hub.</p>
+<div class="stage">
+  <div class="card">
+    <div class="pending">
+      <div class="big-icon">✉️</div>
+      <h3>Check your email</h3>
+      <p>We sent a confirmation link to</p>
+      <p class="email">you@example.com</p>
+      <p style="margin-top:12px;">Click the link in that email to verify your account, then come back and sign in.</p>
+      <div class="resend">
+        <button class="btn-primary" style="background:#fff;color:var(--wordy-700);box-shadow:0 3px 0 var(--wordy-200);border:2px solid var(--wordy-300);">Resend confirmation email</button>
+      </div>
+      <div class="links" style="margin-top:14px;"><button onclick="alert('back to sign in')">Back to sign in</button></div>
+    </div>
+  </div>
+</div>
+
+<h2 class="section">State C — Unconfirmed user tries to sign in (friendlier than today's raw toast)</h2>
+<p class="note">Today an unconfirmed sign-in just toasts "Email not confirmed". Instead, show an inline banner with a resend button right where they're looking.</p>
+<div class="stage">
+  <div class="card">
+    <div class="logo-wrap">
+      <div class="logo">R</div>
+      <h1 class="title">Rae's Side Quest</h1>
+      <p class="subtitle">Sign in to play</p>
+    </div>
+    <div class="seg">
+      <button class="on">Sign in</button>
+      <button>Sign up</button>
+    </div>
+    <div class="banner">
+      <strong>Your email isn't confirmed yet</strong>
+      Check your inbox for the confirmation link, or
+      <button class="resend-link">resend it</button>.
+    </div>
+    <div class="field"><label>Email</label><input type="email" value="you@example.com" /></div>
+    <div class="field">
+      <label>Password</label>
+      <div class="pw"><input type="password" value="••••••••" /><button class="toggle">Show</button></div>
+    </div>
+    <div class="captcha">[ Turnstile captcha ]</div>
+    <button class="btn-primary">Sign in</button>
+    <div class="links"><button>Forgot password?</button></div>
+    <div class="footer"><a href="#">Privacy</a><a href="#">Terms</a></div>
+  </div>
+</div>
+
+<script>
+  function setA(mode){
+    const up = mode === 'signup';
+    document.getElementById('a-tab-in').classList.toggle('on', !up);
+    document.getElementById('a-tab-up').classList.toggle('on', up);
+    document.getElementById('a-sub').textContent = up ? 'Create an account to play' : 'Sign in to play';
+    document.getElementById('a-submit').textContent = up ? 'Sign up' : 'Sign in';
+    document.getElementById('a-hint').style.display = up ? 'block' : 'none';
+    document.getElementById('a-forgot').style.display = up ? 'none' : 'flex';
+    document.querySelectorAll('[data-group="a"] button').forEach(b=>{
+      b.classList.toggle('active', b.dataset.mode === mode);
+    });
+  }
+  document.querySelectorAll('[data-group="a"] button').forEach(b=>{
+    b.addEventListener('click', ()=> setA(b.dataset.mode));
+  });
+</script>
+</body>
+</html>
