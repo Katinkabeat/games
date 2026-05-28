@@ -251,7 +251,7 @@ export default function AuthPage({ isRecovery = false, onPasswordReset = () => {
       <div className="card w-full max-w-md">
         <div className="flex flex-col items-center mb-6">
           <div className="w-16 h-16 rounded-2xl bg-wordy-600 flex items-center justify-center mb-3 shadow-md">
-            <span className="font-display text-3xl text-white">R</span>
+            <span className="font-display text-2xl text-white">SQ</span>
           </div>
           <h1 className="font-display text-3xl text-wordy-800">Rae's Side Quest</h1>
           <p className="text-sm text-wordy-600 mt-1">
