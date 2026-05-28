@@ -335,7 +335,7 @@ export default function AuthPage({ isRecovery = false, onPasswordReset = () => {
           </div>
 
           {TURNSTILE_SITE_KEY && (
-            <div className="flex justify-center">
+            <div className="flex justify-center items-center min-h-[65px]">
               <Turnstile
                 ref={captchaRef}
                 siteKey={TURNSTILE_SITE_KEY}
