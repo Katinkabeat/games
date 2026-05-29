@@ -88,13 +88,11 @@ begin
       using errcode = 'check_violation';
   end if;
 
-  -- url-safe opaque token. encode(...,'base64') can emit + / = which are
-  -- awkward in a query string, so translate to the url-safe alphabet and
-  -- strip '=' padding. 24 random bytes -> 32 chars, ample entropy.
-  new_token := rtrim(
-    translate(encode(gen_random_bytes(24), 'base64'), '+/', '-_'),
-    '='
-  );
+  -- url-safe opaque token. Two random v4 UUIDs (gen_random_uuid is core
+  -- Postgres, no pgcrypto needed) concatenated with hyphens stripped — 64
+  -- url-safe hex chars, ~244 bits of entropy.
+  new_token := replace(gen_random_uuid()::text, '-', '')
+            || replace(gen_random_uuid()::text, '-', '');
 
   insert into public.sq_referral_invites (token, inviter_id)
   values (new_token, me);
