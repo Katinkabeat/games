@@ -1,0 +1,334 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>c92 — Leaderboard mockup (Yahdle)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka+One&family=Nunito:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0f0a1e;
+    --surface1: #1a1130;
+    --surface2: #241640;
+    --border: #2d1b55;
+    --border-raised: #6d28d9;
+    --text: #ede0ff;
+    --muted: #c4b5fd;
+    --header: #130c25;
+    --accent: #a855f7;
+    --accent-hot: #ec4899;
+    --you: #f472b6;
+    --tile-grad-a: #2d1b55;
+    --tile-grad-b: #1e1040;
+    --tile-border: #7c3aed;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; background: var(--bg); color: var(--text); font-family: 'Nunito', sans-serif; }
+  .page { min-height: 100vh; padding: 24px 12px 60px; display: flex; flex-direction: column; align-items: center; gap: 18px; }
+  .note { max-width: 420px; width: 100%; padding: 10px 14px; background: var(--surface1); border: 1px dashed var(--border-raised); border-radius: 10px; color: var(--muted); font-size: 13px; }
+  .modal {
+    width: 100%; max-width: 420px;
+    background: var(--surface2);
+    border: 1px solid var(--border-raised);
+    border-radius: 18px;
+    box-shadow: 0 16px 48px rgba(0,0,0,.55);
+    overflow: hidden;
+  }
+  .modal-header {
+    padding: 16px 20px 14px;
+    background: var(--header);
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .modal-title { font-family: 'Fredoka One', cursive; font-size: 22px; }
+  .close { background: transparent; border: none; color: var(--muted); font-size: 20px; cursor: pointer; }
+
+  .tabs { display: flex; gap: 4px; padding: 12px 14px 0; }
+  .tab {
+    flex: 1; padding: 8px 6px; border-radius: 9px;
+    background: transparent; border: 1px solid transparent;
+    color: var(--muted); font-weight: 700; font-size: 13px;
+    cursor: pointer;
+  }
+  .tab.active {
+    background: linear-gradient(180deg, var(--tile-grad-a), var(--tile-grad-b));
+    border-color: var(--tile-border);
+    color: var(--text);
+  }
+
+  .stepper {
+    margin: 12px 14px 0;
+    padding: 8px 10px;
+    background: var(--surface1);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: space-between;
+    color: var(--text);
+  }
+  .stepper button {
+    background: transparent; color: var(--muted); border: 1px solid var(--border);
+    border-radius: 8px; width: 32px; height: 32px; cursor: pointer; font-size: 16px;
+  }
+  .stepper button:disabled { opacity: .35; cursor: not-allowed; }
+  .stepper-label { font-weight: 700; font-size: 14px; }
+  .stepper-label .pill { display: inline-block; margin-left: 8px; padding: 2px 8px; border-radius: 999px; background: var(--accent-hot); color: white; font-size: 11px; font-weight: 800; vertical-align: middle; }
+
+  .range-label { margin: 10px 14px 0; color: var(--muted); font-size: 12px; text-align: center; }
+
+  .rows { padding: 8px 6px 16px; }
+  .row {
+    display: grid; grid-template-columns: 36px 1fr auto; align-items: center;
+    padding: 10px 14px; border-radius: 10px; margin: 2px 8px;
+    font-size: 15px;
+  }
+  .row .rank { font-family: 'Fredoka One', cursive; color: var(--muted); font-size: 16px; }
+  .row .name { font-weight: 600; }
+  .row .score { font-family: 'Fredoka One', cursive; color: var(--text); }
+  .row.top1 { background: linear-gradient(90deg, rgba(236,72,153,.18), rgba(168,85,247,.10)); }
+  .row.top1 .rank { color: #fde68a; }
+  .row.you { background: rgba(244,114,182,.14); border: 1px solid var(--you); }
+  .row.you .name { color: var(--you); }
+
+  .divider {
+    margin: 10px 24px 6px; padding: 6px 0; text-align: center;
+    color: var(--muted); font-size: 11px; letter-spacing: .15em; text-transform: uppercase;
+    border-top: 1px dashed var(--border);
+  }
+
+  .empty { padding: 32px 16px; text-align: center; color: var(--muted); font-style: italic; font-size: 14px; }
+</style>
+</head>
+<body>
+  <div class="page">
+    <div class="note">
+      <strong>c92 mockup — Yahdle stats / leaderboard tab.</strong> Tabs <em>Day · Week · Month · All-time</em>. When <em>Day</em> is selected, a date stepper appears — tap <em>‹</em> to look back at previous days. The "Today" pill disappears on past dates.
+    </div>
+
+    <div class="modal" id="modal">
+      <div class="modal-header">
+        <div class="modal-title">Leaderboard</div>
+        <button class="close" aria-label="Close">×</button>
+      </div>
+
+      <div class="tabs" id="tabs">
+        <button class="tab active" data-tf="day">Day</button>
+        <button class="tab" data-tf="week">Week</button>
+        <button class="tab" data-tf="month">Month</button>
+        <button class="tab" data-tf="all">All-time</button>
+      </div>
+
+      <div id="stepper" class="stepper">
+        <button id="prevDay" aria-label="Previous day">‹</button>
+        <div class="stepper-label">
+          <span id="dateLabel">Tue, May 19, 2026</span>
+          <span class="pill" id="todayPill">Today</span>
+        </div>
+        <button id="nextDay" aria-label="Next day">›</button>
+      </div>
+
+      <div id="rangeLabel" class="range-label" style="display:none;"></div>
+
+      <div class="rows" id="rows"></div>
+    </div>
+
+    <div class="note" style="border-style: solid; border-color: var(--border); background: var(--surface1);">
+      Mocked data only. Numbers, names, and rankings are fabricated to show layout. <br>
+      <span style="color: var(--muted); font-size: 12px;">Same shape would apply to Snibble & Rungles; only chrome and column labels differ.</span>
+    </div>
+  </div>
+
+<script>
+  // Fabricated leaderboard data per timeframe + per day.
+  // For "day" we key by ISO date so the stepper can show different days.
+  const TODAY = new Date(2026, 4, 19); // May 19, 2026
+  const YOU = "Rae";
+
+  const dayLeaderboards = {
+    "2026-05-19": [ // today
+      { name: "Dean",      score: 412 },
+      { name: "Mara",      score: 388 },
+      { name: "Jules",     score: 376 },
+      { name: "Bex",       score: 351 },
+      { name: "Tomi",      score: 340 },
+      { name: "Pip",       score: 322 },
+      { name: "Wes",       score: 310 },
+      { name: "Sol",       score: 298 },
+      { name: "Nor",       score: 287 },
+      { name: "Kit",       score: 271 },
+      // …Rae is not in top 10 today
+    ],
+    "2026-05-18": [ // yesterday — Rae won!
+      { name: "Rae",       score: 421 },
+      { name: "Dean",      score: 405 },
+      { name: "Jules",     score: 392 },
+      { name: "Mara",      score: 380 },
+      { name: "Bex",       score: 366 },
+      { name: "Wes",       score: 354 },
+      { name: "Tomi",      score: 341 },
+      { name: "Pip",       score: 329 },
+      { name: "Nor",       score: 311 },
+      { name: "Sol",       score: 295 },
+    ],
+    "2026-05-17": [
+      { name: "Mara",      score: 398 },
+      { name: "Dean",      score: 379 },
+      { name: "Rae",       score: 372 },
+      { name: "Jules",     score: 361 },
+      { name: "Pip",       score: 345 },
+      { name: "Bex",       score: 332 },
+      { name: "Wes",       score: 318 },
+      { name: "Kit",       score: 301 },
+      { name: "Sol",       score: 289 },
+      { name: "Tomi",      score: 275 },
+    ],
+  };
+
+  const youDayRanks = {
+    "2026-05-19": { rank: 47, score: 184 },
+    "2026-05-18": null, // already in top 10
+    "2026-05-17": null,
+  };
+
+  const weekData = [
+    { name: "Dean", score: 2104 },
+    { name: "Mara", score: 1988 },
+    { name: "Jules", score: 1932 },
+    { name: "Rae",  score: 1879 },
+    { name: "Bex",  score: 1801 },
+    { name: "Tomi", score: 1740 },
+    { name: "Pip",  score: 1688 },
+    { name: "Wes",  score: 1602 },
+    { name: "Sol",  score: 1554 },
+    { name: "Nor",  score: 1491 },
+  ];
+
+  const monthData = [
+    { name: "Mara", score: 8821 },
+    { name: "Dean", score: 8602 },
+    { name: "Rae",  score: 8410 },
+    { name: "Jules",score: 8104 },
+    { name: "Pip",  score: 7798 },
+    { name: "Bex",  score: 7621 },
+    { name: "Tomi", score: 7402 },
+    { name: "Wes",  score: 7188 },
+    { name: "Kit",  score: 6921 },
+    { name: "Sol",  score: 6740 },
+  ];
+
+  const allTimeData = [
+    { name: "Mara",  score: 184_211 },
+    { name: "Dean",  score: 178_044 },
+    { name: "Jules", score: 161_902 },
+    { name: "Bex",   score: 155_488 },
+    { name: "Pip",   score: 148_311 },
+    { name: "Tomi",  score: 142_077 },
+    { name: "Wes",   score: 138_604 },
+    { name: "Sol",   score: 131_551 },
+    { name: "Nor",   score: 126_902 },
+    { name: "Kit",   score: 122_188 },
+  ];
+  const youAllTime = { rank: 14, score: 98_402 };
+
+  let activeTab = "day";
+  let activeDate = new Date(TODAY);
+
+  const fmtDate = (d) => d.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", year: "numeric" });
+  const isoDate = (d) => d.toISOString().slice(0, 10);
+  const sameDay = (a, b) => isoDate(a) === isoDate(b);
+
+  function render() {
+    document.querySelectorAll(".tab").forEach(t => t.classList.toggle("active", t.dataset.tf === activeTab));
+
+    const stepper = document.getElementById("stepper");
+    const rangeLabel = document.getElementById("rangeLabel");
+
+    if (activeTab === "day") {
+      stepper.style.display = "flex";
+      rangeLabel.style.display = "none";
+      document.getElementById("dateLabel").textContent = fmtDate(activeDate);
+      document.getElementById("todayPill").style.display = sameDay(activeDate, TODAY) ? "inline-block" : "none";
+      document.getElementById("nextDay").disabled = sameDay(activeDate, TODAY);
+    } else {
+      stepper.style.display = "none";
+      rangeLabel.style.display = "block";
+      rangeLabel.textContent = ({
+        week:  "Week of Mon May 18 – Sun May 24, 2026",
+        month: "May 2026",
+        all:   "All-time, since launch",
+      })[activeTab];
+    }
+
+    const { rows, youRow } = currentData();
+    const container = document.getElementById("rows");
+    container.innerHTML = "";
+
+    if (!rows.length) {
+      container.innerHTML = '<div class="empty">No scores yet for this day.</div>';
+      return;
+    }
+
+    rows.forEach((r, i) => {
+      const isYou = r.name === YOU;
+      const div = document.createElement("div");
+      div.className = "row" + (i === 0 ? " top1" : "") + (isYou ? " you" : "");
+      div.innerHTML = `
+        <div class="rank">${i + 1}</div>
+        <div class="name">${r.name}${isYou ? " (you)" : ""}</div>
+        <div class="score">${r.score.toLocaleString()}</div>
+      `;
+      container.appendChild(div);
+    });
+
+    if (youRow) {
+      const sep = document.createElement("div");
+      sep.className = "divider";
+      sep.textContent = "your rank";
+      container.appendChild(sep);
+      const div = document.createElement("div");
+      div.className = "row you";
+      div.innerHTML = `
+        <div class="rank">#${youRow.rank}</div>
+        <div class="name">${YOU} (you)</div>
+        <div class="score">${youRow.score.toLocaleString()}</div>
+      `;
+      container.appendChild(div);
+    }
+  }
+
+  function currentData() {
+    if (activeTab === "day") {
+      const key = isoDate(activeDate);
+      return { rows: dayLeaderboards[key] || [], youRow: youDayRanks[key] || null };
+    }
+    if (activeTab === "week")  return { rows: weekData, youRow: null };
+    if (activeTab === "month") return { rows: monthData, youRow: null };
+    if (activeTab === "all")   return { rows: allTimeData, youRow: youAllTime };
+    return { rows: [], youRow: null };
+  }
+
+  document.getElementById("tabs").addEventListener("click", (e) => {
+    const tf = e.target?.dataset?.tf;
+    if (!tf) return;
+    activeTab = tf;
+    render();
+  });
+
+  document.getElementById("prevDay").addEventListener("click", () => {
+    activeDate.setDate(activeDate.getDate() - 1);
+    // Stop at May 17 in this mock (oldest data)
+    const min = new Date(2026, 4, 17);
+    if (activeDate < min) activeDate = min;
+    render();
+  });
+  document.getElementById("nextDay").addEventListener("click", () => {
+    if (sameDay(activeDate, TODAY)) return;
+    activeDate.setDate(activeDate.getDate() + 1);
+    render();
+  });
+
+  render();
+</script>
+</body>
+</html>

@@ -7,6 +7,12 @@ import LandingPage from './components/LandingPage.jsx';
 import StyleGuidePage from './components/StyleGuidePage.jsx';
 import ReactivateScreen from './components/ReactivateScreen.jsx';
 import DeleteConfirmPage from './components/DeleteConfirmPage.jsx';
+import { captureRefFromUrl, consumePendingRef } from './lib/referral.js';
+
+// Friend referral capture (card c135). Stash ?ref=<token> before auth
+// resolves so it survives the signup -> email-confirm redirect. No-op
+// unless VITE_REFERRALS_ENABLED is on (dormant at ship).
+captureRefFromUrl();
 
 // Allowlist of path prefixes the post-login ?return= redirect will honor.
 // Add new SQ games here when scaffolding them so notifications and bookmarks
@@ -75,6 +81,10 @@ export default function App() {
     const { data: sub } = supabase.auth.onAuthStateChange((event, s) => {
       setSession(s);
       if (event === 'PASSWORD_RECOVERY') setIsRecovery(true);
+      // A pending referral token (from ?ref=) is consumed on the first
+      // authenticated load after signup — creates the inviter's friend
+      // request. Idempotent + flag-gated, so safe to call on any sign-in.
+      if (s?.user) consumePendingRef();
     });
 
     return () => sub.subscription.unsubscribe();

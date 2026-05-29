@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
 import { supabase } from '../lib/supabase.js';
+import { REFERRALS_ENABLED, generateReferralLink } from '../lib/referral.js';
 
 export default function FriendsView({ userId, onBack }) {
   const [rows, setRows] = useState([]);
@@ -11,6 +12,7 @@ export default function FriendsView({ userId, onBack }) {
   const [search, setSearch] = useState('');
   const [matches, setMatches] = useState([]);
   const [busyKey, setBusyKey] = useState(null);
+  const [inviteBusy, setInviteBusy] = useState(false);
 
   async function load() {
     const [friendsResp, blocksResp] = await Promise.all([
@@ -150,6 +152,27 @@ export default function FriendsView({ userId, onBack }) {
     load();
   }
 
+  async function createInviteLink() {
+    // Guard: the button is disabled while the feature is dormant, but never
+    // attempt the RPC when the flag is off (card c135).
+    if (!REFERRALS_ENABLED) return;
+    setInviteBusy(true);
+    try {
+      const link = await generateReferralLink();
+      try {
+        await navigator.clipboard.writeText(link);
+        toast.success('Invite link copied — share it with a friend');
+      } catch {
+        // Clipboard blocked (e.g. insecure context): show the link to copy.
+        window.prompt('Copy your invite link:', link);
+      }
+    } catch (err) {
+      toast.error(err.message || 'Could not create invite link');
+    } finally {
+      setInviteBusy(false);
+    }
+  }
+
   async function reportUser(otherId, otherName) {
     const reason = window.prompt(`Report ${otherName || 'this user'}?\n\nDescribe what's wrong (admins will review):`);
     if (reason === null) return;
@@ -220,6 +243,29 @@ export default function FriendsView({ userId, onBack }) {
             </div>
           )}
         </div>
+      </section>
+
+      <section className="card">
+        <div className="flex items-center justify-between gap-2 mb-1">
+          <h3 className="font-display text-lg text-wordy-800">Invite a friend</h3>
+          {!REFERRALS_ENABLED && (
+            <span className="text-xs font-bold text-wordy-400 bg-wordy-50 rounded-full px-2 py-0.5 shrink-0">
+              Coming soon
+            </span>
+          )}
+        </div>
+        <p className="text-sm text-wordy-500 mb-3">
+          Share a personal invite link. When a friend joins through it, you'll
+          already be connected — no searching required.
+        </p>
+        <button
+          type="button"
+          disabled={!REFERRALS_ENABLED || inviteBusy}
+          onClick={createInviteLink}
+          className="btn-secondary text-sm px-3 py-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {inviteBusy ? 'Creating…' : 'Copy invite link'}
+        </button>
       </section>
 
       {incoming.length > 0 && (
