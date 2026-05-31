@@ -12,28 +12,28 @@ export const APPS = [
     label: 'Wordy',
     icon: 'W',
     gradient: 'from-wordy-600 to-wordy-800',
-    topics: ['your_turn', 'invite', 'nudge', 'opponent_joined', 'solo_turn'],
+    topics: ['your_turn', 'invite', 'nudge', 'opponent_joined', 'solo_turn', 'invite_declined'],
   },
   {
     key: 'rungles',
     label: 'Rungles',
     icon: 'R',
     gradient: 'from-wordy-600 to-wordy-800',
-    topics: ['your_turn', 'invite', 'nudge', 'opponent_joined'],
+    topics: ['your_turn', 'invite', 'nudge', 'opponent_joined', 'invite_declined'],
   },
   {
     key: 'snibble',
     label: 'Snibble',
     icon: 'S',
     gradient: 'from-wordy-600 to-wordy-800',
-    topics: ['your_turn', 'invite', 'nudge', 'opponent_joined'],
+    topics: ['your_turn', 'invite', 'nudge', 'opponent_joined', 'invite_declined'],
   },
   {
     key: 'yahdle',
     label: 'Yahdle',
     icon: 'Y',
     gradient: 'from-wordy-600 to-wordy-800',
-    topics: ['your_turn', 'invite', 'opponent_joined', 'game_finished'],
+    topics: ['your_turn', 'invite', 'opponent_joined', 'game_finished', 'invite_declined'],
   },
   {
     key: 'sidequest',
@@ -55,4 +55,5 @@ export const TOPICS = {
   game_finished:   { label: 'Game finished',   description: 'A match you’re in just ended.' },
   daily_reminder:  { label: 'Daily reminder',  description: 'One ping per day if you have unplayed dailies (Yahdle, Snibble, etc.).' },
   solo_turn:       { label: 'Solo game turns', description: 'When a computer player has moved in your Solo game. Off by default.' },
+  invite_declined: { label: 'Invite couldn’t fill', description: 'When a game you started couldn’t fill because an invited friend didn’t join. Off by default.' },
 };
