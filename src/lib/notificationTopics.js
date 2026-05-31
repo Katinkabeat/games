@@ -12,7 +12,7 @@ export const APPS = [
     label: 'Wordy',
     icon: 'W',
     gradient: 'from-wordy-600 to-wordy-800',
-    topics: ['your_turn', 'invite', 'nudge', 'opponent_joined'],
+    topics: ['your_turn', 'invite', 'nudge', 'opponent_joined', 'solo_turn'],
   },
   {
     key: 'rungles',
@@ -54,4 +54,5 @@ export const TOPICS = {
   friend_request:  { label: 'Friend requests', description: 'Someone wants to be friends.' },
   game_finished:   { label: 'Game finished',   description: 'A match you’re in just ended.' },
   daily_reminder:  { label: 'Daily reminder',  description: 'One ping per day if you have unplayed dailies (Yahdle, Snibble, etc.).' },
+  solo_turn:       { label: 'Solo game turns', description: 'When a computer player has moved in your Solo game. Off by default.' },
 };
