@@ -76,6 +76,17 @@ export default function MultiGamePage({ session, profile, isAdmin }) {
   const maxSeats = game?.max_players ?? 2
   const hasOpenSeat = seatsFilled < maxSeats
 
+  // Invited friends who never joined before the game started short-handed
+  // (c150). Only meaningful once the game is past 'waiting' — while waiting
+  // they're still pending, not no-shows. invited_user_ids is kept on the row
+  // even after the expire sweep shrinks the seats, so we can render them as
+  // greyed ✗ pills.
+  const noShowIds = useMemo(() => {
+    if (!game || game.status === 'waiting') return []
+    const seated = new Set(players.map(p => p.user_id))
+    return (game.invited_user_ids ?? []).filter(id => id && !seated.has(id))
+  }, [game, players])
+
   const refresh = useCallback(async () => {
     if (!gameId) return
     try {
@@ -91,7 +102,8 @@ export default function MultiGamePage({ session, profile, isAdmin }) {
 
   useEffect(() => { refresh() }, [refresh])
 
-  const oppIdsKey = opponents.map(o => o.user_id).join(',')
+  // Fetch profiles for opponents AND no-show invitees (for the greyed pills).
+  const oppIdsKey = [...new Set([...opponents.map(o => o.user_id), ...noShowIds])].join(',')
   useEffect(() => {
     const ids = oppIdsKey ? oppIdsKey.split(',') : []
     if (!ids.length) { setOppProfiles({}); return }
@@ -296,6 +308,15 @@ export default function MultiGamePage({ session, profile, isAdmin }) {
                   />
                 )
               })}
+            {/* No-show invitees on a short-handed game — greyed ✗ pills, no
+                score (they never played), not tappable. (c150) */}
+            {noShowIds.map(id => (
+              <PlayerPill
+                key={`noshow-${id}`}
+                name={oppProfiles[id]?.username ?? 'Player'}
+                noShow
+              />
+            ))}
           </div>
         )}
 
@@ -500,23 +521,29 @@ function WaitingCard({
   return <div className="card p-4 text-center text-sm opacity-80">This game is full.</div>
 }
 
-function PlayerPill({ name, score, isCurrent, isWinner, isOut, onClick }) {
+function PlayerPill({ name, score, isCurrent, isWinner, isOut, noShow, onClick }) {
   const base = 'inline-flex items-center gap-1.5 rounded-full px-3 py-0.5 text-xs font-bold transition-all'
-  const cls = isOut
-    ? 'bg-white/5 border border-white/10 text-wordy-400/60 line-through'
-    : isWinner
-      ? 'bg-yellow-50 border-2 border-yellow-400 text-yellow-800'
-      : isCurrent
-        ? 'bg-wordy-200 border-2 border-wordy-500 text-wordy-800'
-        : 'bg-wordy-50 border border-wordy-200 text-wordy-500'
+  // noShow = invited friend who never joined a short-handed game (c150).
+  // Same muted treatment as a forfeited pill but without the strike-through,
+  // marked with ✗ and no score (they never played).
+  const cls = noShow
+    ? 'bg-white/5 border border-white/10 text-wordy-400/60'
+    : isOut
+      ? 'bg-white/5 border border-white/10 text-wordy-400/60 line-through'
+      : isWinner
+        ? 'bg-yellow-50 border-2 border-yellow-400 text-yellow-800'
+        : isCurrent
+          ? 'bg-wordy-200 border-2 border-wordy-500 text-wordy-800'
+          : 'bg-wordy-50 border border-wordy-200 text-wordy-500'
   const Tag = onClick ? 'button' : 'span'
   return (
     <Tag onClick={onClick} className={`${base} ${cls}`}>
-      {isOut && <span className="no-underline">🏳️</span>}
-      {!isOut && isWinner && <span>🏆</span>}
-      {!isOut && !isWinner && isCurrent && <span>✨</span>}
+      {noShow && <span className="text-[11px]">✗</span>}
+      {!noShow && isOut && <span className="no-underline">🏳️</span>}
+      {!noShow && !isOut && isWinner && <span>🏆</span>}
+      {!noShow && !isOut && !isWinner && isCurrent && <span>✨</span>}
       <span>{name}</span>
-      <span className={`font-display text-sm ${isOut ? '' : 'text-wordy-800'}`}>{score}</span>
+      {!noShow && <span className={`font-display text-sm ${isOut ? '' : 'text-wordy-800'}`}>{score}</span>}
     </Tag>
   )
 }
@@ -528,30 +555,43 @@ function GameOverComparison({ game, players, profiles, myUserId, onRematch }) {
   const nameFor = (id) => (id === myUserId ? (profiles[id]?.username ?? 'You') : (profiles[id]?.username ?? 'Player'))
   const winners = sorted.filter(p => p.is_winner)
   const winnerNames = winners.map(p => nameFor(p.user_id)).join(' & ')
-  const headline = game.closed_by_admin
-    ? '🛑 Game closed by admin'
-    : game.forfeit_user_id
-      ? `🏳️ ${nameFor(game.forfeit_user_id)} forfeited — ${winnerNames || 'opponent'} wins!`
-      : winners.length === 1
-        ? `🏆 ${winnerNames} wins!`
-        : winners.length > 1
-          ? `🤝 Tie — ${winnerNames}`
-          : "🤝 It's a tie!"
+  const closedNoShow = game.closed_reason === 'no_other_players'
+  const headline = closedNoShow
+    ? '🚫 Game closed'
+    : game.closed_by_admin
+      ? '🛑 Game closed by admin'
+      : game.forfeit_user_id
+        ? `🏳️ ${nameFor(game.forfeit_user_id)} forfeited — ${winnerNames || 'opponent'} wins!`
+        : winners.length === 1
+          ? `🏆 ${winnerNames} wins!`
+          : winners.length > 1
+            ? `🤝 Tie — ${winnerNames}`
+            : "🤝 It's a tie!"
   return (
     <div className="card p-4 space-y-3 text-center">
       <div className="font-display text-xl text-wordy-700">{headline}</div>
-      <div className="flex flex-wrap gap-2 justify-center">
-        {sorted.map(p => (
-          <div
-            key={p.user_id}
-            className={`rounded-xl px-4 py-3 border ${p.is_winner ? 'border-yellow-400 bg-yellow-50' : 'border-wordy-200 bg-wordy-50'} ${p.forfeited ? 'opacity-60' : ''}`}
-          >
-            <div className="text-xs font-semibold">{nameFor(p.user_id)}{p.forfeited ? ' 🏳️' : ''}</div>
-            <div className="font-display text-2xl text-wordy-800">{p.total_score ?? 0}</div>
+      {closedNoShow ? (
+        // Never started — no scores to compare, no rematch (there was no
+        // opponent). Just explain why it closed.
+        <p className="text-sm opacity-70">
+          Invite expired — this game closed because no other players joined.
+        </p>
+      ) : (
+        <>
+          <div className="flex flex-wrap gap-2 justify-center">
+            {sorted.map(p => (
+              <div
+                key={p.user_id}
+                className={`rounded-xl px-4 py-3 border ${p.is_winner ? 'border-yellow-400 bg-yellow-50' : 'border-wordy-200 bg-wordy-50'} ${p.forfeited ? 'opacity-60' : ''}`}
+              >
+                <div className="text-xs font-semibold">{nameFor(p.user_id)}{p.forfeited ? ' 🏳️' : ''}</div>
+                <div className="font-display text-2xl text-wordy-800">{p.total_score ?? 0}</div>
+              </div>
+            ))}
           </div>
-        ))}
-      </div>
-      <button type="button" onClick={onRematch} className="btn-primary">🔄 Rematch</button>
+          <button type="button" onClick={onRematch} className="btn-primary">🔄 Rematch</button>
+        </>
+      )}
     </div>
   )
 }

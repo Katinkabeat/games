@@ -58,11 +58,18 @@ into the one stubbed seam. It includes:
 - **Top-score-group-wins** finalize (sole top = win; tied top = all win; ties
   are never recorded), forfeit-continue (others play on, last one standing
   wins), claim-inactive-win after 7 days, per-pair W/L matchups
-- The 🔔 **nudge** feature (12h server-side cooldown) and all 5 push types
+- The 🔔 **nudge** feature (12h server-side cooldown) and all 6 push types
   (`game_invited` fan-out, `opponent_joined`, `turn_change`, `game_finished`
-  fan-out, `nudge`)
-- `<slug>_is_participant()` + N-player RLS, realtime publication, invite
-  expiry, and `<slug>_pending_for(uid)` for the hub bell
+  fan-out, `nudge`, `game_closed`)
+- **SQ invite-expiry policy** baked in (the c150/c151/c152 baseline): friend
+  invites expire in 3 days (open games 7). At expiry a game is **never
+  silently deleted** — if ≥2 players joined it drops the no-show invitee
+  slots, shrinks to who's here and starts short-handed (no-shows render as
+  greyed ✗ pills); if only the creator is seated it closes with
+  `closed_reason='no_other_players'` (filed under Completed with an "invite
+  expired" blurb, one `game_closed` push, no stats/matchups recorded)
+- `<slug>_is_participant()` + N-player RLS, realtime publication, and
+  `<slug>_pending_for(uid)` for the hub bell
 
 **Files:**
 

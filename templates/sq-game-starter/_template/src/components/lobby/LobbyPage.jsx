@@ -27,18 +27,24 @@ export default function LobbyPage({ session, profile, isAdmin }) {
       const players = (g['{{slug}}_players'] ?? []).slice().sort((a, b) => a.player_index - b.player_index)
       const winners = players.filter(p => p.is_winner)
       const winnerNames = winners.map(p => nameFor(p.user_id)).join(' & ')
-      const headline = g.closed_by_admin
-        ? '🛑 Game closed by admin'
-        : g.forfeit_user_id
-          ? `🏳️ ${nameFor(g.forfeit_user_id)} forfeited — ${winnerNames || 'opponent'} wins!`
-          : winners.length === 1
-            ? `🏆 ${winnerNames} wins!`
-            : winners.length > 1
-              ? `🤝 Tie — ${winnerNames}`
-              : "🤝 It's a tie!"
-      const subtitle = players
-        .map(p => `${nameFor(p.user_id)} ${p.total_score ?? 0}`)
-        .join('  ·  ')
+      // closed_reason set => the expire sweep closed a never-filled game
+      // (never started, no scores). Render it instead of silently dropping.
+      const headline = g.closed_reason === 'no_other_players'
+        ? '🚫 Game closed'
+        : g.closed_by_admin
+          ? '🛑 Game closed by admin'
+          : g.forfeit_user_id
+            ? `🏳️ ${nameFor(g.forfeit_user_id)} forfeited — ${winnerNames || 'opponent'} wins!`
+            : winners.length === 1
+              ? `🏆 ${winnerNames} wins!`
+              : winners.length > 1
+                ? `🤝 Tie — ${winnerNames}`
+                : "🤝 It's a tie!"
+      const subtitle = g.closed_reason === 'no_other_players'
+        ? 'Invite expired — this game closed because no other players joined.'
+        : players
+            .map(p => `${nameFor(p.user_id)} ${p.total_score ?? 0}`)
+            .join('  ·  ')
       return { id: g.id, headline, subtitle }
     })
   }, [completed, opponents, userId, profile])

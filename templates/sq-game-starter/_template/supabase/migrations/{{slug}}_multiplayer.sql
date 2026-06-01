@@ -55,6 +55,10 @@ create table if not exists public.{{slug}}_games (
   winner_user_id      uuid        references auth.users(id),
   forfeit_user_id     uuid        references auth.users(id),
   is_tie              boolean     not null default false,
+  -- Set when the expire sweep CLOSES a never-filled game (only the creator
+  -- was seated). 'no_other_players' renders as a "🚫 Game closed / invite
+  -- expired" entry in Completed instead of a silent delete. (c150 policy)
+  closed_reason       text,
   created_at          timestamptz not null default now(),
   joined_at           timestamptz,
   finished_at         timestamptz,
@@ -202,8 +206,8 @@ create trigger {{slug}}_players_touch_activity
   after insert or update on public.{{slug}}_players
   for each row execute function public.{{slug}}_touch_game_activity();
 
--- ── 7. Invite expiry ──────────────────────────────────────────
--- SQ standard: open game (no invitee) → 7 days; friend invite → 1 day.
+-- ── 7. Invite expiry (SQ baseline policy — c150/c151/c152) ────
+-- SQ standard: open game (no invitee) → 7 days; friend invite → 3 days.
 create or replace function public.{{slug}}_set_game_expiry()
 returns trigger language plpgsql as $$
 begin
@@ -212,7 +216,7 @@ begin
        and coalesce(array_length(new.invited_user_ids, 1), 0) = 0 then
       new.expires_at := coalesce(new.created_at, now()) + interval '7 days';
     else
-      new.expires_at := coalesce(new.created_at, now()) + interval '1 day';
+      new.expires_at := coalesce(new.created_at, now()) + interval '3 days';
     end if;
   end if;
   return new;
@@ -224,14 +228,74 @@ create trigger {{slug}}_set_game_expiry
   before insert on public.{{slug}}_games
   for each row execute function public.{{slug}}_set_game_expiry();
 
--- Cleanup: any 'waiting' game past its expires_at gets dropped. Cheap +
--- idempotent; the lobby calls it on a throttle.
+-- Expire sweep — NEVER a silent delete (the old behaviour permanently
+-- vanished games people were waiting in). Per waiting game past expiry:
+--   • >= 2 players joined  → drop the no-show invitee slots, shrink
+--     max_players to who's actually here, and START the game short-handed.
+--     invited_user_ids is KEPT on the row so the game page can render the
+--     no-shows as greyed ✗ pills. No push (the pills are the signal).
+--   • only the creator (1) → CLOSE (not delete): status='finished' +
+--     closed_reason='no_other_players', no winner, and we deliberately do
+--     NOT call {{slug}}_finalize_game, so it records NO matchups / stats.
+--     The lone creator gets one 'game_closed' push.
+-- Still cheap + idempotent; the lobby calls it on a throttle. Returns the
+-- number of games processed.
 create or replace function public.{{slug}}_expire_stale_invites()
 returns int language plpgsql security definer as $$
-declare n int;
+declare
+  g        record;
+  v_joined int;
+  n        int := 0;
 begin
-  delete from public.{{slug}}_games where status = 'waiting' and expires_at < now();
-  get diagnostics n = row_count;
+  -- Suppress the "opponent joined" push for the short-handed auto-starts
+  -- below (txn-local; read back in {{slug}}_notify_opponent_joined).
+  perform set_config('{{slug}}.suppress_join_push', '1', true);
+
+  for g in
+    select * from public.{{slug}}_games
+     where status = 'waiting' and expires_at < now()
+     for update
+  loop
+    select count(*) into v_joined from public.{{slug}}_players where game_id = g.id;
+
+    if v_joined >= 2 then
+      -- Playable short-handed. Joined players always hold contiguous
+      -- player_index 0..v_joined-1, so shrinking max_players keeps the
+      -- current_player_idx constraint satisfied.
+      update public.{{slug}}_games
+         set max_players        = v_joined,
+             status             = 'active',
+             joined_at          = now(),
+             current_player_idx = floor(random() * v_joined)::int,
+             current_turn       = 1,
+             last_activity_at   = now()
+       where id = g.id;
+    else
+      -- Unplayable — close with a reason instead of deleting. Skips
+      -- finalize, so no matchups/stats are touched.
+      update public.{{slug}}_games
+         set status           = 'finished',
+             finished_at      = now(),
+             closed_reason    = 'no_other_players',
+             winner_user_id   = null,
+             is_tie           = false,
+             last_activity_at = now()
+       where id = g.id;
+
+      -- One push to the lone creator (the only notification in this flow).
+      perform public.{{slug}}_notify_event(
+        'game_closed',
+        jsonb_build_object(
+          'id', g.id,
+          'created_by', g.created_by,
+          'closed_reason', 'no_other_players'
+        )
+      );
+    end if;
+
+    n := n + 1;
+  end loop;
+
   return n;
 end;
 $$;
@@ -703,6 +767,8 @@ exception when duplicate_object then null; end $$;
 --   opponent_joined : AFTER UPDATE waiting→active        → notify creator
 --   turn_change     : AFTER UPDATE current_player_idx     → notify new player
 --   game_finished   : AFTER UPDATE active→finished        → notify all players
+--   game_closed     : emitted from {{slug}}_expire_stale_invites when a
+--                     never-filled game is closed → notify lone creator
 --
 -- BEFORE THIS WORKS you MUST replace the two placeholders below with
 -- YOUR project's values (search for "REPLACE"):
@@ -754,6 +820,12 @@ create trigger on_{{slug}}_game_invited
 create or replace function public.{{slug}}_notify_opponent_joined()
 returns trigger language plpgsql security definer as $$
 begin
+  -- The expire sweep flips waiting→active for a short-handed start, which
+  -- would otherwise fire this push. Rae wants NO push then (the greyed ✗
+  -- no-show pills are the signal), so skip when the sweep set the guard.
+  if coalesce(current_setting('{{slug}}.suppress_join_push', true), '') = '1' then
+    return NEW;
+  end if;
   perform public.{{slug}}_notify_event('opponent_joined', row_to_json(NEW)::jsonb);
   return NEW;
 end;
