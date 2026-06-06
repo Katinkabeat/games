@@ -88,7 +88,7 @@ serve(async (req: Request) => {
         title: 'Your daily puzzles are ready 🎲',
         body: 'Tap to play today\'s SideQuest dailies.',
         tag: 'sq-daily-reminder',
-        url: '/',
+        url: '/games/',
         icon: '/games/favicon.svg',
       })
       results.push({ user_id: row.user_id, ...r })
