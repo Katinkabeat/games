@@ -28,7 +28,7 @@ const FALLBACK_GAMES = [
     url: '/wordy/',
     initial: 'W',
     gradient: 'from-wordy-600 to-wordy-800',
-    description: 'Word tile game · multiplayer',
+    description: 'Word tile game · solo & multiplayer',
     _access: 'allowed',
   },
   {
@@ -55,7 +55,7 @@ const FALLBACK_GAMES = [
     url: '/yahdle/',
     initial: 'Y',
     gradient: 'from-wordy-600 to-wordy-800',
-    description: 'Letter-dice · daily & 1v1',
+    description: 'Letter-dice · daily & multiplayer',
     _access: 'allowed',
   },
 ];
