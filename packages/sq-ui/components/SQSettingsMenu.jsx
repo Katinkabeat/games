@@ -9,20 +9,26 @@ export function SQSettingsRow({
   control = null,
   onClick,
   danger = false,
+  disabled = false,
   className = '',
   ...rest
 }) {
-  const isButton = !!onClick;
+  // A disabled row is shown but greyed out and non-interactive — used e.g. for
+  // "Claim win" before the opponent's 7-day inactivity threshold is reached.
+  const isButton = !!onClick && !disabled;
   const Tag = isButton ? 'button' : 'div';
-  const colorCls = danger
-    ? 'text-rose-600 hover:text-rose-700'
-    : 'text-wordy-700';
+  const colorCls = disabled
+    ? 'text-gray-400 dark:text-gray-500 cursor-not-allowed'
+    : danger
+      ? 'text-rose-600 hover:text-rose-700'
+      : 'text-wordy-700';
   return (
     <Tag
       className={`settings-row text-sm font-bold w-full text-left ${colorCls} ${className}`.trim()}
-      onClick={onClick}
+      onClick={disabled ? undefined : onClick}
       type={isButton ? 'button' : undefined}
       role={isButton ? 'menuitem' : undefined}
+      aria-disabled={disabled || undefined}
       {...rest}
     >
       <span>{label}</span>
