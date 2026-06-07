@@ -3,6 +3,7 @@ dist
 .env
 .env.local
 .env.supabase
+.quill-history.jsonl
 *.local
 .DS_Store
 .vite
