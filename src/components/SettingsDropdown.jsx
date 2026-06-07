@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { Turnstile } from '@marsidev/react-turnstile';
 import toast from 'react-hot-toast';
 import { supabase } from '../lib/supabase.js';
 import {
@@ -9,6 +10,13 @@ import {
 } from '../lib/pushNotifications.js';
 
 const PW_RULES = { number: /\d/, special: /[^A-Za-z0-9]/ };
+
+// Mirror AuthPage's key. The project enforces a Turnstile captcha on
+// signInWithPassword (verified live: the token endpoint returns
+// captcha_failed without a token), so the current-password re-auth below
+// must supply one. Rendered interaction-only so it stays invisible unless
+// Cloudflare actually wants a challenge.
+const TURNSTILE_SITE_KEY = import.meta.env.VITE_TURNSTILE_SITE_KEY || '0x4AAAAAACrUqndWqt4-0ExK';
 
 export default function SettingsDropdown({
   email,
@@ -43,6 +51,8 @@ export default function SettingsDropdown({
   const [showOldPw, setShowOldPw] = useState(false);
   const [showNewPw, setShowNewPw] = useState(false);
   const [showConfirmPw, setShowConfirmPw] = useState(false);
+  const [pwCaptchaToken, setPwCaptchaToken] = useState('');
+  const pwCaptchaRef = useRef(null);
 
   // Account lifecycle: 'deactivate' (password-confirmed) | 'delete' (email-confirmed).
   const [acctMode, setAcctMode] = useState(null);
@@ -155,6 +165,8 @@ export default function SettingsDropdown({
     setShowNewPw(false);
     setShowConfirmPw(false);
     setChangingPw(false);
+    setPwCaptchaToken('');
+    pwCaptchaRef.current?.reset();
   }
 
   async function handlePasswordChange() {
@@ -163,10 +175,20 @@ export default function SettingsDropdown({
     if (!PW_RULES.number.test(newPw)) return toast.error('New password must include a number');
     if (!PW_RULES.special.test(newPw)) return toast.error('New password must include a special character');
     if (newPw !== confirmPw) return toast.error("New passwords don't match");
+    if (!pwCaptchaToken) {
+      // interaction-only widget normally has a token ready by submit time; if a
+      // challenge is mid-flight, ask the user to retry rather than hit the
+      // captcha-guarded endpoint without a token.
+      return toast.error("Just a moment — still verifying. Try again.");
+    }
 
     setSavingPw(true);
     try {
-      const { error: signInErr } = await supabase.auth.signInWithPassword({ email, password: oldPw });
+      const { error: signInErr } = await supabase.auth.signInWithPassword({
+        email,
+        password: oldPw,
+        options: { captchaToken: pwCaptchaToken },
+      });
       if (signInErr) {
         toast.error('Current password is incorrect');
         return;
@@ -178,6 +200,9 @@ export default function SettingsDropdown({
     } catch (err) {
       toast.error(err.message);
     } finally {
+      // Turnstile tokens are single-use — refresh for any retry.
+      setPwCaptchaToken('');
+      pwCaptchaRef.current?.reset();
       setSavingPw(false);
     }
   }
@@ -325,6 +350,16 @@ export default function SettingsDropdown({
               </p>
               {confirmPw && !pwMatch && <p className="text-rose-500">✗ Passwords don't match</p>}
             </div>
+
+            {TURNSTILE_SITE_KEY && (
+              <Turnstile
+                ref={pwCaptchaRef}
+                siteKey={TURNSTILE_SITE_KEY}
+                options={{ appearance: 'interaction-only' }}
+                onSuccess={setPwCaptchaToken}
+                onExpire={() => setPwCaptchaToken('')}
+              />
+            )}
 
             <button
               onClick={handlePasswordChange}
