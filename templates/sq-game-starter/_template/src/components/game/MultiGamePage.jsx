@@ -265,14 +265,30 @@ export default function MultiGamePage({ session, profile, isAdmin }) {
           }
           rightSlot={
             !isGameOver && !iForfeited && game?.status === 'active' ? (
-              <button
-                type="button"
-                onClick={handleForfeit}
-                className="text-xs opacity-70 hover:opacity-100 hover:text-red-300"
-                title="Forfeit this game"
-              >
-                Forfeit
-              </button>
+              <>
+                {/* Always-visible claim entry (c153). An inline prompt on the
+                    opponent's-turn panel can sit below the fold on mobile and
+                    never be seen; the sub-header is always reachable. Only
+                    shown when a claim is actually eligible. */}
+                {canClaim && (
+                  <button
+                    type="button"
+                    onClick={handleClaim}
+                    className="text-xs font-semibold text-amber-600 dark:text-amber-300 hover:text-amber-700 dark:hover:text-amber-200"
+                    title="Opponent inactive 7+ days — claim the win"
+                  >
+                    Claim win
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={handleForfeit}
+                  className="text-xs opacity-70 hover:opacity-100 hover:text-red-300"
+                  title="Forfeit this game"
+                >
+                  Forfeit
+                </button>
+              </>
             ) : null
           }
         />
@@ -425,15 +441,7 @@ export default function MultiGamePage({ session, profile, isAdmin }) {
                   <div className="text-center opacity-80">
                     <div className="text-sm font-semibold">{currentName} is playing…</div>
                     <div className="text-[11px] opacity-60 mt-1">Tap a player's pill above to inspect them</div>
-                    {canClaim && (
-                      <button
-                        type="button"
-                        onClick={handleClaim}
-                        className="mt-3 text-xs px-3 py-1.5 rounded-full border border-amber-400/60 text-amber-600 hover:bg-amber-400/10"
-                      >
-                        Claim win (7+ days inactive)
-                      </button>
-                    )}
+                    {/* Claim lives in the always-visible sub-header (c153). */}
                   </div>
                 )}
               </div>
