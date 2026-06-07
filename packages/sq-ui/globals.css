@@ -221,6 +221,12 @@ body {
 .dark .bg-purple-50       { background-color: #1a1130 !important; }
 .dark .bg-purple-100      { background-color: #221540 !important; }
 
+/* Hover backgrounds — the base bg-* overrides above don't touch the hover
+   variant, so a light lavender hover/press state flashes through in dark mode
+   (e.g. clicking a name in the admin / friends / groups user pickers).
+   :not(:disabled) preserves the disabled:hover:bg-transparent rows. */
+.dark .hover\:bg-wordy-50:hover:not(:disabled) { background-color: #2d1b55 !important; }
+
 .dark .border-wordy-100   { border-color: #2d1b55 !important; }
 .dark .border-wordy-200   { border-color: #3d2070 !important; }
 .dark .border-purple-100  { border-color: #2d1b55 !important; }
