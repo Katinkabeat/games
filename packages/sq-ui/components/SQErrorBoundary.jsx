@@ -31,7 +31,7 @@ export default class SQErrorBoundary extends Component {
           {title}
         </h2>
         <p className="font-body text-sm text-wordy-600 dark:text-wordy-300 mb-6">
-          This part of SideQuest hit a snag. Your progress is safe — try again, or
+          This part of SideQuest hit a snag. Your progress is safe. Try again, or
           reload to get back on track.
         </p>
         <div className="flex gap-3 justify-center">
