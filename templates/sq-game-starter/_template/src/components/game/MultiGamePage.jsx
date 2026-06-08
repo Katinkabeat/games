@@ -250,7 +250,7 @@ export default function MultiGamePage({ session, profile, isAdmin }) {
     ? (close) => (
         <>
           <SQSettingsRow
-            label="🏆 Claim win (opponent inactive)"
+            label="Claim win (opponent inactive)"
             disabled={!canClaim}
             title={canClaim
               ? 'Claim the win — opponent inactive 7+ days'
@@ -258,7 +258,7 @@ export default function MultiGamePage({ session, profile, isAdmin }) {
             onClick={() => { close(); handleClaim() }}
           />
           <SQSettingsRow
-            label="🏳️ Forfeit game"
+            label="Forfeit game"
             danger
             onClick={() => { close(); handleForfeit() }}
           />
