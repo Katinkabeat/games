@@ -140,11 +140,17 @@ body {
 
 /* ── Settings / floating overlays ── */
 .settings-dropdown {
-  @apply absolute right-0 z-50 w-64 mt-2 py-1 px-0;
+  @apply absolute right-0 z-50 mt-2 py-1 px-0;
+  /* Hug the longest row instead of a fixed width; never exceed the old w-64. */
+  width: max-content;
+  min-width: 11rem;
+  max-width: 16rem;
   animation: settings-slide 0.12s ease-out;
 }
 .settings-dropdown .settings-row {
-  @apply flex items-center justify-between px-4 py-2.5;
+  /* gap keeps the label and right-side value apart now that the panel is
+     content-width (justify-between collapses to nothing at max-content). */
+  @apply flex items-center justify-between gap-8 px-4 py-2.5;
 }
 .settings-dropdown .settings-section {
   @apply px-4 py-2.5;
