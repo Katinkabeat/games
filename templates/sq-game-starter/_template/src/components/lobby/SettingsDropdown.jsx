@@ -13,7 +13,7 @@ import HowToPlayModal from '../HowToPlayModal.jsx'
 // how-to-play, optional admin panel link, log out. Add game-specific
 // rows in the marked TODO slot.
 //
-// `isAdmin` — when truthy, renders the "🔐 Admin panel" row that
+// `isAdmin` — when truthy, renders the "Admin panel" row that
 // navigates to /admin. Loaded once in App.jsx and threaded through
 // HeaderRight; this component shouldn't query the admins table itself.
 // `gameRows` — optional render-prop `(close) => ReactNode` for game-specific
@@ -53,6 +53,7 @@ export default function SettingsDropdown({ isAdmin = false, gameRows = null }) {
           align="right"
           className="text-sm"
         >
+          {/* Canonical SQ order: Theme → How to play → Admin → game rows → Report → Log out */}
           <SQSettingsRow
             label={isDark ? '☀️ Light mode' : '🌙 Dark mode'}
             onClick={() => { toggleTheme(); setOpen(false) }}
@@ -61,16 +62,16 @@ export default function SettingsDropdown({ isAdmin = false, gameRows = null }) {
             label="📖 How to play"
             onClick={() => { setHowToOpen(true); setOpen(false) }}
           />
-          {gameRows && gameRows(() => setOpen(false))}
-          <SQReportPlayer supabase={supabase} game="{{slug}}" />
           {isAdmin && (
             <SQSettingsRow
-              label="🔐 Admin panel"
+              label="Admin panel"
               onClick={() => { setOpen(false); navigate('/admin') }}
             />
           )}
+          {gameRows && gameRows(() => setOpen(false))}
+          <SQReportPlayer supabase={supabase} game="{{slug}}" />
           <SQSettingsRow
-            label="👋 Log out"
+            label="Log out"
             danger
             onClick={async () => {
               setOpen(false)

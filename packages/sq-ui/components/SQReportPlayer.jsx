@@ -101,7 +101,7 @@ export default function SQReportPlayer({ supabase, game, renderTrigger }) {
     <>
       {renderTrigger
         ? renderTrigger({ open: () => setOpen(true) })
-        : <SQSettingsRow label="🚩 Report a player" onClick={() => setOpen(true)} />}
+        : <SQSettingsRow label="Report a player" onClick={() => setOpen(true)} />}
       <SQModal open={open} onClose={close} title="Report a player">
         {status.kind === 'done' ? (
           <div className="space-y-4">
