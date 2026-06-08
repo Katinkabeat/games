@@ -2,6 +2,7 @@ import { useCallback } from 'react';
 import { supabase } from '../lib/supabase.js';
 import { useAdminQuery } from '../hooks/useAdminQuery.js';
 import AdminList from './admin/AdminList.jsx';
+import { timeAgo } from '../../packages/sq-ui/index.js';
 
 const SHOW_LIMIT = 10;
 
@@ -10,18 +11,6 @@ const GAMES = [
   { key: 'rungles', label: 'Rungles', rpc: 'rg_admin_list_closed_games',  timeField: 'finished_at'  },
   { key: 'snibble', label: 'Snibble', rpc: 'sn_admin_list_closed_matches', timeField: 'completed_at' },
 ];
-
-function timeAgo(dateStr) {
-  if (!dateStr) return '';
-  const diff = Date.now() - new Date(dateStr).getTime();
-  const mins  = Math.floor(diff / 60000);
-  const hours = Math.floor(diff / 3600000);
-  const days  = Math.floor(diff / 86400000);
-  if (days  > 0) return `${days}d ago`;
-  if (hours > 0) return `${hours}h ago`;
-  if (mins  > 0) return `${mins}m ago`;
-  return 'just now';
-}
 
 export default function ClosedGamesAdmin() {
   const loadClosedGames = useCallback(async () => {
