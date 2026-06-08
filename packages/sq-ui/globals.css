@@ -160,6 +160,27 @@ body {
 .settings-dropdown .settings-section + .settings-row {
   @apply border-t border-purple-100;
 }
+
+/* Grouped variant (hub settings): rows sorted into labelled sections.
+   Dividers fall between groups only, not between every row, and each
+   group carries a small uppercase header. Scoped to .grouped so the
+   per-game cog menus (flat lists) are untouched. */
+.settings-dropdown.grouped .settings-row {
+  @apply py-1.5;
+}
+.settings-dropdown.grouped .settings-group .settings-row + .settings-row {
+  border-top: 0;
+}
+.settings-dropdown.grouped .settings-group + .settings-group {
+  @apply border-t border-purple-100;
+}
+.settings-group-head {
+  @apply px-4 pt-2.5 pb-1 text-[10.5px] font-extrabold uppercase tracking-wider text-wordy-400;
+}
+.dark .settings-dropdown.grouped .settings-group + .settings-group {
+  border-color: #2d1b55;
+}
+
 @keyframes settings-slide {
   from { opacity: 0; transform: translateY(-4px); }
   to   { opacity: 1; transform: translateY(0); }

@@ -257,11 +257,15 @@ export default function SettingsDropdown({
   const pwMatch = newPw && confirmPw && newPw === confirmPw;
 
   return (
-    <div ref={dropdownRef} className="settings-dropdown card">
-      <div className="settings-row">
-        <span className="text-sm font-bold text-wordy-600">Name</span>
-        <span className="text-sm font-bold text-wordy-700">{username ?? '…'}</span>
-      </div>
+    <div ref={dropdownRef} className="settings-dropdown card grouped">
+
+      {/* ── Profile ── */}
+      <div className="settings-group">
+        <div className="settings-group-head">Profile</div>
+        <div className="settings-row">
+          <span className="text-sm font-bold text-wordy-600">Name</span>
+          <span className="text-sm font-bold text-wordy-700">{username ?? '…'}</span>
+        </div>
 
       <div className={changingPw ? 'settings-section' : 'settings-row'}>
         {!changingPw ? (
@@ -269,9 +273,9 @@ export default function SettingsDropdown({
             <span className="text-sm font-bold text-wordy-600">Password</span>
             <button
               onClick={() => setChangingPw(true)}
-              className="text-sm font-bold text-wordy-700 hover:text-wordy-500 transition-colors flex items-center gap-1"
+              className="text-sm font-bold text-wordy-700 hover:text-wordy-500 transition-colors"
             >
-              Change <span className="text-xs text-wordy-400">✏️</span>
+              Change
             </button>
           </>
         ) : (
@@ -371,7 +375,30 @@ export default function SettingsDropdown({
           </div>
         )}
       </div>
+      </div>
 
+      {/* ── Admin (admin-only; kept near the top so it isn't buried) ── */}
+      {isAdmin && (
+        <div className="settings-group">
+          <div className="settings-group-head">Admin</div>
+          <div className="settings-row">
+            <span className="text-sm font-bold text-wordy-600">Admin panel</span>
+            <button
+              onClick={() => {
+                onOpenAdmin();
+                onClose();
+              }}
+              className="text-sm font-bold text-wordy-700 hover:text-wordy-500 transition-colors"
+            >
+              🔐 Open
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ── Preferences ── */}
+      <div className="settings-group">
+        <div className="settings-group-head">Preferences</div>
       <div className="settings-row">
         <span className="text-sm font-bold text-wordy-600">Theme</span>
         <button
@@ -404,7 +431,11 @@ export default function SettingsDropdown({
           onChange={handleInvitabilityChange}
         />
       </div>
+      </div>
 
+      {/* ── Social ── */}
+      <div className="settings-group">
+        <div className="settings-group-head">Social</div>
       <div className="settings-row">
         <span className="text-sm font-bold text-wordy-600 flex items-center gap-1.5">
           Friends
@@ -438,62 +469,55 @@ export default function SettingsDropdown({
           ✉️ Send
         </button>
       </div>
+      </div>
 
-      <div className="settings-row">
-        <span className="text-sm font-bold text-wordy-600">Legal</span>
-        <span className="flex items-center gap-3">
+      {/* ── About ── */}
+      <div className="settings-group">
+        <div className="settings-group-head">About</div>
+        <div className="settings-row">
+          <span className="text-sm font-bold text-wordy-600">Privacy policy</span>
           <a
             href="/games/privacy.html"
             target="_blank"
             rel="noopener noreferrer"
             className="text-sm font-bold text-wordy-700 hover:text-wordy-500 transition-colors"
           >
-            Privacy
+            Open
           </a>
+        </div>
+        <div className="settings-row">
+          <span className="text-sm font-bold text-wordy-600">Terms</span>
           <a
             href="/games/terms.html"
             target="_blank"
             rel="noopener noreferrer"
             className="text-sm font-bold text-wordy-700 hover:text-wordy-500 transition-colors"
           >
-            Terms
+            Open
           </a>
-        </span>
+        </div>
       </div>
 
-      {isAdmin && (
-        <div className="settings-row">
-          <span className="text-sm font-bold text-wordy-600">Admin</span>
-          <button
-            onClick={() => {
-              onOpenAdmin();
-              onClose();
-            }}
-            className="text-sm font-bold text-wordy-700 hover:text-wordy-500 transition-colors"
-          >
-            🔐 Open
-          </button>
-        </div>
-      )}
-
+      {/* ── Account ── */}
+      <div className="settings-group">
+        <div className="settings-group-head">Account</div>
       {acctMode === null ? (
-        <div className="settings-row">
-          <span className="text-sm font-bold text-wordy-600">Account</span>
-          <span className="flex items-center gap-3">
-            <button
-              onClick={() => setAcctMode('deactivate')}
-              className="text-sm font-bold text-wordy-700 hover:text-wordy-500 transition-colors"
-            >
-              Deactivate
-            </button>
-            <button
-              onClick={() => setAcctMode('delete')}
-              className="text-sm font-bold text-rose-500 hover:text-rose-700 transition-colors"
-            >
-              Delete
-            </button>
-          </span>
-        </div>
+        <>
+          <button
+            onClick={() => setAcctMode('deactivate')}
+            className="settings-row text-sm font-bold w-full text-left text-wordy-700 hover:text-wordy-500 transition-colors"
+          >
+            <span>Deactivate</span>
+            <span className="text-wordy-400">→</span>
+          </button>
+          <button
+            onClick={() => setAcctMode('delete')}
+            className="settings-row text-sm font-bold w-full text-left text-rose-500 hover:text-rose-700 transition-colors"
+          >
+            <span>Delete account</span>
+            <span>→</span>
+          </button>
+        </>
       ) : acctMode === 'deactivate' ? (
         <div className="settings-section space-y-2.5">
           <div className="flex items-center justify-between">
@@ -541,12 +565,12 @@ export default function SettingsDropdown({
         </div>
       )}
 
-      <div className="settings-row">
         <button
           onClick={onLogout}
-          className="text-sm font-bold text-rose-500 hover:text-rose-700 transition-colors"
+          className="settings-row text-sm font-bold w-full text-left text-rose-500 hover:text-rose-700 transition-colors"
         >
-          Log out
+          <span>Log out</span>
+          <span>→</span>
         </button>
       </div>
     </div>
@@ -591,7 +615,7 @@ function InvitabilityPicker({ value, disabled, onChange }) {
         type="button"
         onClick={() => !disabled && setOpen((v) => !v)}
         disabled={disabled}
-        className="text-sm font-bold text-wordy-700 bg-white border-2 border-wordy-200 hover:border-wordy-400 px-2 py-1 rounded-lg disabled:opacity-60 cursor-pointer flex items-center gap-1"
+        className="text-sm font-bold text-wordy-700 hover:text-wordy-500 transition-colors disabled:opacity-60 cursor-pointer flex items-center gap-1"
       >
         <span>{current.label}</span>
         <span className="text-xs text-wordy-400">▾</span>
