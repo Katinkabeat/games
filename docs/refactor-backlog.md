@@ -68,6 +68,7 @@ _(none — Rungles shipped 2026-05-03, see Done)_
 
 ## Someday / nice-to-have
 
+- [ ] **Drop orphaned Snibble testing-phase DB objects** (flagged 2026-06-07, c190). The settings-unification card removed the client code for Redo today / Allow redo / Reset leaderboard, leaving two now-unreferenced server-side objects in the shared project: the `sn_app_settings` row `key = 'redo_today_enabled'` and the RPC `sn_admin_reset_leaderboard`. Harmless dead weight; left in place deliberately. Drop via the dashboard SQL editor during the next refactor pass (destructive prod change → not auto-run).
 - [ ] Full audit pass with Explore agent — duplication inside files, dead exports, prop-drilling, test coverage gaps.
 - [ ] Rungles `SoloGamePage.jsx` (~14 KB) standalone cleanup if MultiGamePage extraction doesn't naturally absorb it.
 - [ ] Hub `FriendsView.jsx` (~14 KB) — review for hook extraction once friends-related features stabilize.
