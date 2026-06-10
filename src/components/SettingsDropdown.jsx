@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+﻿import { useEffect, useRef, useState } from 'react';
 import { Turnstile } from '@marsidev/react-turnstile';
 import toast from 'react-hot-toast';
 import { supabase } from '../lib/supabase.js';
@@ -28,6 +28,7 @@ export default function SettingsDropdown({
   onOpenAdmin,
   onOpenFriends,
   onOpenNotifications,
+  onOpenInvitePrefs,
   onOpenFeedback,
   onLogout,
   onClose,
@@ -37,11 +38,6 @@ export default function SettingsDropdown({
 
   const [notifyState, setNotifyState] = useState('loading');
   const [notifyBusy, setNotifyBusy] = useState(false);
-
-  // Invitability privacy setting — who can invite this user to games.
-  // 'everyone' | 'friends_only' (default) | 'nobody'.
-  const [invitability, setInvitability] = useState('friends_only');
-  const [savingInvitability, setSavingInvitability] = useState(false);
 
   const [changingPw, setChangingPw] = useState(false);
   const [oldPw, setOldPw] = useState('');
@@ -75,36 +71,6 @@ export default function SettingsDropdown({
     return () => document.removeEventListener('keydown', handleKey);
   }, [onClose]);
 
-  // Load current invitability from profiles.
-  useEffect(() => {
-    let active = true;
-    (async () => {
-      const { data } = await supabase
-        .from('profiles')
-        .select('invitability')
-        .eq('id', userId)
-        .maybeSingle();
-      if (active && data?.invitability) setInvitability(data.invitability);
-    })();
-    return () => { active = false; };
-  }, [userId]);
-
-  async function handleInvitabilityChange(next) {
-    if (next === invitability || savingInvitability) return;
-    const prev = invitability;
-    setInvitability(next); // optimistic
-    setSavingInvitability(true);
-    const { error } = await supabase
-      .from('profiles')
-      .update({ invitability: next })
-      .eq('id', userId);
-    setSavingInvitability(false);
-    if (error) {
-      setInvitability(prev);
-      toast.error(error.message);
-    }
-  }
-
   useEffect(() => {
     let active = true;
     (async () => {
@@ -130,7 +96,7 @@ export default function SettingsDropdown({
       return;
     }
     if (notifyState === 'denied') {
-      toast.error('Notifications are blocked — enable them in your browser settings');
+      toast.error('Notifications are blocked â€” enable them in your browser settings');
       return;
     }
     setNotifyBusy(true);
@@ -149,7 +115,7 @@ export default function SettingsDropdown({
         toast.success('Notifications turned on');
       } else if (Notification.permission === 'denied') {
         setNotifyState('denied');
-        toast.error('Notifications are blocked — enable them in your browser settings');
+        toast.error('Notifications are blocked â€” enable them in your browser settings');
       } else {
         toast.error('Could not turn on notifications');
       }
@@ -179,7 +145,7 @@ export default function SettingsDropdown({
       // interaction-only widget normally has a token ready by submit time; if a
       // challenge is mid-flight, ask the user to retry rather than hit the
       // captcha-guarded endpoint without a token.
-      return toast.error("Just a moment — still verifying. Try again.");
+      return toast.error("Just a moment â€” still verifying. Try again.");
     }
 
     setSavingPw(true);
@@ -200,7 +166,7 @@ export default function SettingsDropdown({
     } catch (err) {
       toast.error(err.message);
     } finally {
-      // Turnstile tokens are single-use — refresh for any retry.
+      // Turnstile tokens are single-use â€” refresh for any retry.
       setPwCaptchaToken('');
       pwCaptchaRef.current?.reset();
       setSavingPw(false);
@@ -259,12 +225,12 @@ export default function SettingsDropdown({
   return (
     <div ref={dropdownRef} className="settings-dropdown card grouped">
 
-      {/* ── Profile ── */}
+      {/* â”€â”€ Profile â”€â”€ */}
       <div className="settings-group">
         <div className="settings-group-head">Profile</div>
         <div className="settings-row">
           <span className="text-sm font-bold text-wordy-600">Name</span>
-          <span className="text-sm font-bold text-wordy-700">{username ?? '…'}</span>
+          <span className="text-sm font-bold text-wordy-700">{username ?? 'â€¦'}</span>
         </div>
 
       <div className={changingPw ? 'settings-section' : 'settings-row'}>
@@ -283,7 +249,7 @@ export default function SettingsDropdown({
             <div className="flex items-center justify-between">
               <span className="text-sm font-bold text-wordy-600">Change Password</span>
               <button onClick={cancelPwChange} className="text-xs font-bold text-wordy-400 hover:text-wordy-600">
-                ✕
+                âœ•
               </button>
             </div>
 
@@ -300,7 +266,7 @@ export default function SettingsDropdown({
                 onClick={() => setShowOldPw((v) => !v)}
                 className="absolute right-2 top-1/2 -translate-y-1/2 text-wordy-400 hover:text-wordy-700 text-xs"
               >
-                {showOldPw ? '🙈' : '👁️'}
+                {showOldPw ? 'ðŸ™ˆ' : 'ðŸ‘ï¸'}
               </button>
             </div>
 
@@ -317,7 +283,7 @@ export default function SettingsDropdown({
                 onClick={() => setShowNewPw((v) => !v)}
                 className="absolute right-2 top-1/2 -translate-y-1/2 text-wordy-400 hover:text-wordy-700 text-xs"
               >
-                {showNewPw ? '🙈' : '👁️'}
+                {showNewPw ? 'ðŸ™ˆ' : 'ðŸ‘ï¸'}
               </button>
             </div>
 
@@ -338,21 +304,21 @@ export default function SettingsDropdown({
                 onClick={() => setShowConfirmPw((v) => !v)}
                 className="absolute right-2 top-1/2 -translate-y-1/2 text-wordy-400 hover:text-wordy-700 text-xs"
               >
-                {showConfirmPw ? '🙈' : '👁️'}
+                {showConfirmPw ? 'ðŸ™ˆ' : 'ðŸ‘ï¸'}
               </button>
             </div>
 
             <div className="text-xs space-y-0.5 pl-0.5">
               <p className={longEnough ? 'text-green-600' : 'text-wordy-400'}>
-                {longEnough ? '✓' : '○'} At least 6 characters
+                {longEnough ? 'âœ“' : 'â—‹'} At least 6 characters
               </p>
               <p className={hasNumber ? 'text-green-600' : 'text-wordy-400'}>
-                {hasNumber ? '✓' : '○'} Contains a number
+                {hasNumber ? 'âœ“' : 'â—‹'} Contains a number
               </p>
               <p className={hasSpecial ? 'text-green-600' : 'text-wordy-400'}>
-                {hasSpecial ? '✓' : '○'} Contains a special character
+                {hasSpecial ? 'âœ“' : 'â—‹'} Contains a special character
               </p>
-              {confirmPw && !pwMatch && <p className="text-rose-500">✗ Passwords don't match</p>}
+              {confirmPw && !pwMatch && <p className="text-rose-500">âœ— Passwords don't match</p>}
             </div>
 
             {TURNSTILE_SITE_KEY && (
@@ -370,14 +336,14 @@ export default function SettingsDropdown({
               disabled={savingPw}
               className="w-full text-xs font-bold text-white bg-wordy-600 px-2 py-1.5 rounded-lg hover:bg-wordy-500 disabled:opacity-60"
             >
-              {savingPw ? '⏳ Saving…' : '🔑 Update Password'}
+              {savingPw ? 'â³ Savingâ€¦' : 'ðŸ”‘ Update Password'}
             </button>
           </div>
         )}
       </div>
       </div>
 
-      {/* ── Admin (admin-only; kept near the top so it isn't buried) ── */}
+      {/* â”€â”€ Admin (admin-only; kept near the top so it isn't buried) â”€â”€ */}
       {isAdmin && (
         <div className="settings-group">
           <div className="settings-group-head">Admin</div>
@@ -390,13 +356,13 @@ export default function SettingsDropdown({
               }}
               className="text-sm font-bold text-wordy-700 hover:text-wordy-500 transition-colors"
             >
-              🔐 Open
+              ðŸ” Open
             </button>
           </div>
         </div>
       )}
 
-      {/* ── Preferences ── */}
+      {/* â”€â”€ Preferences â”€â”€ */}
       <div className="settings-group">
         <div className="settings-group-head">Preferences</div>
       <div className="settings-row">
@@ -405,7 +371,7 @@ export default function SettingsDropdown({
           onClick={toggleTheme}
           className="text-sm font-bold text-wordy-700 hover:text-wordy-500 transition-colors"
         >
-          {isDark ? '☀️ Light' : '🌙 Dark'}
+          {isDark ? 'â˜€ï¸ Light' : 'ðŸŒ™ Dark'}
         </button>
       </div>
 
@@ -419,21 +385,25 @@ export default function SettingsDropdown({
           disabled={notifyState === 'unsupported'}
           className="text-sm font-bold text-wordy-700 hover:text-wordy-500 transition-colors disabled:opacity-50"
         >
-          🔔 Open
+          ðŸ”” Open
         </button>
       </div>
 
       <div className="settings-row">
         <span className="text-sm font-bold text-wordy-600">Invites</span>
-        <InvitabilityPicker
-          value={invitability}
-          disabled={savingInvitability}
-          onChange={handleInvitabilityChange}
-        />
+        <button
+          onClick={() => {
+            onOpenInvitePrefs?.();
+            onClose();
+          }}
+          className="text-sm font-bold text-wordy-700 hover:text-wordy-500 transition-colors"
+        >
+          âœ‰ï¸ Open
+        </button>
       </div>
       </div>
 
-      {/* ── Social ── */}
+      {/* â”€â”€ Social â”€â”€ */}
       <div className="settings-group">
         <div className="settings-group-head">Social</div>
       <div className="settings-row">
@@ -453,7 +423,7 @@ export default function SettingsDropdown({
           }}
           className="text-sm font-bold text-wordy-700 hover:text-wordy-500 transition-colors"
         >
-          👥 Open
+          ðŸ‘¥ Open
         </button>
       </div>
 
@@ -466,12 +436,12 @@ export default function SettingsDropdown({
           }}
           className="text-sm font-bold text-wordy-700 hover:text-wordy-500 transition-colors"
         >
-          ✉️ Send
+          âœ‰ï¸ Send
         </button>
       </div>
       </div>
 
-      {/* ── About ── */}
+      {/* â”€â”€ About â”€â”€ */}
       <div className="settings-group">
         <div className="settings-group-head">About</div>
         <div className="settings-row">
@@ -498,7 +468,7 @@ export default function SettingsDropdown({
         </div>
       </div>
 
-      {/* ── Account ── */}
+      {/* â”€â”€ Account â”€â”€ */}
       <div className="settings-group">
         <div className="settings-group-head">Account</div>
       {acctMode === null ? (
@@ -508,24 +478,24 @@ export default function SettingsDropdown({
             className="settings-row text-sm font-bold w-full text-left text-wordy-700 hover:text-wordy-500 transition-colors"
           >
             <span>Deactivate</span>
-            <span className="text-wordy-400">→</span>
+            <span className="text-wordy-400">â†’</span>
           </button>
           <button
             onClick={() => setAcctMode('delete')}
             className="settings-row text-sm font-bold w-full text-left text-rose-500 hover:text-rose-700 transition-colors"
           >
             <span>Delete account</span>
-            <span>→</span>
+            <span>â†’</span>
           </button>
         </>
       ) : acctMode === 'deactivate' ? (
         <div className="settings-section space-y-2.5">
           <div className="flex items-center justify-between">
             <span className="text-sm font-bold text-wordy-600">Deactivate account</span>
-            <button onClick={cancelAcct} className="text-xs font-bold text-wordy-400 hover:text-wordy-600">✕</button>
+            <button onClick={cancelAcct} className="text-xs font-bold text-wordy-400 hover:text-wordy-600">âœ•</button>
           </div>
           <p className="text-xs text-wordy-500">
-            Locks your account and hides you from games. Nothing is deleted — log back in any time to reactivate.
+            Locks your account and hides you from games. Nothing is deleted â€” log back in any time to reactivate.
             Type <span className="font-bold">DEACTIVATE</span> to confirm.
           </p>
           <input
@@ -541,17 +511,17 @@ export default function SettingsDropdown({
             disabled={acctBusy || acctPw.trim().toUpperCase() !== 'DEACTIVATE'}
             className="w-full text-xs font-bold text-white bg-wordy-600 px-2 py-1.5 rounded-lg hover:bg-wordy-500 disabled:opacity-60"
           >
-            {acctBusy ? '⏳ Working…' : 'Deactivate my account'}
+            {acctBusy ? 'â³ Workingâ€¦' : 'Deactivate my account'}
           </button>
         </div>
       ) : (
         <div className="settings-section space-y-2.5">
           <div className="flex items-center justify-between">
             <span className="text-sm font-bold text-rose-500">Delete account</span>
-            <button onClick={cancelAcct} className="text-xs font-bold text-wordy-400 hover:text-wordy-600">✕</button>
+            <button onClick={cancelAcct} className="text-xs font-bold text-wordy-400 hover:text-wordy-600">âœ•</button>
           </div>
           <p className="text-xs text-wordy-500">
-            We’ll email you a confirmation link. After you confirm, your account is locked and permanently
+            Weâ€™ll email you a confirmation link. After you confirm, your account is locked and permanently
             deleted in 30 days (cancel any time by logging back in). Your scores stay on the leaderboards but
             are anonymized.
           </p>
@@ -560,7 +530,7 @@ export default function SettingsDropdown({
             disabled={acctBusy}
             className="w-full text-xs font-bold text-white bg-rose-500 px-2 py-1.5 rounded-lg hover:bg-rose-600 disabled:opacity-60"
           >
-            {acctBusy ? '⏳ Sending…' : 'Email me a confirmation link'}
+            {acctBusy ? 'â³ Sendingâ€¦' : 'Email me a confirmation link'}
           </button>
         </div>
       )}
@@ -570,82 +540,9 @@ export default function SettingsDropdown({
           className="settings-row text-sm font-bold w-full text-left text-rose-500 hover:text-rose-700 transition-colors"
         >
           <span>Log out</span>
-          <span>→</span>
+          <span>â†’</span>
         </button>
       </div>
-    </div>
-  );
-}
-
-// Custom three-option picker for profiles.invitability. We use this
-// instead of a native <select> because the OS-rendered open popup
-// doesn't reliably respect color-scheme: dark across browsers, and
-// the result is a blinding white menu in dark mode.
-const INVITE_OPTIONS = [
-  { value: 'everyone',     label: 'Anyone' },
-  { value: 'friends_only', label: 'Friends only' },
-  { value: 'nobody',       label: 'Nobody' },
-];
-
-function InvitabilityPicker({ value, disabled, onChange }) {
-  const [open, setOpen] = useState(false);
-  const ref = useRef(null);
-
-  useEffect(() => {
-    if (!open) return;
-    function handleClick(e) {
-      if (ref.current && !ref.current.contains(e.target)) setOpen(false);
-    }
-    function handleKey(e) {
-      if (e.key === 'Escape') setOpen(false);
-    }
-    document.addEventListener('mousedown', handleClick);
-    document.addEventListener('keydown', handleKey);
-    return () => {
-      document.removeEventListener('mousedown', handleClick);
-      document.removeEventListener('keydown', handleKey);
-    };
-  }, [open]);
-
-  const current = INVITE_OPTIONS.find((o) => o.value === value) ?? INVITE_OPTIONS[1];
-
-  return (
-    <div className="relative" ref={ref}>
-      <button
-        type="button"
-        onClick={() => !disabled && setOpen((v) => !v)}
-        disabled={disabled}
-        className="text-sm font-bold text-wordy-700 hover:text-wordy-500 transition-colors disabled:opacity-60 cursor-pointer flex items-center gap-1"
-      >
-        <span>{current.label}</span>
-        <span className="text-xs text-wordy-400">▾</span>
-      </button>
-      {open && (
-        <ul className="absolute right-0 top-full mt-1 w-32 card dropdown-surface p-1 z-50 shadow-lg space-y-0.5">
-          {INVITE_OPTIONS.map((opt) => {
-            const selected = opt.value === value;
-            return (
-              <li key={opt.value}>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setOpen(false);
-                    onChange(opt.value);
-                  }}
-                  className={`w-full text-left text-sm font-bold px-2 py-1.5 rounded-md transition-colors ${
-                    selected
-                      ? 'text-wordy-700 bg-wordy-50'
-                      : 'text-wordy-700 hover:bg-wordy-50'
-                  }`}
-                >
-                  {selected ? '✓ ' : '   '}
-                  {opt.label}
-                </button>
-              </li>
-            );
-          })}
-        </ul>
-      )}
     </div>
   );
 }
