@@ -47,8 +47,13 @@ begin
   if auth.uid() is null then
     raise exception 'not authenticated' using errcode = 'insufficient_privilege';
   end if;
-  if p_app not in ('wordy', 'rungles', 'snibble', 'yahdle') then
-    raise exception 'unknown app: %', p_app using errcode = 'check_violation';
+  -- No hardcoded app allowlist: a newly-scaffolded game's slug shouldn't
+  -- need adding here. The write only touches the caller's own row, and the
+  -- UI only offers real games, so a junk key is inert (the check function
+  -- only reads keys for slugs the game triggers actually pass). We still
+  -- require a non-empty app and strictly validate the policy enum.
+  if p_app is null or btrim(p_app) = '' then
+    raise exception 'app is required' using errcode = 'check_violation';
   end if;
   if p_policy not in ('everyone', 'friends_only', 'nobody') then
     raise exception 'unknown policy: %', p_policy using errcode = 'check_violation';
@@ -69,9 +74,12 @@ grant execute on function public.sq_set_invite_pref(text, text)
 -- 3. Per-game-aware check. Replaces the 2-arg version; p_app defaults
 -- to null so any un-updated caller still gets the old global behaviour.
 -- ─────────────────────────────────────────────────────────────
+-- Drop the prior 2-arg version (from the original sq_check_invitable.sql)
+-- if it's still around; the 3-arg form below supersedes it. Using
+-- create-or-replace for the 3-arg form keeps this migration re-runnable.
 drop function if exists public.sq_check_invitable(uuid, uuid);
 
-create function public.sq_check_invitable(
+create or replace function public.sq_check_invitable(
   p_inviter uuid,
   p_invitee uuid,
   p_app     text default null

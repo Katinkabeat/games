@@ -80,6 +80,19 @@ create index if not exists {{slug}}_games_invited_user_idx  on public.{{slug}}_g
 create index if not exists {{slug}}_games_last_activity_idx on public.{{slug}}_games(last_activity_at desc);
 create index if not exists {{slug}}_games_expires_at_idx    on public.{{slug}}_games(expires_at) where status = 'waiting';
 
+-- ── 1b. Invite-permission enforcement (per-game invitability, c200) ──
+-- Honour the invitee's "who can invite me" preference for THIS game.
+-- Reuses the hub's shared array-invitee trigger fn; the app key passed
+-- here is what sq_check_invitable looks up in profiles.invite_prefs
+-- (falling back to the global setting). This makes enforcement automatic
+-- for every scaffolded game — no separate step. Requires the hub
+-- migration sq_invite_prefs.sql to have run on the project.
+drop trigger if exists {{slug}}_check_invitable on public.{{slug}}_games;
+create trigger {{slug}}_check_invitable
+  before insert on public.{{slug}}_games
+  for each row
+  execute function public.sq_invite_check_array_trigger('{{slug}}');
+
 -- ── 2. {{slug}}_players ───────────────────────────────────────
 -- One row per player per game.
 --   total_score : the player's running score (the stub turn RPC adds to it).

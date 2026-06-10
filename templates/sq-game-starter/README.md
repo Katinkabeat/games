@@ -54,6 +54,13 @@ into the one stubbed seam. It includes:
 
 - Open games **and** friend invites (single + multi-friend via
   `invited_user_ids uuid[]`), one open game per creator, auto-start when seats fill
+- **Per-game invite enforcement** baked in (c200): a `<slug>_check_invitable`
+  trigger honours each invitee's "who can invite me" preference for this game
+  (anyone / friends only / nobody), falling back to their global setting.
+  Automatic — no extra step. The game appears on the hub's **Invites** settings
+  page as soon as you add it to `src/lib/notificationTopics.js` `APPS` (the same
+  list that drives Notifications). Requires the hub's `sq_invite_prefs.sql` to
+  have run on the project (it has).
 - Modulo turn rotation `(idx + 1) % N` that skips forfeited seats
 - **Top-score-group-wins** finalize (sole top = win; tied top = all win; ties
   are never recorded), forfeit-continue (others play on, last one standing
