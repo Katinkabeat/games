@@ -54,6 +54,9 @@ create table if not exists public.{{slug}}_games (
   current_turn        int         not null default 1,
   winner_user_id      uuid        references auth.users(id),
   forfeit_user_id     uuid        references auth.users(id),
+  -- Why the game ended: 'claim' | 'forfeit' (NULL for normal completion +
+  -- admin-close). Lets the game_finished push word a claim vs a forfeit.
+  end_reason          text,
   is_tie              boolean     not null default false,
   -- Set when the expire sweep CLOSES a never-filled game (only the creator
   -- was seated). 'no_other_players' renders as a "🚫 Game closed / invite
@@ -638,7 +641,7 @@ begin
   if v_me.forfeited then raise exception 'You already left this game'; end if;
 
   update public.{{slug}}_players set forfeited = true, is_winner = false where id = v_me.id;
-  update public.{{slug}}_games set forfeit_user_id = v_uid, last_activity_at = now() where id = p_game_id;
+  update public.{{slug}}_games set forfeit_user_id = v_uid, end_reason = 'forfeit', last_activity_at = now() where id = p_game_id;
 
   select count(*) into v_active from public.{{slug}}_players where game_id = p_game_id and not forfeited;
 
@@ -667,7 +670,7 @@ begin
   select * into v_stalled from public.{{slug}}_players
    where game_id = p_game_id and player_index = v_game.current_player_idx;
   update public.{{slug}}_players set forfeited = true, is_winner = false where id = v_stalled.id;
-  update public.{{slug}}_games set forfeit_user_id = v_stalled.user_id, last_activity_at = now() where id = p_game_id;
+  update public.{{slug}}_games set forfeit_user_id = v_stalled.user_id, end_reason = 'claim', last_activity_at = now() where id = p_game_id;
 
   select count(*) into v_active from public.{{slug}}_players where game_id = p_game_id and not forfeited;
   if v_active <= 1 then
