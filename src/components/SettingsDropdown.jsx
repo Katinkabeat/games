@@ -1,4 +1,4 @@
-﻿import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Turnstile } from '@marsidev/react-turnstile';
 import toast from 'react-hot-toast';
 import { supabase } from '../lib/supabase.js';
@@ -96,7 +96,7 @@ export default function SettingsDropdown({
       return;
     }
     if (notifyState === 'denied') {
-      toast.error('Notifications are blocked â€” enable them in your browser settings');
+      toast.error('Notifications are blocked — enable them in your browser settings');
       return;
     }
     setNotifyBusy(true);
@@ -115,7 +115,7 @@ export default function SettingsDropdown({
         toast.success('Notifications turned on');
       } else if (Notification.permission === 'denied') {
         setNotifyState('denied');
-        toast.error('Notifications are blocked â€” enable them in your browser settings');
+        toast.error('Notifications are blocked — enable them in your browser settings');
       } else {
         toast.error('Could not turn on notifications');
       }
@@ -145,7 +145,7 @@ export default function SettingsDropdown({
       // interaction-only widget normally has a token ready by submit time; if a
       // challenge is mid-flight, ask the user to retry rather than hit the
       // captcha-guarded endpoint without a token.
-      return toast.error("Just a moment â€” still verifying. Try again.");
+      return toast.error("Just a moment — still verifying. Try again.");
     }
 
     setSavingPw(true);
@@ -166,7 +166,7 @@ export default function SettingsDropdown({
     } catch (err) {
       toast.error(err.message);
     } finally {
-      // Turnstile tokens are single-use â€” refresh for any retry.
+      // Turnstile tokens are single-use — refresh for any retry.
       setPwCaptchaToken('');
       pwCaptchaRef.current?.reset();
       setSavingPw(false);
@@ -225,12 +225,12 @@ export default function SettingsDropdown({
   return (
     <div ref={dropdownRef} className="settings-dropdown card grouped">
 
-      {/* â”€â”€ Profile â”€â”€ */}
+      {/* ── Profile ── */}
       <div className="settings-group">
         <div className="settings-group-head">Profile</div>
         <div className="settings-row">
           <span className="text-sm font-bold text-wordy-600">Name</span>
-          <span className="text-sm font-bold text-wordy-700">{username ?? 'â€¦'}</span>
+          <span className="text-sm font-bold text-wordy-700">{username ?? '…'}</span>
         </div>
 
       <div className={changingPw ? 'settings-section' : 'settings-row'}>
@@ -249,7 +249,7 @@ export default function SettingsDropdown({
             <div className="flex items-center justify-between">
               <span className="text-sm font-bold text-wordy-600">Change Password</span>
               <button onClick={cancelPwChange} className="text-xs font-bold text-wordy-400 hover:text-wordy-600">
-                âœ•
+                ✕
               </button>
             </div>
 
@@ -266,7 +266,7 @@ export default function SettingsDropdown({
                 onClick={() => setShowOldPw((v) => !v)}
                 className="absolute right-2 top-1/2 -translate-y-1/2 text-wordy-400 hover:text-wordy-700 text-xs"
               >
-                {showOldPw ? 'ðŸ™ˆ' : 'ðŸ‘ï¸'}
+                {showOldPw ? '🙈' : '👁️'}
               </button>
             </div>
 
@@ -283,7 +283,7 @@ export default function SettingsDropdown({
                 onClick={() => setShowNewPw((v) => !v)}
                 className="absolute right-2 top-1/2 -translate-y-1/2 text-wordy-400 hover:text-wordy-700 text-xs"
               >
-                {showNewPw ? 'ðŸ™ˆ' : 'ðŸ‘ï¸'}
+                {showNewPw ? '🙈' : '👁️'}
               </button>
             </div>
 
@@ -304,21 +304,21 @@ export default function SettingsDropdown({
                 onClick={() => setShowConfirmPw((v) => !v)}
                 className="absolute right-2 top-1/2 -translate-y-1/2 text-wordy-400 hover:text-wordy-700 text-xs"
               >
-                {showConfirmPw ? 'ðŸ™ˆ' : 'ðŸ‘ï¸'}
+                {showConfirmPw ? '🙈' : '👁️'}
               </button>
             </div>
 
             <div className="text-xs space-y-0.5 pl-0.5">
               <p className={longEnough ? 'text-green-600' : 'text-wordy-400'}>
-                {longEnough ? 'âœ“' : 'â—‹'} At least 6 characters
+                {longEnough ? '✓' : '○'} At least 6 characters
               </p>
               <p className={hasNumber ? 'text-green-600' : 'text-wordy-400'}>
-                {hasNumber ? 'âœ“' : 'â—‹'} Contains a number
+                {hasNumber ? '✓' : '○'} Contains a number
               </p>
               <p className={hasSpecial ? 'text-green-600' : 'text-wordy-400'}>
-                {hasSpecial ? 'âœ“' : 'â—‹'} Contains a special character
+                {hasSpecial ? '✓' : '○'} Contains a special character
               </p>
-              {confirmPw && !pwMatch && <p className="text-rose-500">âœ— Passwords don't match</p>}
+              {confirmPw && !pwMatch && <p className="text-rose-500">✗ Passwords don't match</p>}
             </div>
 
             {TURNSTILE_SITE_KEY && (
@@ -336,14 +336,14 @@ export default function SettingsDropdown({
               disabled={savingPw}
               className="w-full text-xs font-bold text-white bg-wordy-600 px-2 py-1.5 rounded-lg hover:bg-wordy-500 disabled:opacity-60"
             >
-              {savingPw ? 'â³ Savingâ€¦' : 'ðŸ”‘ Update Password'}
+              {savingPw ? '⏳ Saving…' : '🔑 Update Password'}
             </button>
           </div>
         )}
       </div>
       </div>
 
-      {/* â”€â”€ Admin (admin-only; kept near the top so it isn't buried) â”€â”€ */}
+      {/* ── Admin (admin-only; kept near the top so it isn't buried) ── */}
       {isAdmin && (
         <div className="settings-group">
           <div className="settings-group-head">Admin</div>
@@ -356,13 +356,13 @@ export default function SettingsDropdown({
               }}
               className="text-sm font-bold text-wordy-700 hover:text-wordy-500 transition-colors"
             >
-              ðŸ” Open
+              🔐 Open
             </button>
           </div>
         </div>
       )}
 
-      {/* â”€â”€ Preferences â”€â”€ */}
+      {/* ── Preferences ── */}
       <div className="settings-group">
         <div className="settings-group-head">Preferences</div>
       <div className="settings-row">
@@ -371,7 +371,7 @@ export default function SettingsDropdown({
           onClick={toggleTheme}
           className="text-sm font-bold text-wordy-700 hover:text-wordy-500 transition-colors"
         >
-          {isDark ? 'â˜€ï¸ Light' : 'ðŸŒ™ Dark'}
+          {isDark ? '☀️ Light' : '🌙 Dark'}
         </button>
       </div>
 
@@ -385,7 +385,7 @@ export default function SettingsDropdown({
           disabled={notifyState === 'unsupported'}
           className="text-sm font-bold text-wordy-700 hover:text-wordy-500 transition-colors disabled:opacity-50"
         >
-          ðŸ”” Open
+          🔔 Open
         </button>
       </div>
 
@@ -398,12 +398,12 @@ export default function SettingsDropdown({
           }}
           className="text-sm font-bold text-wordy-700 hover:text-wordy-500 transition-colors"
         >
-          âœ‰ï¸ Open
+          ✉️ Open
         </button>
       </div>
       </div>
 
-      {/* â”€â”€ Social â”€â”€ */}
+      {/* ── Social ── */}
       <div className="settings-group">
         <div className="settings-group-head">Social</div>
       <div className="settings-row">
@@ -423,7 +423,7 @@ export default function SettingsDropdown({
           }}
           className="text-sm font-bold text-wordy-700 hover:text-wordy-500 transition-colors"
         >
-          ðŸ‘¥ Open
+          👥 Open
         </button>
       </div>
 
@@ -436,12 +436,12 @@ export default function SettingsDropdown({
           }}
           className="text-sm font-bold text-wordy-700 hover:text-wordy-500 transition-colors"
         >
-          âœ‰ï¸ Send
+          ✉️ Send
         </button>
       </div>
       </div>
 
-      {/* â”€â”€ About â”€â”€ */}
+      {/* ── About ── */}
       <div className="settings-group">
         <div className="settings-group-head">About</div>
         <div className="settings-row">
@@ -468,7 +468,7 @@ export default function SettingsDropdown({
         </div>
       </div>
 
-      {/* â”€â”€ Account â”€â”€ */}
+      {/* ── Account ── */}
       <div className="settings-group">
         <div className="settings-group-head">Account</div>
       {acctMode === null ? (
@@ -478,24 +478,24 @@ export default function SettingsDropdown({
             className="settings-row text-sm font-bold w-full text-left text-wordy-700 hover:text-wordy-500 transition-colors"
           >
             <span>Deactivate</span>
-            <span className="text-wordy-400">â†’</span>
+            <span className="text-wordy-400">→</span>
           </button>
           <button
             onClick={() => setAcctMode('delete')}
             className="settings-row text-sm font-bold w-full text-left text-rose-500 hover:text-rose-700 transition-colors"
           >
             <span>Delete account</span>
-            <span>â†’</span>
+            <span>→</span>
           </button>
         </>
       ) : acctMode === 'deactivate' ? (
         <div className="settings-section space-y-2.5">
           <div className="flex items-center justify-between">
             <span className="text-sm font-bold text-wordy-600">Deactivate account</span>
-            <button onClick={cancelAcct} className="text-xs font-bold text-wordy-400 hover:text-wordy-600">âœ•</button>
+            <button onClick={cancelAcct} className="text-xs font-bold text-wordy-400 hover:text-wordy-600">✕</button>
           </div>
           <p className="text-xs text-wordy-500">
-            Locks your account and hides you from games. Nothing is deleted â€” log back in any time to reactivate.
+            Locks your account and hides you from games. Nothing is deleted — log back in any time to reactivate.
             Type <span className="font-bold">DEACTIVATE</span> to confirm.
           </p>
           <input
@@ -511,17 +511,17 @@ export default function SettingsDropdown({
             disabled={acctBusy || acctPw.trim().toUpperCase() !== 'DEACTIVATE'}
             className="w-full text-xs font-bold text-white bg-wordy-600 px-2 py-1.5 rounded-lg hover:bg-wordy-500 disabled:opacity-60"
           >
-            {acctBusy ? 'â³ Workingâ€¦' : 'Deactivate my account'}
+            {acctBusy ? '⏳ Working…' : 'Deactivate my account'}
           </button>
         </div>
       ) : (
         <div className="settings-section space-y-2.5">
           <div className="flex items-center justify-between">
             <span className="text-sm font-bold text-rose-500">Delete account</span>
-            <button onClick={cancelAcct} className="text-xs font-bold text-wordy-400 hover:text-wordy-600">âœ•</button>
+            <button onClick={cancelAcct} className="text-xs font-bold text-wordy-400 hover:text-wordy-600">✕</button>
           </div>
           <p className="text-xs text-wordy-500">
-            Weâ€™ll email you a confirmation link. After you confirm, your account is locked and permanently
+            We’ll email you a confirmation link. After you confirm, your account is locked and permanently
             deleted in 30 days (cancel any time by logging back in). Your scores stay on the leaderboards but
             are anonymized.
           </p>
@@ -530,7 +530,7 @@ export default function SettingsDropdown({
             disabled={acctBusy}
             className="w-full text-xs font-bold text-white bg-rose-500 px-2 py-1.5 rounded-lg hover:bg-rose-600 disabled:opacity-60"
           >
-            {acctBusy ? 'â³ Sendingâ€¦' : 'Email me a confirmation link'}
+            {acctBusy ? '⏳ Sending…' : 'Email me a confirmation link'}
           </button>
         </div>
       )}
@@ -540,7 +540,7 @@ export default function SettingsDropdown({
           className="settings-row text-sm font-bold w-full text-left text-rose-500 hover:text-rose-700 transition-colors"
         >
           <span>Log out</span>
-          <span>â†’</span>
+          <span>→</span>
         </button>
       </div>
     </div>
