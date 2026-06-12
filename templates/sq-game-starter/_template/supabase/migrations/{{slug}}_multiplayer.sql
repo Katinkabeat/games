@@ -881,5 +881,5 @@ drop trigger if exists on_{{slug}}_game_finished on public.{{slug}}_games;
 create trigger on_{{slug}}_game_finished
   after update on public.{{slug}}_games
   for each row
-  when (OLD.status = 'active' and NEW.status = 'finished')
+  when (OLD.status = 'active' and NEW.status = 'finished' and NEW.end_reason is not null)
   execute function public.{{slug}}_notify_game_finished();
