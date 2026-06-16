@@ -48,15 +48,23 @@ export default function HubAvatarMenu({ profile, onProfileUpdate }) {
 
   async function handleHueChange(newHue) {
     if (newHue === hue || !profile?.id || hueSaving) return;
-    const prev = profile;
     setHueSaving(true);
+    // Optimistic and non-reverting: paint the chosen colour immediately and
+    // keep it no matter what. The server is the cross-device source of truth,
+    // so we retry the write a few times to make sure it lands. If every attempt
+    // fails (rare transient blip), the colour still sticks for this session and
+    // the next load reflects whatever the server has — we never snap it back on
+    // the user the way the old `if (error) onProfileUpdate(prev)` did. (c205)
     onProfileUpdate({ ...profile, avatar_hue: newHue });
-    const { error } = await supabase
-      .from('profiles')
-      .update({ avatar_hue: newHue })
-      .eq('id', profile.id);
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const { error } = await supabase
+        .from('profiles')
+        .update({ avatar_hue: newHue })
+        .eq('id', profile.id);
+      if (!error) break;
+      await new Promise(r => setTimeout(r, 400 * (attempt + 1)));
+    }
     setHueSaving(false);
-    if (error) onProfileUpdate(prev);
   }
 
   async function openStats() {
