@@ -62,23 +62,36 @@ export default function DailyReminderTimeRow({ dim }) {
   }, []);
 
   async function save(newTime) {
+    const newTz = tz || detectTz();
     setSaving(true);
+    // Optimistic: apply the choice immediately so the control feels instant,
+    // then write with a few quiet retries (same pattern as the avatar hue in
+    // c205). We never snap the control back mid-session — the next load
+    // reflects the server's value. (c221)
+    setTime(newTime);
+    setTz(newTz);
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Not signed in');
-      const newTz = tz || detectTz();
-      const { error } = await supabase
-        .from('profiles')
-        .update({
-          daily_reminder_time: newTime || null,
-          daily_reminder_tz: newTz,
-        })
-        .eq('id', user.id);
-      if (error) throw error;
-      setTime(newTime);
-      setTz(newTz);
+      let lastErr = null;
+      for (let attempt = 0; attempt < 3; attempt++) {
+        const { error } = await supabase
+          .from('profiles')
+          .update({
+            daily_reminder_time: newTime || null,
+            daily_reminder_tz: newTz,
+          })
+          .eq('id', user.id);
+        if (!error) { lastErr = null; break; }
+        lastErr = error;
+        await new Promise(r => setTimeout(r, 400 * (attempt + 1)));
+      }
+      if (lastErr) throw lastErr;
     } catch (err) {
-      toast.error(err.message || 'Failed to save reminder time');
+      // Unlike the cosmetic avatar hue, a reminder time has a functional
+      // consequence (a ping that otherwise won't fire), so if every retry
+      // fails we still tell the user rather than failing silently. (c221)
+      toast.error("Couldn't save your reminder time. Please try again.");
     } finally {
       setSaving(false);
     }
