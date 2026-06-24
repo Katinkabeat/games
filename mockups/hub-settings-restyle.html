@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>SQ Hub Settings — Option A refined (c198)</title>
+<style>
+  :root {
+    --w50:  #faf5ff;
+    --w100: #f3e8ff;
+    --w200: #e9d5ff;
+    --w400: #c084fc;
+    --w500: #a855f7;
+    --w600: #9333ea;
+    --w700: #7e22ce;
+    --rose500: #f43f5e;
+    --page: #f5f0fb;
+    --panel-bg: #ffffff;
+    --panel-border: #f3e8ff;
+    --label: #9333ea;
+    --value: #7e22ce;
+    --muted: #c084fc;
+    --divider: #f3e8ff;
+    --section-head: #c084fc;
+    --chip-bg: #faf5ff;
+    --chip-border: #e9d5ff;
+    --danger: #f43f5e;
+  }
+  body.dark {
+    --page: #150d28;
+    --panel-bg: #241640;
+    --panel-border: #6d28d9;
+    --label: #c4b5fd;
+    --value: #c4b5fd;
+    --muted: #8b7bb8;
+    --divider: #2d1b55;
+    --section-head: #8b7bb8;
+    --chip-bg: #1c1138;
+    --chip-border: #4c2d8f;
+    --danger: #fca5a5;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--page);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    color: var(--value); transition: background .2s; padding: 32px 24px 64px;
+  }
+  h1 { font-size: 18px; margin: 0 0 4px; color: var(--value); }
+  .sub { font-size: 13px; color: var(--muted); margin: 0 0 24px; max-width: 820px; line-height: 1.5; }
+  .toolbar { margin-bottom: 28px; }
+  .toolbar button {
+    font: inherit; font-size: 13px; font-weight: 700;
+    background: var(--panel-bg); color: var(--value);
+    border: 1px solid var(--panel-border); border-radius: 10px; padding: 7px 14px; cursor: pointer;
+  }
+
+  .row-of-panels { display: flex; gap: 48px; align-items: flex-start; flex-wrap: wrap; }
+  .col { width: 300px; }
+  .col > .caption { font-size: 13px; font-weight: 700; color: var(--value); margin-bottom: 4px; }
+  .col > .caption .tag { font-weight: 400; color: var(--muted); }
+  .col > .note { font-size: 12px; color: var(--muted); margin: 0 0 12px; line-height: 1.45; }
+
+  .panel {
+    background: var(--panel-bg); border: 1px solid var(--panel-border);
+    border-radius: 16px; box-shadow: 0 4px 6px -1px rgba(0,0,0,.1);
+    padding: 4px 0; width: 256px;
+  }
+
+  .srow {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 32px; padding: 7px 16px; font-size: 14px; font-weight: 700;
+  }
+  .srow .lbl { color: var(--label); display: flex; align-items: center; gap: 6px; }
+  .srow .val { color: var(--value); }
+  .srow button.link, .srow a {
+    color: var(--value); background: none; border: 0; font: inherit; font-weight: 700;
+    cursor: pointer; text-decoration: none;
+  }
+  .srow button.link:hover, .srow a:hover { color: var(--w500); }
+  .srow .danger { color: var(--danger); }
+  .dot { width: 8px; height: 8px; border-radius: 999px; background: #ef4444; display: inline-block; }
+  .car { font-size: 11px; color: var(--muted); margin-left: 2px; }
+
+  .section-head {
+    font-size: 10.5px; font-weight: 800; letter-spacing: .07em; text-transform: uppercase;
+    color: var(--section-head); padding: 12px 16px 4px;
+  }
+  .sec + .sec { border-top: 1px solid var(--divider); margin-top: 4px; }
+
+  /* invite options panel */
+  .opt-wrap { display: flex; flex-direction: column; gap: 22px; }
+  .opt { }
+  .opt .oh { font-size: 12.5px; font-weight: 700; color: var(--value); margin-bottom: 2px; }
+  .opt .od { font-size: 11.5px; color: var(--muted); margin: 0 0 8px; line-height: 1.4; }
+  .mini-panel {
+    background: var(--panel-bg); border: 1px solid var(--panel-border);
+    border-radius: 14px; box-shadow: 0 4px 6px -1px rgba(0,0,0,.1); padding: 2px 0; width: 256px;
+  }
+  /* the old bordered box, for reference */
+  .picker {
+    font-size: 14px; font-weight: 700; color: var(--value);
+    background: var(--panel-bg); border: 2px solid var(--chip-border);
+    padding: 4px 8px; border-radius: 8px; display: inline-flex; align-items: center; gap: 4px;
+  }
+  .recommend { color: #16a34a; font-weight: 800; }
+  body.dark .recommend { color: #4ade80; }
+</style>
+</head>
+<body>
+  <h1>SQ Hub Settings — Option A, refined</h1>
+  <p class="sub">
+    Edits folded in: pencil removed from <b>Change</b>, arrows removed from the About rows,
+    <b>Admin</b> moved up under Profile so it isn't buried. On the right: the <b>Invites</b> control
+    rendered four ways so we can replace that out-of-place bordered dropdown box with something that
+    matches the rest of the panel. Toggle dark mode to check both themes.
+  </p>
+
+  <div class="toolbar">
+    <button id="themeBtn">🌙 Toggle dark mode</button>
+  </div>
+
+  <div class="row-of-panels">
+
+    <!-- ===== Refined Option A ===== -->
+    <div class="col">
+      <div class="caption">Option A — refined</div>
+      <p class="note">Admin sits right under Profile. (Invites shown here as Style 1, my pick.)</p>
+      <div class="panel">
+        <div class="sec">
+          <div class="section-head">Profile</div>
+          <div class="srow"><span class="lbl">Name</span><span class="val">katinka</span></div>
+          <div class="srow"><span class="lbl">Password</span><button class="link">Change</button></div>
+        </div>
+        <div class="sec">
+          <div class="section-head">Admin</div>
+          <div class="srow"><span class="lbl">Admin panel</span><button class="link">🔐 Open</button></div>
+        </div>
+        <div class="sec">
+          <div class="section-head">Preferences</div>
+          <div class="srow"><span class="lbl">Theme</span><button class="link">🌙 Dark</button></div>
+          <div class="srow"><span class="lbl">Notifications</span><button class="link">🔔 Open</button></div>
+          <div class="srow"><span class="lbl">Invites</span><button class="link">Friends only <span class="car">▾</span></button></div>
+        </div>
+        <div class="sec">
+          <div class="section-head">Social</div>
+          <div class="srow"><span class="lbl">Friends <span class="dot"></span></span><button class="link">👥 Open</button></div>
+          <div class="srow"><span class="lbl">Feedback</span><button class="link">✉️ Send</button></div>
+        </div>
+        <div class="sec">
+          <div class="section-head">About</div>
+          <div class="srow"><span class="lbl">Privacy policy</span><button class="link">Open</button></div>
+          <div class="srow"><span class="lbl">Terms</span><button class="link">Open</button></div>
+        </div>
+        <div class="sec">
+          <div class="section-head">Account</div>
+          <div class="srow"><span class="lbl">Deactivate</span><button class="link">→</button></div>
+          <div class="srow"><span class="lbl danger">Delete account</span><button class="link danger">→</button></div>
+          <div class="srow"><span class="lbl danger">Log out</span><button class="link danger">→</button></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== Invites control options ===== -->
+    <div class="col" style="width:320px">
+      <div class="caption">Invites control — pick a style</div>
+      <p class="note">Each shows just the Preferences rows so you can see Invites sitting next to its
+        neighbours. Compare against Theme / Notifications right above it.</p>
+
+      <div class="opt-wrap">
+
+        <div class="opt">
+          <div class="oh">Style 1 — borderless value + caret <span class="recommend">◄ my pick</span></div>
+          <p class="od">Same plain-text styling as every other control. Tapping it opens the existing
+            Anyone / Friends only / Nobody popup. Matches the panel perfectly.</p>
+          <div class="mini-panel">
+            <div class="section-head">Preferences</div>
+            <div class="srow"><span class="lbl">Theme</span><button class="link">🌙 Dark</button></div>
+            <div class="srow"><span class="lbl">Notifications</span><button class="link">🔔 Open</button></div>
+            <div class="srow"><span class="lbl">Invites</span><button class="link">Friends only <span class="car">▾</span></button></div>
+          </div>
+        </div>
+
+        <div class="opt">
+          <div class="oh">Style 2 — value + “Change”</div>
+          <p class="od">Mirrors the Password row exactly: current setting in muted text, a “Change”
+            action that opens the same popup. Most consistent with Profile.</p>
+          <div class="mini-panel">
+            <div class="section-head">Preferences</div>
+            <div class="srow"><span class="lbl">Theme</span><button class="link">🌙 Dark</button></div>
+            <div class="srow"><span class="lbl">Notifications</span><button class="link">🔔 Open</button></div>
+            <div class="srow"><span class="lbl">Invites</span><span style="display:flex;gap:8px;align-items:center"><span class="val" style="color:var(--muted);font-weight:700">Friends only</span><button class="link">Change</button></span></div>
+          </div>
+        </div>
+
+        <div class="opt">
+          <div class="oh">Style 3 — tap to cycle</div>
+          <p class="od">Plain text, no popup at all — each tap cycles Anyone → Friends only → Nobody.
+            Fewest moving parts, but the choices aren’t visible until you tap through.</p>
+          <div class="mini-panel">
+            <div class="section-head">Preferences</div>
+            <div class="srow"><span class="lbl">Theme</span><button class="link">🌙 Dark</button></div>
+            <div class="srow"><span class="lbl">Notifications</span><button class="link">🔔 Open</button></div>
+            <div class="srow"><span class="lbl">Invites</span><button class="link">Friends only ⟳</button></div>
+          </div>
+        </div>
+
+        <div class="opt">
+          <div class="oh">Style 0 — current bordered box (for reference)</div>
+          <p class="od">What it looks like today — the boxed dropdown that feels out of place.</p>
+          <div class="mini-panel">
+            <div class="section-head">Preferences</div>
+            <div class="srow"><span class="lbl">Theme</span><button class="link">🌙 Dark</button></div>
+            <div class="srow"><span class="lbl">Notifications</span><button class="link">🔔 Open</button></div>
+            <div class="srow"><span class="lbl">Invites</span><span class="picker">Friends only <span class="car">▾</span></span></div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+  </div>
+
+<script>
+  const btn = document.getElementById('themeBtn');
+  btn.addEventListener('click', () => {
+    document.body.classList.toggle('dark');
+    btn.textContent = document.body.classList.contains('dark') ? '☀️ Toggle light mode' : '🌙 Toggle dark mode';
+  });
+</script>
+</body>
+</html>
