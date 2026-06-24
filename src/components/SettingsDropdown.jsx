@@ -29,6 +29,7 @@ export default function SettingsDropdown({
   onOpenFriends,
   onOpenNotifications,
   onOpenInvitePrefs,
+  onOpenDiscordLink,
   onOpenFeedback,
   onLogout,
   onClose,
@@ -424,6 +425,19 @@ export default function SettingsDropdown({
           className="text-sm font-bold text-wordy-700 hover:text-wordy-500 transition-colors"
         >
           👥 Open
+        </button>
+      </div>
+
+      <div className="settings-row">
+        <span className="text-sm font-bold text-wordy-600">Discord</span>
+        <button
+          onClick={() => {
+            onOpenDiscordLink?.();
+            onClose();
+          }}
+          className="text-sm font-bold text-wordy-700 hover:text-wordy-500 transition-colors"
+        >
+          Open
         </button>
       </div>
 

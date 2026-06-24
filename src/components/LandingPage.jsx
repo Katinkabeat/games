@@ -14,6 +14,7 @@ import { SQErrorBoundary } from '../../packages/sq-ui/index.js';
 const AdminPanel = lazy(() => import('./AdminPanel.jsx'));
 const NotificationsPanel = lazy(() => import('./NotificationsPanel.jsx'));
 const InvitePrefsPanel = lazy(() => import('./InvitePrefsPanel.jsx'));
+const DiscordLinkPanel = lazy(() => import('./DiscordLinkPanel.jsx'));
 import FriendsView from './FriendsView.jsx';
 import FeedbackView from './FeedbackView.jsx';
 import IOSInstallPrompt from './IOSInstallPrompt.jsx';
@@ -453,6 +454,7 @@ export default function LandingPage({ session }) {
                 onOpenFriends={() => setView('friends')}
                 onOpenNotifications={() => setView('notifications')}
                 onOpenInvitePrefs={() => setView('invitePrefs')}
+                onOpenDiscordLink={() => setView('discordLink')}
                 onOpenFeedback={() => setView('feedback')}
                 onLogout={handleLogout}
                 onClose={() => setSettingsOpen(false)}
@@ -473,6 +475,10 @@ export default function LandingPage({ session }) {
       ) : view === 'invitePrefs' ? (
         <Suspense fallback={<p className="max-w-[480px] mx-auto px-4 pb-12 text-sm text-wordy-500">Loading invites…</p>}>
           <InvitePrefsPanel onBack={() => setView('landing')} />
+        </Suspense>
+      ) : view === 'discordLink' ? (
+        <Suspense fallback={<p className="max-w-[480px] mx-auto px-4 pb-12 text-sm text-wordy-500">Loading…</p>}>
+          <DiscordLinkPanel onBack={() => setView('landing')} />
         </Suspense>
       ) : view === 'friends' ? (
         <FriendsView userId={user.id} onBack={() => setView('landing')} />
