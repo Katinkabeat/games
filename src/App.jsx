@@ -17,7 +17,7 @@ captureRefFromUrl();
 // Allowlist of path prefixes the post-login ?return= redirect will honor.
 // Add new SQ games here when scaffolding them so notifications and bookmarks
 // survive a logged-out re-entry.
-const ALLOWED_RETURN_PREFIXES = ['/wordy/', '/rungles/', '/snibble/', '/yahdle/'];
+const ALLOWED_RETURN_PREFIXES = ['/wordy/', '/rungles/', '/snibble/', '/yahdle/', '/oublex/'];
 
 function getValidatedReturn() {
   const params = new URLSearchParams(window.location.search);
