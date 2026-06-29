@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Oublex — class mechanic spread</title>
+<style>
+  :root{
+    --bg:#1a1030; --panel:#241640; --panel2:#2d1b55; --line:#3a2566;
+    --ink:#ece7fb; --dim:#b3a6d6; --mut:#8a7cb0;
+    --accent:#a78bfa; --gold:#fbbf24; --green:#4ade80; --rose:#fb7185;
+    --bcard:#2a1a4d;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0; background:var(--bg); color:var(--ink); font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif; line-height:1.5;}
+  .wrap{max-width:880px; margin:0 auto; padding:28px 20px 56px;}
+  h1{font-size:24px; margin:0 0 2px; letter-spacing:.5px;}
+  h1 small{display:block; font-size:13px; color:var(--mut); font-weight:400; margin-top:4px;}
+  .bar{display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin:22px 0 10px;}
+  label{font-size:14px; color:var(--dim);}
+  input[type=text]{width:150px; text-transform:uppercase; letter-spacing:3px; font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
+    background:var(--panel); border:1px solid var(--line); color:var(--ink); border-radius:8px; padding:8px 12px; font-size:16px;}
+  .base{font-size:24px; font-weight:600;}
+  .presets{display:flex; gap:7px; flex-wrap:wrap; margin-bottom:6px;}
+  .presets button{font-size:12px; padding:4px 12px; background:var(--panel); border:1px solid var(--line); color:var(--dim); border-radius:20px; cursor:pointer;}
+  .presets button:hover{border-color:var(--accent); color:var(--ink);}
+  .note{font-size:12px; color:var(--mut); margin:2px 0 24px; max-width:640px;}
+  .cls{margin:0 0 26px;}
+  .clshead{display:flex; align-items:baseline; gap:10px; margin-bottom:2px;}
+  .clsname{font-size:18px; font-weight:600; letter-spacing:.3px;}
+  .pill{font-size:11px; padding:2px 9px; border-radius:20px; background:var(--panel2); color:var(--mut); text-transform:uppercase; letter-spacing:.6px;}
+  .flavor{font-size:13px; color:var(--dim); margin:0 0 12px;}
+  .grid{display:grid; grid-template-columns:repeat(auto-fit,minmax(210px,1fr)); gap:12px;}
+  .card{background:var(--bcard); border:1px solid var(--line); border-radius:14px; padding:14px 16px;}
+  .card.pick{border:2px solid var(--accent);}
+  .cardtop{display:flex; align-items:center; gap:7px; margin-bottom:5px;}
+  .optname{font-size:15px; font-weight:600;}
+  .badge{font-size:11px; padding:1px 8px; border-radius:20px; background:rgba(167,139,250,.18); color:var(--accent);}
+  .rule{font-size:12.5px; color:var(--dim); line-height:1.5; margin:0 0 12px; min-height:54px;}
+  .dmg{font-size:22px; font-weight:600;}
+  .dmglbl{font-size:12px; color:var(--mut);}
+  .opnote{font-size:11.5px; color:var(--mut); margin:4px 0 0; line-height:1.4;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Oublex — class mechanic spread
+    <small>Pick how each class plays. Type a word to see live damage. Leaderboard ranks by total damage dealt — a class that only defends scores worse.</small>
+  </h1>
+
+  <div class="bar">
+    <label for="word">Test a word</label>
+    <input id="word" type="text" value="BREAD" maxlength="9" />
+    <span class="dmglbl">base damage</span>
+    <span id="base" class="base">8</span>
+  </div>
+  <div class="presets" id="presets">
+    <button data-w="BREAD">BREAD</button>
+    <button data-w="CAT">CAT</button>
+    <button data-w="LETTER">LETTER</button>
+    <button data-w="QUARTZ">QUARTZ</button>
+    <button data-w="QUEUE">QUEUE</button>
+  </div>
+  <p class="note">Bard is what v1 ships today. Mage / Ranger / Cleric are the three to build — one option each, the suggested one outlined.</p>
+
+  <div id="classes"></div>
+</div>
+
+<script>
+const VAL={A:1,B:3,C:3,D:2,E:1,F:4,G:2,H:4,I:1,J:8,K:5,L:1,M:3,N:1,O:1,P:3,Q:10,R:1,S:1,T:1,U:1,V:4,W:4,X:8,Y:4,Z:10};
+const R=Math.round;
+const SPEC=[
+  {cls:'Bard', tag:'in v1', flavor:'Rewards clever spelling — words with a repeated letter.',
+   opts:[{id:'bard', name:'Doubled letter', pick:false, rule:'A word with any repeated letter hits for x1.5.',
+          calc:(s)=> s.rep? {d:R(s.base*1.5), n:'repeated letter -> x1.5'} : {d:s.base, n:'no repeat -> x1'} }]},
+  {cls:'Mage', tag:'to build', flavor:'Big, greedy swings. Goes wide or goes home.',
+   opts:[
+     {id:'m1', name:'Arcane scaling', pick:true, rule:'Long words detonate: 6+ letters x1.5, a full 7-tile word x2.',
+      calc:(s)=> s.len>=7? {d:s.base*2, n:'full 7-tile word -> x2'} : s.len>=6? {d:R(s.base*1.5), n:'6+ letters -> x1.5'} : {d:s.base, n:'under 6 letters -> x1'} },
+     {id:'m2', name:'Glyphfire', pick:false, rule:'Rare letters (J,Q,X,Z,K,V,W,Y,F,H) deal double their tile value.',
+      calc:(s)=> ({d:s.base+s.power, n: s.power>0? ('power tiles double: +'+s.power):'no power tiles in word'}) },
+     {id:'m3', name:'Overload', pick:false, rule:'Every cast leaves a burn: the monster takes 3 at the start of its turn. Stacks.',
+      calc:(s)=> ({d:s.base, n:'+ burn 3 / turn (stacks)'}) }
+   ]},
+  {cls:'Ranger', tag:'to build', flavor:'Precision and tempo. Punishes fast, finishes faster.',
+   opts:[
+     {id:'r1', name:'Double shot', pick:true, rule:'Short words (2-3 letters) strike twice for full damage.',
+      calc:(s)=> s.len>=2 && s.len<=3? {d:s.base*2, n:'2-3 letters -> hits twice'} : {d:s.base, n:'over 3 letters -> single hit'} },
+     {id:'r2', name:"Hunter's mark", pick:false, rule:'First cast marks the monster; every cast after deals +3.',
+      calc:(s)=> ({d:s.base+3, n:'+3 (after the first cast in a room)'}) },
+     {id:'r3', name:'Volley', pick:false, rule:'+1 damage for every vowel in the word.',
+      calc:(s)=> ({d:s.base+s.vow, n:'+1 per vowel (+'+s.vow+')'}) }
+   ]},
+  {cls:'Cleric', tag:'to build', flavor:'Outlast the dungeon: survival turns into more casts, more total damage.',
+   opts:[
+     {id:'c1', name:'Lifedrain', pick:true, rule:'Heal 25% of the damage you deal. Live longer, cast more, score more.',
+      calc:(s)=> ({d:s.base, n:'heal '+R(s.base*0.25)+' HP on cast'}) },
+     {id:'c2', name:'Smite rhythm', pick:false, rule:'Every 3rd cast is a smite: x2 damage and heal 5.',
+      calc:(s)=> ({d:s.base, n:'every 3rd cast -> '+(s.base*2)+' dmg + heal 5'}) },
+     {id:'c3', name:'Ward', pick:false, rule:'The monster hits back for 3 less every turn. Pure defense.',
+      calc:(s)=> ({d:s.base, n:'monster counter -3  ·  no damage upside'}) }
+   ]}
+];
+function stat(w){
+  const L=(w||'').toUpperCase().replace(/[^A-Z]/g,'').split('');
+  const base=L.reduce((a,c)=>a+(VAL[c]||0),0);
+  const rep=new Set(L).size<L.length && L.length>0;
+  const vow=L.filter(c=>'AEIOU'.includes(c)).length;
+  const power=L.filter(c=>(VAL[c]||0)>=4).reduce((a,c)=>a+VAL[c],0);
+  return {base, rep, vow, power, len:L.length};
+}
+const root=document.getElementById('classes');
+SPEC.forEach(sp=>{
+  const block=document.createElement('div'); block.className='cls';
+  block.innerHTML='<div class="clshead"><span class="clsname">'+sp.cls+'</span><span class="pill">'+sp.tag+'</span></div>'+
+    '<p class="flavor">'+sp.flavor+'</p>';
+  const grid=document.createElement('div'); grid.className='grid';
+  sp.opts.forEach(o=>{
+    const card=document.createElement('div'); card.className='card'+(o.pick?' pick':'');
+    card.innerHTML='<div class="cardtop"><span class="optname">'+o.name+'</span>'+(o.pick?'<span class="badge">suggested</span>':'')+'</div>'+
+      '<p class="rule">'+o.rule+'</p>'+
+      '<div><span id="'+o.id+'-d" class="dmg">-</span> <span class="dmglbl">dmg</span></div>'+
+      '<p id="'+o.id+'-n" class="opnote"></p>';
+    grid.appendChild(card);
+  });
+  block.appendChild(grid); root.appendChild(block);
+});
+function recompute(){
+  const s=stat(document.getElementById('word').value);
+  document.getElementById('base').textContent=s.base;
+  SPEC.forEach(sp=>sp.opts.forEach(o=>{
+    const r=o.calc(s);
+    document.getElementById(o.id+'-d').textContent=R(r.d);
+    document.getElementById(o.id+'-n').textContent=r.n;
+  }));
+}
+document.getElementById('word').addEventListener('input',recompute);
+document.getElementById('presets').addEventListener('click',e=>{const b=e.target.closest('button'); if(!b)return; document.getElementById('word').value=b.dataset.w; recompute();});
+recompute();
+</script>
+</body>
+</html>
