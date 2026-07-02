@@ -202,6 +202,10 @@ export default function HubAvatarMenu({ profile, onProfileUpdate }) {
                         {stats.yahdle_solo} solo · {stats.yahdle_multi} multi
                       </span>
                     </li>
+                    <li className="flex justify-between">
+                      <span>🗺️ Oublex</span>
+                      <span className="font-bold text-wordy-800 dark:text-wordy-200">{stats.oublex_solo} solo</span>
+                    </li>
                   </ul>
                 </div>
               </div>

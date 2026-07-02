@@ -10,10 +10,13 @@
 --   * snibble_multi  — count of Snibble matches the caller is in
 --   * yahdle_solo    — count of Yahdle solo games the caller has played
 --   * yahdle_multi   — count of Yahdle multiplayer games the caller is in
+--   * oublex_solo    — count of Oublex solo runs the caller has completed
+--                       (Oublex is solo-only for now; multiplayer schema is
+--                        not yet deployed to the shared project — c212)
 --   * daily_streak   — consecutive days, ending today or yesterday, on
 --                       which the caller played any SideQuest game
 --                       (Wordy move OR Rungles rung OR Rungles solo OR
---                        completed Snibble feed OR Yahdle solo)
+--                        completed Snibble feed OR Yahdle solo OR Oublex solo)
 --
 -- Streak dates are all resolved in Atlantic time (America/Halifax, AST/ADT)
 -- so every game contributes on the same calendar-day basis. Snibble and
@@ -38,6 +41,7 @@ DECLARE
   v_sn_multi     int;
   v_yh_solo      int;
   v_yh_multi     int;
+  v_ob_solo      int;
   v_streak       int;
 BEGIN
   IF v_user_id IS NULL THEN
@@ -71,6 +75,9 @@ BEGIN
     FROM public.yahdle_games
     WHERE created_by = v_user_id OR invited_user_id = v_user_id;
 
+  SELECT COUNT(*) INTO v_ob_solo
+    FROM public.oublex_solo_results WHERE user_id = v_user_id;
+
   -- Daily streak: gather distinct play dates across every SQ game, group
   -- consecutive runs by (date - row_number) trick, and pick the run whose
   -- last day is today or yesterday. If the most recent play is older than
@@ -91,6 +98,9 @@ BEGIN
     UNION
     SELECT DISTINCT play_date
       FROM public.yahdle_solo_results WHERE user_id = v_user_id
+    UNION
+    SELECT DISTINCT play_date
+      FROM public.oublex_solo_results WHERE user_id = v_user_id
   ),
   ranked AS (
     SELECT d,
@@ -115,6 +125,7 @@ BEGIN
     'snibble_multi', v_sn_multi,
     'yahdle_solo',   v_yh_solo,
     'yahdle_multi',  v_yh_multi,
+    'oublex_solo',   v_ob_solo,
     'daily_streak',  v_streak
   );
 END;
