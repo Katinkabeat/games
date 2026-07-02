@@ -190,6 +190,18 @@ export default function HubAvatarMenu({ profile, onProfileUpdate }) {
                         {stats.rungles_solo} solo · {stats.rungles_multi} multi
                       </span>
                     </li>
+                    <li className="flex justify-between">
+                      <span>🐾 Snibble</span>
+                      <span className="font-bold text-wordy-800 dark:text-wordy-200">
+                        {stats.snibble_solo} solo · {stats.snibble_multi} multi
+                      </span>
+                    </li>
+                    <li className="flex justify-between">
+                      <span>🎲 Yahdle</span>
+                      <span className="font-bold text-wordy-800 dark:text-wordy-200">
+                        {stats.yahdle_solo} solo · {stats.yahdle_multi} multi
+                      </span>
+                    </li>
                   </ul>
                 </div>
               </div>
