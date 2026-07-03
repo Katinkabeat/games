@@ -40,7 +40,7 @@ export const APPS = [
     label: 'SideQuest',
     icon: '🎯',
     gradient: 'from-wordy-600 to-wordy-800',
-    topics: ['friend_request', 'daily_reminder'],
+    topics: ['friend_request', 'daily_reminder', 'passed_on_leaderboard'],
   },
 ];
 
@@ -56,4 +56,5 @@ export const TOPICS = {
   daily_reminder:  { label: 'Daily reminder',  description: 'One ping per day if you have unplayed dailies (Yahdle, Snibble, etc.).' },
   solo_turn:       { label: 'Solo game turns', description: 'When a computer player has moved in your Solo game. Off by default.' },
   invite_declined: { label: 'Invite couldn’t fill', description: 'When a game you started couldn’t fill because an invited friend didn’t join. Off by default.' },
+  passed_on_leaderboard: { label: 'Passed on the leaderboard', description: 'When you lose a top spot on the weekly board — the #1 crown, or your place in the top 5. Off by default.' },
 };
