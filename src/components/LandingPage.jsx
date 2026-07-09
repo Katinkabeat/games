@@ -3,7 +3,7 @@ import toast from 'react-hot-toast';
 import { supabase } from '../lib/supabase.js';
 import { useUnplayedDailies } from '../hooks/useUnplayedDailies.js';
 import { logEvent } from '../lib/telemetry.js';
-import { migrateToSideQuestPush } from '../lib/pushNotifications.js';
+import { migrateToSideQuestPush, ensurePushSubscribed } from '../lib/pushNotifications.js';
 import { useTheme } from '../contexts/ThemeContext.jsx';
 import SettingsDropdown from './SettingsDropdown.jsx';
 import HubAvatarMenu from './HubAvatarMenu.jsx';
@@ -338,6 +338,10 @@ export default function LandingPage({ session }) {
     // Rungles to the unified SideQuest subscription. Silent no-op if they
     // haven't granted permission on this device.
     migrateToSideQuestPush(user.id);
+    // Self-heal a lapsed/rotated push address so notifications don't silently
+    // die between sessions. No-op unless permission is granted and the account
+    // master is on. Fire-and-forget — never block the hub render.
+    ensurePushSubscribed(user.id);
   }, [user.id]);
 
   useEffect(() => {

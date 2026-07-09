@@ -2,9 +2,10 @@ import { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
 import {
   getPushPermissionState,
-  hasActivePushSubscription,
   subscribeToPush,
-  unsubscribeFromPush,
+  ensurePushSubscribed,
+  getPushMasterEnabled,
+  setPushMasterEnabled,
 } from '../lib/pushNotifications.js';
 import { supabase } from '../lib/supabase.js';
 import { APPS } from '../lib/notificationTopics.js';
@@ -43,8 +44,16 @@ export default function NotificationsPanel({ onBack }) {
         if (active) setNotifyState('denied');
         return;
       }
-      const subscribed = await hasActivePushSubscription();
-      if (active) setNotifyState(subscribed ? 'on' : 'off');
+      const userId = (await supabase.auth.getUser()).data.user?.id;
+      const masterOn = await getPushMasterEnabled(userId);
+      if (perm === 'granted') {
+        // Heal a lapsed/rotated address in the background when they want pings.
+        if (masterOn) ensurePushSubscribed(userId);
+        if (active) setNotifyState(masterOn ? 'on' : 'off');
+      } else {
+        // 'default' — permission never requested. Honestly off until they opt in.
+        if (active) setNotifyState('off');
+      }
     })();
     return () => { active = false; };
   }, []);
@@ -52,6 +61,9 @@ export default function NotificationsPanel({ onBack }) {
   async function handleToggleNotify() {
     if (notifyBusy) return;
     if (notifyState === 'on') {
+      // "Off" is an account-wide mute (a durable pref) — NOT an unsubscribe.
+      // The push address stays alive underneath so it can't silently rot and
+      // turning back on is instant.
       setNotifyBusy(true);
       try {
         const userId = (await supabase.auth.getUser()).data.user?.id;
@@ -59,13 +71,13 @@ export default function NotificationsPanel({ onBack }) {
           toast.error('Not signed in');
           return;
         }
-        const ok = await unsubscribeFromPush(userId);
+        const ok = await setPushMasterEnabled(userId, false);
         if (!ok) {
           toast.error("Couldn't turn off notifications");
           return;
         }
         setNotifyState('off');
-        toast.success('Notifications turned off');
+        toast.success('Notifications muted');
       } catch (err) {
         toast.error(err.message || String(err));
       } finally {
@@ -74,8 +86,7 @@ export default function NotificationsPanel({ onBack }) {
       return;
     }
     // Turning on: show the primer first if we've never asked the OS yet.
-    // For users who previously granted then unsubscribed, skip straight
-    // to subscribe — they already know what they signed up for.
+    // For users who previously granted, skip straight to subscribe.
     const perm = getPushPermissionState();
     if (perm === 'default') {
       setShowPrimer(true);
@@ -98,6 +109,8 @@ export default function NotificationsPanel({ onBack }) {
         setNotifyState('denied');
         toast.error('Permission denied — enable in your browser settings');
       } else if (result) {
+        // Clear any prior mute so the account master is on.
+        await setPushMasterEnabled(userId, true);
         setNotifyState('on');
         toast.success('Notifications turned on');
       } else {
@@ -173,18 +186,18 @@ export default function NotificationsPanel({ onBack }) {
         </div>
         <div className="min-w-0 flex-1">
           <div className="text-sm font-bold text-wordy-800">
-            {notifyState === 'on' && 'Browser push: on'}
-            {notifyState === 'off' && 'Browser push: off'}
-            {notifyState === 'denied' && 'Browser push: blocked'}
-            {notifyState === 'unsupported' && 'Browser push: not supported'}
-            {notifyState === 'loading' && 'Browser push: checking…'}
+            {notifyState === 'on' && 'All notifications: on'}
+            {notifyState === 'off' && 'All notifications: off'}
+            {notifyState === 'denied' && 'All notifications: blocked'}
+            {notifyState === 'unsupported' && 'All notifications: not supported'}
+            {notifyState === 'loading' && 'All notifications: checking…'}
           </div>
           <div className="text-xs text-wordy-500">
             {notifyState === 'denied'
               ? 'Re-enable notifications in your browser to receive pings.'
               : notifyState === 'unsupported'
               ? 'This browser doesn’t support web push.'
-              : 'The OS-level switch. Per-game settings only matter when this is on.'}
+              : 'Master switch for every game. Per-game settings only matter when this is on.'}
           </div>
         </div>
         {notifyState !== 'denied' && notifyState !== 'unsupported' && notifyState !== 'loading' && (

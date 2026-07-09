@@ -4,6 +4,56 @@ const VAPID_PUBLIC_KEY = import.meta.env.VITE_VAPID_PUBLIC_KEY;
 const APP = 'sidequest';
 const SW_PATH = '/games/sw.js';
 
+// Account-wide master mute. Stored as a sentinel pref row (app '_all',
+// topic '_master'); absent = on. This is the durable "do I want push at all"
+// intent — decoupled from whether a browser subscription happens to exist.
+const MASTER_APP = '_all';
+const MASTER_TOPIC = '_master';
+
+// Is the account-wide push master ON? Absent row = on (default). Fail-open.
+export async function getPushMasterEnabled(userId) {
+  if (!userId) return true;
+  const { data, error } = await supabase
+    .from('user_notification_prefs')
+    .select('enabled')
+    .eq('user_id', userId)
+    .eq('app', MASTER_APP)
+    .eq('topic', MASTER_TOPIC)
+    .maybeSingle();
+  if (error) return true;
+  return data ? data.enabled !== false : true;
+}
+
+// Set the account-wide push master. enabled=false silences everything without
+// touching the browser subscription (the address stays alive underneath).
+export async function setPushMasterEnabled(userId, enabled) {
+  if (!userId) return false;
+  const { error } = await supabase.from('user_notification_prefs').upsert(
+    { user_id: userId, app: MASTER_APP, topic: MASTER_TOPIC, enabled },
+    { onConflict: 'user_id,app,topic' }
+  );
+  if (error) {
+    console.error('Failed to set push master:', error);
+    return false;
+  }
+  return true;
+}
+
+// Keep the push address alive. Called on every app open: if the browser has
+// already granted permission and the account master is on, (re)create and
+// refresh the subscription row — self-healing a lapsed/rotated address that
+// would otherwise silently stop all notifications. No permission prompt
+// (permission is already granted); respects an explicit master-off mute.
+export async function ensurePushSubscribed(userId) {
+  if (typeof Notification === 'undefined') return false;
+  if (Notification.permission !== 'granted') return false;
+  if (!userId) return false;
+  if (!(await getPushMasterEnabled(userId))) return false;
+  // subscribeToPush is idempotent: reuses an existing browser subscription or
+  // creates a new one, then upserts the row (refreshing endpoint + updated_at).
+  return subscribeToPush(userId);
+}
+
 export function getPushPermissionState() {
   if (!('serviceWorker' in navigator) || !('PushManager' in window)) return 'unsupported';
   return Notification.permission;
