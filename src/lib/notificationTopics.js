@@ -36,8 +36,13 @@ export const APPS = [
     topics: ['your_turn', 'invite', 'opponent_joined', 'game_finished', 'invite_declined'],
   },
   {
+    // key stays 'sidequest' (the app slug used everywhere server-side); only
+    // the display label changed. Renamed from "SideQuest" → "Account &
+    // reminders" so it doesn't read as a second global mute next to the
+    // top-level "All notifications" master. This bucket = hub-only pings
+    // (friend requests, leaderboard, daily reminder), not the games.
     key: 'sidequest',
-    label: 'SideQuest',
+    label: 'Account & reminders',
     icon: '🎯',
     gradient: 'from-wordy-600 to-wordy-800',
     topics: ['friend_request', 'passed_on_leaderboard', 'daily_reminder'],
