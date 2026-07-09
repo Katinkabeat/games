@@ -1,7 +1,16 @@
-// {{name}} Service Worker — handles push notifications.
-// Bump CACHE_VERSION on every user-visible deploy so PWAs pick up the new SW.
-
-const CACHE_VERSION = '{{slug}}-v1'
+// {{name}} Service Worker — push notifications ONLY.
+//
+// This SW deliberately has no `fetch` handler and no `caches` use, so it does
+// NOT cache the app shell: a normal reload always pulls the new hashed bundles
+// from Pages. There is therefore nothing to cache-bust and no CACHE_VERSION to
+// bump on deploy. (An earlier template shipped an unused CACHE_VERSION const
+// plus a "bump it every deploy" comment — it did nothing, and cost real
+// debugging time working out whether a stale build was being served.)
+//
+// If you later add offline/app-shell caching, add a `fetch` handler + a
+// CACHE_VERSION you actually read in `activate` to evict old caches, and only
+// then does bumping it on each user-visible deploy mean anything. See Rungles,
+// whose SW genuinely caches, for that shape.
 
 self.addEventListener('push', (event) => {
   let data = { title: '{{name}}', body: "It's your turn!" }

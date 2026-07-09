@@ -31,20 +31,25 @@ separate explicit step.
 
 1. Add the new game to `rae-side-quest`'s `dev:all` script
 2. Add it to the SQ hub landing page game grid + post-login allowlist
-3. **Stand up multiplayer** — run `supabase/migrations/<slug>_multiplayer.sql`
+3. **Stand up the solo daily** (if the game has one) — run
+   `supabase/migrations/<slug>_solo_results.sql`, then
+   `<slug>_solo_results_write_guard.sql`, then `<slug>_solo_leaderboards.sql`.
+   Write results only through the guard RPC; never upsert the table directly.
+   See "Solo results + leaderboard" below.
+4. **Stand up multiplayer** — run `supabase/migrations/<slug>_multiplayer.sql`
    then `<slug>_nudge.sql` in the Supabase SQL editor, fill in the push-trigger
    `<PROJECT_REF>` / `<ANON_JWT>` placeholders, run `<slug>_admin_close_game.sql`,
    and deploy the `<slug>-push-notification` edge function (see "Multiplayer"
    below)
-4. Wire it into the shared notification system (subscription side:
+5. Wire it into the shared notification system (subscription side:
    `src/lib/pushNotifications.js` / the hub) — the edge function + DB triggers
    already ship
-5. Update the theme-flash localStorage fallback list in OTHER games' `index.html`
+6. Update the theme-flash localStorage fallback list in OTHER games' `index.html`
    to include the new `<slug>-theme` key (so users mid-migration don't flash)
-6. Build the actual game (replace the MP turn stub + play-area placeholder)
-7. Patch the hub's `LandingPage.jsx` `hub-inbox` channel to subscribe to your
+7. Build the actual game (replace the MP turn stub + play-area placeholder)
+8. Patch the hub's `LandingPage.jsx` `hub-inbox` channel to subscribe to your
    tables (see "Multiplayer")
-8. `gh repo create` + push when ready
+9. `gh repo create` + push when ready
 
 ## Multiplayer (baked in)
 
@@ -134,18 +139,40 @@ avatar menu) that includes the c92 extended-leaderboard pattern out of the box:
 **Day / Week / Month / All-time** tabs with a date stepper on Day for scrolling
 back through past days. Identical chrome to Yahdle / Snibble / Rungles.
 
-It comes with two matching migrations:
+It comes with three matching migrations:
 
 - `supabase/migrations/<slug>_solo_results.sql` — minimal one-row-per-user-per-day
   table (`user_id`, `play_date`, `score`, `completed_at`). Apply this first.
+  It grants **read-only** RLS on purpose (see next bullet).
+- `supabase/migrations/<slug>_solo_results_write_guard.sql` — the SECURITY
+  DEFINER `<slug>_record_solo_result(p_play_date, p_score)` RPC, the **only**
+  writer of that table. It stamps `user_id` from `auth.uid()` and refuses any
+  `play_date` that isn't the current Atlantic day. Apply it with the table.
 - `supabase/migrations/<slug>_solo_leaderboards.sql` — the two RPCs
   (`<slug>_solo_leaderboard` and `<slug>_solo_my_rank`) the StatsPage calls.
   Default: **per-user SUM across the window** (each user appears once;
   Week = sum of daily scores, etc).
 
-**To light it up:** apply both migrations, then INSERT a row into
-`<slug>_solo_results` whenever a player finishes a session. The leaderboard
-fills in automatically.
+**To light it up:** apply all three, then call `<slug>_record_solo_result` when
+a player finishes a session — use the `recordResult()` helper already wired into
+`src/components/game/SoloGamePage.jsx`. The leaderboard fills in automatically.
+
+**Do not** grant `insert_own` / `update_own` / `delete_own` on
+`<slug>_solo_results` and do not upsert it straight from the client. A
+client-chosen `play_date` lets a stale tab pad *yesterday's* board after
+midnight, and delete-own lets a player wipe today's result to replay the daily.
+
+**Never make the result write fire-and-forget.** `recordResult()` awaits the
+RPC, calls `supabase.auth.refreshSession()` and retries on failure (a
+backgrounded mobile tab's access token expires and 401s), and surfaces the true
+save state — "Saving… / logged / Couldn't save, retry" — rather than always
+claiming success. A silent failure loses the score, and if your game also
+persists a resume snapshot it strands the player in a replay loop: they finish,
+the write dies quietly, the snapshot survives, and every reopen puts them back
+at the end of the run. That bug shipped in Oublex and cost a player three
+re-runs of the same dungeon. See `feedback_sq_result_write_resilience`. The one
+error you must **not** retry is the guard's non-today rejection — show "this
+day has ended" instead.
 
 **When to deviate from the default:**
 

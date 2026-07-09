@@ -25,18 +25,21 @@ CREATE INDEX IF NOT EXISTS {{slug}}_solo_results_score_idx
 
 ALTER TABLE public.{{slug}}_solo_results ENABLE ROW LEVEL SECURITY;
 
--- Each user can insert/update their own rows only.
-CREATE POLICY {{slug}}_solo_results_insert_own ON public.{{slug}}_solo_results
-  FOR INSERT TO authenticated
-  WITH CHECK ((SELECT auth.uid()) = user_id);
-
-CREATE POLICY {{slug}}_solo_results_update_own ON public.{{slug}}_solo_results
-  FOR UPDATE TO authenticated
-  USING ((SELECT auth.uid()) = user_id);
+-- NOTE: there is deliberately NO insert/update/delete policy here.
+--
+-- Results are written ONLY through the SECURITY DEFINER RPC in
+-- {{slug}}_solo_results_write_guard.sql, which stamps user_id from auth.uid()
+-- and refuses any play_date that isn't the current Atlantic day. Granting
+-- insert/update-own (as this template used to) lets the client choose its own
+-- play_date, which means a player with a stale tab can pad YESTERDAY's
+-- leaderboard after midnight. Delete-own is likewise omitted: it would let a
+-- player delete today's result and replay the daily.
+--
+-- Apply the write-guard migration too. Don't "temporarily" add insert_own.
 
 -- All authenticated users can read (needed for the leaderboard).
 -- The leaderboard RPCs are SECDEF anyway; this just enables direct
--- reads (e.g. for a "my history" view).
+-- reads (e.g. for a "my history" view) and the "already played today" gate.
 CREATE POLICY {{slug}}_solo_results_select_all ON public.{{slug}}_solo_results
   FOR SELECT TO authenticated
   USING (true);
