@@ -4,8 +4,8 @@
 -- 1. Turn on the daily indicator for Rungles + Oublex now that each
 --    ships a <game>_played_daily(uid, ymd) fn. sq_unplayed_dailies
 --    picks them up automatically. Yahdle/Snibble already true.
--- 2. Repoint games_catalog.description at each game's how-to opener —
---    the hub now shows this as the tile's info (ⓘ) blurb, not a
+-- 2. Repoint games_catalog.description at each game's how-to opener.
+--    The hub now shows this as the tile's info (i) blurb, not a
 --    subtitle, so it wants a real one-line description of the game.
 -- ============================================================
 
@@ -17,11 +17,11 @@ update public.games_catalog set description =
   where id = 'wordy';
 
 update public.games_catalog set description =
-  'Build a ladder of connected words, each one a rung — 7 solo, 10 in multiplayer.'
+  'Build a ladder of connected words, each one a rung. Solo is 7 rungs, multiplayer is 10.'
   where id = 'rungles';
 
 update public.games_catalog set description =
-  'A cozy daily word pet. Each day it has one craving — a rule your words must follow.'
+  'A cozy daily word pet. Each day it has one craving, a rule your words must follow.'
   where id = 'snibble';
 
 update public.games_catalog set description =
@@ -29,5 +29,5 @@ update public.games_catalog set description =
   where id = 'yahdle';
 
 update public.games_catalog set description =
-  'A new dungeon takes shape each day. You get one run — spell your way through, or you don’t come back up.'
+  'A new dungeon takes shape each day. You get one run; spell your way through, or you don’t come back up.'
   where id = 'oublex';
