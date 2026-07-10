@@ -40,12 +40,15 @@ function signatureOf(game, type, status) {
  * @param {number} [opts.timeoutMs]
  * @returns {Promise<{reported: boolean, reason?: string}>} never rejects
  */
-export async function reportClientError({ url, anonKey, game, type, detail, status, timeoutMs = DEFAULT_TIMEOUT_MS }) {
+export async function reportClientError({ url, anonKey, game, type, detail, status, dedupeKey, timeoutMs = DEFAULT_TIMEOUT_MS }) {
   try {
     if (!url || !anonKey || !game || !type) {
       return { reported: false, reason: 'missing url/anonKey/game/type' }
     }
-    const sig = signatureOf(game, type, status)
+    // dedupeKey lets callers (e.g. the global error handler) collapse by a finer
+    // signature than game:type:status — two distinct JS errors must each report,
+    // but the same error repeating must not.
+    const sig = dedupeKey || signatureOf(game, type, status)
     if (reportedThisSession.has(sig)) return { reported: false, reason: 'deduped this session' }
     reportedThisSession.add(sig)
 
@@ -125,4 +128,112 @@ export async function firePushAndReport({ pushUrl, reportUrl, anonKey, body, gam
   } finally {
     clearTimeout(timer)
   }
+}
+
+// ── Global error reporting (c266 Phase 1) ───────────────────────────────────
+//
+// Turns #error-log from "a couple of push checks" into "the app actually broke
+// and I'll hear about it": uncaught exceptions, unhandled promise rejections,
+// and React render crashes (via SQErrorBoundary) all report here.
+//
+// Install once per app from its entry (main.jsx). The SQErrorBoundary calls
+// reportRenderCrash() using the config set at install time, so it needs no props.
+
+let _globalCfg = null
+let _installed = false
+const _seenGlobal = new Set()
+// A soft ceiling so a hot error loop (many DISTINCT messages) can't firehose the
+// channel. Repeats of one message are already collapsed by _seenGlobal.
+const MAX_DISTINCT_PER_SESSION = 25
+
+// Noise that is never worth a report: cross-origin opaque errors, the benign
+// ResizeObserver loop notice, and anything originating in a browser extension.
+function looksBenign(message = '', stack = '') {
+  const m = String(message || '')
+  if (!m && !stack) return true
+  if (m === 'Script error.' || m === 'Script error') return true
+  if (/ResizeObserver loop/i.test(m)) return true
+  if (/(chrome|moz|safari-web|ms-browser)-extension:\/\//i.test(String(stack)) || /extension:\/\//i.test(m)) return true
+  return false
+}
+
+// Redact JWT/token-shaped substrings so a credential can never ride into Discord.
+function redact(s = '') {
+  return String(s || '')
+    .replace(/eyJ[A-Za-z0-9_-]{6,}\.[A-Za-z0-9_-]{6,}\.[A-Za-z0-9_-]{6,}/g, '[jwt]')
+    .replace(/\b[A-Za-z0-9_-]{40,}\b/g, '[token]')
+    .slice(0, 400)
+}
+
+function firstFrame(stack = '') {
+  const line = String(stack || '')
+    .split('\n').map((s) => s.trim())
+    .find((s) => s.startsWith('at ') || s.includes('@'))
+  return line ? line.slice(0, 200) : ''
+}
+
+function reportGlobal(type, message, stack) {
+  if (!_globalCfg) return
+  if (looksBenign(message, stack)) return
+  const frame = firstFrame(stack)
+  const key = `${type}:${message}:${frame}`
+  if (_seenGlobal.has(key)) return
+  if (_seenGlobal.size >= MAX_DISTINCT_PER_SESSION) return
+  _seenGlobal.add(key)
+  const route = typeof location !== 'undefined' ? location.pathname : ''
+  const detail = redact([message, frame, route].filter(Boolean).join(' | '))
+  reportClientError({
+    url: _globalCfg.reportUrl,
+    anonKey: _globalCfg.anonKey,
+    game: _globalCfg.game,
+    type,
+    detail,
+    status: null,
+    dedupeKey: `${_globalCfg.game}:${key}`,
+  })
+}
+
+function _onError(event) {
+  // Resource-load failures (img/script/link) also fire 'error' but have no Error
+  // object and a DOM element as target — not a code exception, skip them.
+  if (event?.target && event.target !== window && event.target.tagName) return
+  const err = event?.error
+  reportGlobal('js-error', event?.message || err?.message || 'unknown error', err?.stack || '')
+}
+
+function _onRejection(event) {
+  const r = event?.reason
+  if (r?.name === 'AbortError') return // aborted fetches are routine, not failures
+  const message = (r && (r.message || String(r))) || 'unhandled rejection'
+  reportGlobal('unhandled-rejection', message, r?.stack || '')
+}
+
+/**
+ * Install global error reporting for an app. Call once from main.jsx before
+ * render. Safe to call again (updates config, doesn't double-bind). Returns an
+ * uninstall function.
+ *
+ * @param {object} opts
+ * @param {string} opts.game     game key ('wordy' | 'yahdle' | ...)
+ * @param {string} opts.reportUrl the sq-report-client-error function URL
+ * @param {string} opts.anonKey   Supabase anon key
+ */
+export function installGlobalErrorReporting({ game, reportUrl, anonKey }) {
+  if (typeof window === 'undefined') return () => {}
+  _globalCfg = { game, reportUrl, anonKey }
+  if (_installed) return () => {}
+  window.addEventListener('error', _onError)
+  window.addEventListener('unhandledrejection', _onRejection)
+  _installed = true
+  return () => {
+    window.removeEventListener('error', _onError)
+    window.removeEventListener('unhandledrejection', _onRejection)
+    _installed = false
+    _globalCfg = null
+  }
+}
+
+/** Called by SQErrorBoundary.componentDidCatch on a render crash. No-op until installed. */
+export function reportRenderCrash(error, info) {
+  reportGlobal('render-crash', error?.message || 'render crash', error?.stack || info?.componentStack || '')
 }

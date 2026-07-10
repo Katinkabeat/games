@@ -30,4 +30,8 @@ export {
   NUDGE_OPTED_OUT,
   NUDGE_NO_SUBSCRIPTION,
 } from './utils/nudge.js';
-export { reportClientError, firePushAndReport } from './utils/report.js';
+export {
+  reportClientError,
+  firePushAndReport,
+  installGlobalErrorReporting,
+} from './utils/report.js';

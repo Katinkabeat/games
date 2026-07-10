@@ -65,10 +65,21 @@ serve(async (req: Request) => {
 
   const nice: Record<string, string> = { wordy: 'Wordy', yahdle: 'Yahdle', rungles: 'Rungles', snibble: 'Snibble', oublex: 'Oublex' }
   const gameLabel = nice[game] ?? game
-  const statusLine = status === null ? 'network / timeout error' : `HTTP ${status}`
+  // Headline by category. Error-category types have no HTTP status; push types
+  // with a null status mean the send hit a network/timeout error.
+  const HEAD: Record<string, string> = {
+    'js-error': 'uncaught error',
+    'unhandled-rejection': 'unhandled promise rejection',
+    'render-crash': 'render crash',
+  }
+  const isErrorType = type in HEAD
+  const headline = HEAD[type] ?? 'push failed'
+  let statusPart = ''
+  if (status !== null) statusPart = ` · HTTP ${status}`
+  else if (!isErrorType) statusPart = ' · network / timeout'
   const lines = [
-    `**${gameLabel}** — client push failed`,
-    `\`${type}\` · ${statusLine}`,
+    `**${gameLabel}** — ${headline}`,
+    `\`${type}\`${statusPart}`,
   ]
   if (detail) lines.push(`detail: ${detail}`)
 

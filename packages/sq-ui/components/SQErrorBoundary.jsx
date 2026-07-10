@@ -6,6 +6,7 @@
 // variant="page"   — full-screen fallback (game shells, hub root).
 // variant="inline" — fallback sits in place as a card (hub grid, banners).
 import { Component } from 'react';
+import { reportRenderCrash } from '../utils/report.js';
 
 export default class SQErrorBoundary extends Component {
   state = { error: null };
@@ -15,8 +16,10 @@ export default class SQErrorBoundary extends Component {
   }
 
   componentDidCatch(error, info) {
-    // No telemetry pipeline yet; the console is the only sink.
     console.error(`[SQErrorBoundary${this.props.label ? `:${this.props.label}` : ''}]`, error, info);
+    // Report render crashes to #error-log (c266). No-op unless the app installed
+    // global error reporting at startup (installGlobalErrorReporting in main.jsx).
+    reportRenderCrash(error, info);
   }
 
   render() {
