@@ -17,6 +17,8 @@
 // sq-ui carries no dependencies of its own, so the caller passes in its own
 // supabase client rather than this module importing one.
 
+import { reportClientError } from './report.js'
+
 // The four push functions all resolve a nudge to one of these shapes.
 export const NUDGE_OPTED_OUT = 'opted out'
 export const NUDGE_NO_SUBSCRIPTION = 'no push subscription'
@@ -58,7 +60,7 @@ export async function isNudgeEnabled(supabase, userId, app) {
  * to serialize if something odd happened downstream of an actual send, and
  * a false "couldn't send" toast on a nudge that landed is the worse error.
  */
-export async function postNudge({ url, anonKey, body, timeoutMs = DEFAULT_TIMEOUT_MS }) {
+export async function postNudge({ url, anonKey, body, reportUrl, game, timeoutMs = DEFAULT_TIMEOUT_MS }) {
   const ctrl = new AbortController()
   const timer = setTimeout(() => ctrl.abort(), timeoutMs)
   try {
@@ -75,6 +77,12 @@ export async function postNudge({ url, anonKey, body, timeoutMs = DEFAULT_TIMEOU
 
     if (!res.ok) {
       console.warn(`[nudge] push failed: HTTP ${res.status}`)
+      // Transport failure — the push endpoint itself is broken. Report to
+      // #error-log (c266) so a systemically-down nudge fn surfaces. The
+      // { sent:false } opt-out branch below is a normal outcome, NOT reported.
+      if (reportUrl && game) {
+        reportClientError({ url: reportUrl, anonKey, game, type: 'nudge', detail: `HTTP ${res.status}`, status: res.status })
+      }
       return { delivered: false, reason: `http ${res.status}`, status: res.status }
     }
 
@@ -88,6 +96,9 @@ export async function postNudge({ url, anonKey, body, timeoutMs = DEFAULT_TIMEOU
   } catch (err) {
     const reason = err?.name === 'AbortError' ? 'timeout' : 'network error'
     console.warn('[nudge] push error:', reason, err)
+    if (reportUrl && game) {
+      reportClientError({ url: reportUrl, anonKey, game, type: 'nudge', detail: reason, status: null })
+    }
     return { delivered: false, reason, status: null }
   } finally {
     clearTimeout(timer)
