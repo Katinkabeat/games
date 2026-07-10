@@ -30,7 +30,8 @@ const FALLBACK_GAMES = [
     url: '/wordy/',
     initial: 'W',
     gradient: 'from-wordy-600 to-wordy-800',
-    description: 'Word tile game · solo & multiplayer',
+    description: 'Build words on the board from the tiles in your rack and rack up the highest score.',
+    has_daily: false,
     _access: 'allowed',
   },
   {
@@ -39,7 +40,8 @@ const FALLBACK_GAMES = [
     url: '/rungles/',
     initial: 'R',
     gradient: 'from-wordy-600 to-wordy-800',
-    description: 'Word game · solo & multiplayer',
+    description: 'Build a ladder of connected words, each one a rung — 7 solo, 10 in multiplayer.',
+    has_daily: true,
     _access: 'allowed',
   },
   {
@@ -48,7 +50,8 @@ const FALLBACK_GAMES = [
     url: '/snibble/',
     initial: 'S',
     gradient: 'from-wordy-600 to-wordy-800',
-    description: 'Cozy daily word game · 1v1',
+    description: 'A cozy daily word pet. Each day it has one craving — a rule your words must follow.',
+    has_daily: true,
     _access: 'allowed',
   },
   {
@@ -57,7 +60,18 @@ const FALLBACK_GAMES = [
     url: '/yahdle/',
     initial: 'Y',
     gradient: 'from-wordy-600 to-wordy-800',
-    description: 'Letter-dice · daily & multiplayer',
+    description: 'Roll six letter dice, spell a word, and score it into one of 12 categories.',
+    has_daily: true,
+    _access: 'allowed',
+  },
+  {
+    id: 'oublex',
+    name: 'Oublex',
+    url: '/oublex/',
+    initial: 'O',
+    gradient: 'from-wordy-600 to-wordy-800',
+    description: 'A new dungeon takes shape each day. You get one run — spell your way through, or you don’t come back up.',
+    has_daily: true,
     _access: 'allowed',
   },
 ];
@@ -98,13 +112,16 @@ export default function LandingPage({ session }) {
 
   const [bellOpen, setBellOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  // Which game's how-to blurb popover is open on the grid (game id or null).
+  const [openBlurb, setOpenBlurb] = useState(null);
   const [view, setView] = useState('landing');
   const [isAdmin, setIsAdmin] = useState(false);
   const [isMaster, setIsMaster] = useState(false);
   const [adminPermissions, setAdminPermissions] = useState([]);
-  // Set of game ids whose daily the user hasn't completed today.
-  // Drives the corner-dot indicator on the tile.
-  const { unplayed: unplayedDailies } = useUnplayedDailies(user.id);
+  // Set of game ids whose daily the user hasn't completed today, plus a
+  // ready flag so we can tell "daily done" apart from "still loading" and
+  // avoid flashing the wrong status line on daily tiles.
+  const { unplayed: unplayedDailies, ready: dailiesLoaded } = useUnplayedDailies(user.id);
   // Seeded from localStorage so testers (and everyone else) skip the
   // gated-flash on subsequent loads while loadCatalog() refreshes in
   // the background.
@@ -173,7 +190,7 @@ export default function LandingPage({ session }) {
       const [catalogResp, accessResp] = await Promise.all([
         supabase
           .from('games_catalog')
-          .select('id, name, url, initial, gradient, requires_access, description')
+          .select('id, name, url, initial, gradient, requires_access, description, has_daily')
           .eq('is_published', true)
           .order('sort_order', { ascending: true }),
         supabase
@@ -522,34 +539,69 @@ export default function LandingPage({ session }) {
                     </div>
                   );
                 }
+                const isDaily = !!game.has_daily;
                 const dailyReady = unplayedDailies.has(game.id);
+                const blurbOpen = openBlurb === game.id;
                 return (
-                  <a
+                  <div
                     key={game.id}
-                    href={game.url}
-                    className="card hover:shadow-lg transition-shadow flex items-center gap-4 p-5 relative"
+                    className="card flex items-center gap-x-3 gap-y-3 p-5 flex-wrap"
                   >
-                    {dailyReady && (
-                      <span
-                        className="absolute top-2 right-2 w-2.5 h-2.5 rounded-full bg-red-500 ring-2 ring-white dark:ring-[#181c25]"
-                        aria-label="Daily puzzle ready"
-                        title="Daily puzzle ready"
-                      />
-                    )}
                     <div
                       className={`w-14 h-14 rounded-2xl bg-gradient-to-br ${game.gradient} flex items-center justify-center shrink-0 shadow-sm`}
                     >
                       <span className="font-display text-2xl text-white">{game.initial}</span>
                     </div>
                     <div className="flex-1 min-w-0">
-                      <h3 className="font-display text-xl text-wordy-800 truncate">
-                        {game.name}
-                      </h3>
-                      {game.description && (
-                        <p className="text-xs text-wordy-500">{game.description}</p>
+                      <div className="flex items-center gap-1.5">
+                        <h3 className="font-display text-xl text-wordy-800 truncate">
+                          {game.name}
+                        </h3>
+                        {game.description && (
+                          <button
+                            type="button"
+                            onClick={() => setOpenBlurb(blurbOpen ? null : game.id)}
+                            aria-label={`About ${game.name}`}
+                            aria-expanded={blurbOpen}
+                            className="shrink-0 text-wordy-400 hover:text-wordy-600 active:scale-95 leading-none"
+                          >
+                            <svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                              <circle cx="12" cy="12" r="10" />
+                              <path d="M12 16v-4" />
+                              <path d="M12 8h.01" />
+                            </svg>
+                          </button>
+                        )}
+                      </div>
+                      {/* Reserved daily-status line: fixed height so a tile
+                          doesn't resize when its daily flips ready→done.
+                          Only daily games get the line; blank until loaded. */}
+                      {isDaily && (
+                        <p className="text-xs font-semibold h-4 leading-4 mt-0.5">
+                          {dailyReady ? (
+                            <span className="text-amber-600">Daily ready</span>
+                          ) : dailiesLoaded ? (
+                            <span className="text-wordy-400 font-normal">Daily completed</span>
+                          ) : null}
+                        </p>
                       )}
                     </div>
-                  </a>
+                    <a
+                      href={game.url}
+                      aria-label={`Play ${game.name}`}
+                      className="shrink-0 inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-wordy-600 hover:bg-wordy-700 text-white text-sm font-bold shadow-sm active:scale-95 transition-colors"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                        <path d="M6 3l14 9-14 9z" />
+                      </svg>
+                      Play
+                    </a>
+                    {blurbOpen && game.description && (
+                      <p className="basis-full text-sm text-wordy-600 border-t border-wordy-100 pt-3">
+                        {game.description}
+                      </p>
+                    )}
+                  </div>
                 );
               })}
             </div>
