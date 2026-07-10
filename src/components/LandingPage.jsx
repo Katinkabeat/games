@@ -30,7 +30,7 @@ const FALLBACK_GAMES = [
     url: '/wordy/',
     initial: 'W',
     gradient: 'from-wordy-600 to-wordy-800',
-    description: 'Build words on the board from the tiles in your rack and rack up the highest score.',
+    description: 'Build words on a board from tiles in your rack and gather the most points. 1 - 4 players.',
     has_daily: false,
     _access: 'allowed',
   },
@@ -40,7 +40,7 @@ const FALLBACK_GAMES = [
     url: '/rungles/',
     initial: 'R',
     gradient: 'from-wordy-600 to-wordy-800',
-    description: 'Build a ladder of connected words, each one a rung. Solo is 7 rungs, multiplayer is 10.',
+    description: 'Build a ladder of connected words, each one a rung. Solo is 7 rungs, multiplayer is 10. Daily and 1 vs 1.',
     has_daily: true,
     _access: 'allowed',
   },
@@ -50,7 +50,7 @@ const FALLBACK_GAMES = [
     url: '/snibble/',
     initial: 'S',
     gradient: 'from-wordy-600 to-wordy-800',
-    description: 'A cozy daily word pet. Each day it has one craving, a rule your words must follow.',
+    description: 'A cozy daily game where you feed your pet words. New word rules each day. Daily and 1 vs 1.',
     has_daily: true,
     _access: 'allowed',
   },
@@ -60,7 +60,7 @@ const FALLBACK_GAMES = [
     url: '/yahdle/',
     initial: 'Y',
     gradient: 'from-wordy-600 to-wordy-800',
-    description: 'Roll six letter dice, spell a word, and score it into one of 12 categories.',
+    description: 'Roll six letter dice, spell a word, and score it into one of 12 categories. Daily and 2-4 players.',
     has_daily: true,
     _access: 'allowed',
   },
@@ -70,7 +70,7 @@ const FALLBACK_GAMES = [
     url: '/oublex/',
     initial: 'O',
     gradient: 'from-wordy-600 to-wordy-800',
-    description: 'A new dungeon takes shape each day. You get one run; spell your way through, or you don’t come back up.',
+    description: 'A new dungeon takes shape each day. You get one run; spell your way through, or you don’t come back up. Daily and Multiplayer coming soon.',
     has_daily: true,
     _access: 'allowed',
   },
@@ -579,7 +579,7 @@ export default function LandingPage({ session }) {
                       {isDaily && (
                         <p className="text-xs font-semibold h-4 leading-4 mt-0.5">
                           {dailyReady ? (
-                            <span className="text-amber-600">Daily ready</span>
+                            <span className="text-teal-600 dark:text-teal-400">Daily ready</span>
                           ) : dailiesLoaded ? (
                             <span className="text-wordy-400 font-normal">Daily completed</span>
                           ) : null}

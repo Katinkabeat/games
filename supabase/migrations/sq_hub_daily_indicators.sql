@@ -13,21 +13,21 @@ update public.games_catalog set has_daily = true
   where id in ('rungles', 'oublex');
 
 update public.games_catalog set description =
-  'Build words on the board from the tiles in your rack and rack up the highest score.'
+  'Build words on a board from tiles in your rack and gather the most points. 1 - 4 players.'
   where id = 'wordy';
 
 update public.games_catalog set description =
-  'Build a ladder of connected words, each one a rung. Solo is 7 rungs, multiplayer is 10.'
+  'Build a ladder of connected words, each one a rung. Solo is 7 rungs, multiplayer is 10. Daily and 1 vs 1.'
   where id = 'rungles';
 
 update public.games_catalog set description =
-  'A cozy daily word pet. Each day it has one craving, a rule your words must follow.'
+  'A cozy daily game where you feed your pet words. New word rules each day. Daily and 1 vs 1.'
   where id = 'snibble';
 
 update public.games_catalog set description =
-  'Roll six letter dice, spell a word, and score it into one of 12 categories.'
+  'Roll six letter dice, spell a word, and score it into one of 12 categories. Daily and 2-4 players.'
   where id = 'yahdle';
 
 update public.games_catalog set description =
-  'A new dungeon takes shape each day. You get one run; spell your way through, or you don’t come back up.'
+  'A new dungeon takes shape each day. You get one run; spell your way through, or you don’t come back up. Daily and Multiplayer coming soon.'
   where id = 'oublex';
