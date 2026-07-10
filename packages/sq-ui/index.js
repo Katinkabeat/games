@@ -23,3 +23,10 @@ export { default as SQAvatarDropdown } from './components/SQAvatarDropdown.jsx';
 export { default as SQAvatarMenuItem } from './components/SQAvatarMenuItem.jsx';
 export { default as SQErrorBoundary } from './components/SQErrorBoundary.jsx';
 export { timeAgo } from './utils/timeAgo.js';
+export {
+  isNudgeEnabled,
+  postNudge,
+  nudgeFailureMessage,
+  NUDGE_OPTED_OUT,
+  NUDGE_NO_SUBSCRIPTION,
+} from './utils/nudge.js';
