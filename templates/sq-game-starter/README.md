@@ -1,8 +1,13 @@
 # SQ Game Starter
 
 Scaffolds a new SideQuest game pre-wired with all the SQ chrome (sq-ui, dual-header,
-Supabase auth bounce, theme-flash prevention, push-notification SW, GitHub Pages
-deploy, manifest, dev tooling).
+Supabase auth bounce, theme-flash prevention, hub push-heal, GitHub Pages
+deploy, dev tooling).
+
+> Games are NOT installable PWAs and register no service worker (c272). Push is
+> centralized at the hub: `installPushHeal()` (in `main.jsx`) keeps the shared
+> `sidequest` subscription fresh, and the `<slug>-push-notification` edge function
+> sends to it. The only installable SideQuest app is the hub.
 
 ## Layout
 

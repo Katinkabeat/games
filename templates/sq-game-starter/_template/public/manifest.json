@@ -4,7 +4,7 @@
   "description": "{{description}}",
   "start_url": "/{{slug}}/",
   "scope": "/{{slug}}/",
-  "display": "standalone",
+  "display": "browser",
   "orientation": "portrait",
   "theme_color": "{{themeColor}}",
   "background_color": "{{backgroundColor}}",
