@@ -35,3 +35,4 @@ export {
   firePushAndReport,
   installGlobalErrorReporting,
 } from './utils/report.js';
+export { installPushHeal } from './utils/pushHeal.js';

@@ -4,6 +4,7 @@ import { supabase } from './lib/supabase.js';
 import { ThemeProvider } from './contexts/ThemeContext.jsx';
 import AuthPage from './components/AuthPage.jsx';
 import LandingPage from './components/LandingPage.jsx';
+import HealFrame from './components/HealFrame.jsx';
 import StyleGuidePage from './components/StyleGuidePage.jsx';
 import ReactivateScreen from './components/ReactivateScreen.jsx';
 import DeleteConfirmPage from './components/DeleteConfirmPage.jsx';
@@ -38,6 +39,11 @@ function getValidatedReturn() {
 // renders static UI with no data access.
 const isStyleGuide = new URLSearchParams(window.location.search).has('styleguide');
 
+// ?heal=1 is the A1 push-address heal frame (card c270). Games embed the hub at
+// /games/?heal=1 in a hidden iframe; this short-circuit renders only HealFrame,
+// skipping the whole lobby/auth machinery. It reads the shared session itself.
+const isHeal = new URLSearchParams(window.location.search).has('heal');
+
 // ?delete_confirm=TOKEN is the email confirmation link for account deletion.
 // Handled before auth: the token is the proof, so it works logged out too.
 const deleteConfirmToken = new URLSearchParams(window.location.search).get('delete_confirm');
@@ -59,6 +65,8 @@ export default function App() {
       </ThemeProvider>
     );
   }
+
+  if (isHeal) return <HealFrame />;
 
   const [session, setSession] = useState(null);
   const [loading, setLoading] = useState(true);
