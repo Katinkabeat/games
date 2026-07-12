@@ -1,4 +1,7 @@
 import { supabase } from './supabase.js'
+// Imported from the utils module rather than sq-ui's index so this non-React
+// lib file doesn't pull the package's JSX components into its chunk.
+import { postNudge, nudgeFailureMessage } from '../../../rae-side-quest/packages/sq-ui/utils/nudge.js'
 
 // Thin wrappers around the {{name}} multiplayer RPCs (see
 // supabase/migrations/{{slug}}_multiplayer.sql + {{slug}}_nudge.sql).
@@ -75,21 +78,33 @@ export async function claimInactiveWin(gameId) {
   if (error) throw error
 }
 
-// Nudge the current player that it's their turn. The RPC validates the
-// caller is a waiting participant + enforces the 12h cooldown server-side;
-// the push to the current player is fire-and-forget so the UI stays snappy.
+// Nudge the current player that it's their turn. {{slug}}_nudge validates the
+// caller is a waiting participant + checks the 12h cooldown; {{slug}}_mark_nudged
+// stamps the cooldown only AFTER the push lands (see the migration).
 export async function sendNudge(gameId, nudgerName) {
   const { error } = await supabase.rpc('{{slug}}_nudge', { p_game_id: gameId })
   if (error) throw error
-  fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/{{slug}}-push-notification`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
-      'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
-    },
-    body: JSON.stringify({ type: 'nudge', game_id: gameId, nudger_name: nudgerName }),
-  }).catch(() => {})
+  // The push IS the nudge, so (unlike a fire-and-forget ping) we await it and
+  // report failure — otherwise the nudger gets a false "sent" toast when
+  // delivery silently dropped (c239). postNudge also reads the 200 body: the
+  // edge fn answers { sent: false } for an opted-out or unsubscribed recipient,
+  // and res.ok alone can't tell those apart (c259).
+  const { delivered, reason } = await postNudge({
+    url: `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/{{slug}}-push-notification`,
+    anonKey: import.meta.env.VITE_SUPABASE_ANON_KEY,
+    reportUrl: `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/sq-report-client-error`,
+    game: '{{slug}}',
+    body: { type: 'nudge', game_id: gameId, nudger_name: nudgerName },
+  })
+  if (!delivered) throw new Error(nudgeFailureMessage(reason))
+  // Start the 12h cooldown only now that the push actually landed. {{slug}}_nudge
+  // no longer stamps up-front, so a failed send above never locks the game (c264).
+  // supabase.rpc() returns a thenable, not a Promise — it has no .catch(), so
+  // chaining one throws a TypeError *after* the push has gone out, surfacing as
+  // a false "couldn't send" toast (c261). Await and warn instead: the push
+  // landing is what "sent" means, and a missed stamp must never report failure.
+  const { error: markErr } = await supabase.rpc('{{slug}}_mark_nudged', { p_game_id: gameId })
+  if (markErr) console.warn('[nudge] cooldown stamp failed:', markErr)
 }
 
 export async function rematch(prevGameId) {

@@ -204,8 +204,8 @@ create policy "{{slug}}_matchups read own" on public.{{slug}}_matchups
 -- ── 6. last_activity_at trigger ───────────────────────────────
 -- Keeps {{slug}}_games.last_activity_at fresh on any player write so
 -- "claim inactive win" + nudge can use it as the turn-start proxy.
--- NOTE: nudge stamps last_nudged_at directly on {{slug}}_games (not via
--- a player write), so it does NOT bump last_activity_at — keeping the
+-- NOTE: {{slug}}_mark_nudged stamps last_nudged_at directly on {{slug}}_games
+-- (not via a player write), so it does NOT bump last_activity_at — keeping the
 -- turn-age gate accurate.
 create or replace function public.{{slug}}_touch_game_activity()
 returns trigger language plpgsql security definer as $$
