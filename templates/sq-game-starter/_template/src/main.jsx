@@ -4,8 +4,12 @@ import { BrowserRouter } from 'react-router-dom'
 import { Toaster } from 'react-hot-toast'
 import App from './App.jsx'
 import { ThemeProvider } from './contexts/ThemeContext.jsx'
-import { SQErrorBoundary } from '../../rae-side-quest/packages/sq-ui'
+import { SQErrorBoundary, installPushHeal } from '../../rae-side-quest/packages/sq-ui'
 import './index.css'
+
+// Refresh the shared `sidequest` push address while the user plays (c270, A1).
+// No-op unless notification permission is already granted; never prompts.
+installPushHeal()
 
 // Register service worker for push notifications + PWA.
 // Path uses BASE_URL so it works under /{{slug}}/ in prod and /{{slug}}/ in dev.
