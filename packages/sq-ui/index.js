@@ -36,3 +36,4 @@ export {
   installGlobalErrorReporting,
 } from './utils/report.js';
 export { installPushHeal } from './utils/pushHeal.js';
+export { installNotificationNav } from './utils/notificationNav.js';

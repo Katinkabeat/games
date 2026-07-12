@@ -30,21 +30,29 @@ self.addEventListener('notificationclick', (event) => {
 
   event.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then((windowClients) => {
-      // Focus an existing matching tab if any
+      // 1. A window already showing the target board — just focus it.
       for (const client of windowClients) {
         if ('focus' in client && client.url.includes(targetUrl)) {
           return client.focus();
         }
       }
-      // Otherwise focus any tab on our origin and tell it to navigate
+      // 2. Any SideQuest window is open (the hub lobby OR a game). Focus it and
+      //    tell the page to navigate itself to the target. We deliberately do
+      //    NOT call client.navigate() here: games are served outside this SW's
+      //    /games/ scope, so they're uncontrolled and navigate() would reject.
+      //    And clients.openWindow() is a no-op inside an already-running
+      //    installed PWA on Android — which is why a tap used to do nothing (or
+      //    strand you on the previous board) whenever the app was already open.
+      //    The page listens for this NAVIGATE message and does the hop itself:
+      //    the hub in App.jsx, the games via sq-ui installNotificationNav().
       for (const client of windowClients) {
-        if ('focus' in client && client.url.includes('/games/')) {
+        if ('focus' in client) {
           return client.focus().then((c) => {
-            c.postMessage({ type: 'NAVIGATE', url: targetUrl });
+            (c || client).postMessage({ type: 'NAVIGATE', url: targetUrl });
           });
         }
       }
-      // Fallback: open a new window
+      // 3. Nothing open (app fully closed) — open a fresh window at the target.
       return clients.openWindow(targetUrl);
     })
   );
