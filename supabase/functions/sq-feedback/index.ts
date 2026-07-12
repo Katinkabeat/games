@@ -1,9 +1,16 @@
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { SMTPClient } from 'https://deno.land/x/denomailer@1.6.0/mod.ts'
+import { renderFeedbackMessage } from '../_shared/feedbackMessage.ts'
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
 const SUPABASE_SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+
+// Optional: mirror each submission into the PRIVATE #feedback Discord channel
+// (c192). Until this is set the function still records the row and just skips
+// the mirror. Held server-side; a webhook URL in the client bundle is an
+// abuse magnet.
+const FEEDBACK_WEBHOOK = Deno.env.get('SQ_DISCORD_FEEDBACK_WEBHOOK')
 
 // Email forwarding is optional: until these are set the function still records
 // the row and just returns { emailed: false }.
@@ -60,9 +67,37 @@ serve(async (req: Request) => {
     const { data: row, error: insErr } = await admin
       .from('feedback')
       .insert({ user_id: user.id, username, category, message, context })
-      .select('id')
+      .select('id, username, category, message, context, status')
       .single()
     if (insErr) throw insErr
+
+    // Mirror to the private #feedback Discord channel (best-effort, NON-blocking:
+    // a Discord hiccup must never fail the user's submission). Post with
+    // ?wait=true so Discord returns the message id, then store it on the row so
+    // sq-feedback-stamp can later EDIT this same message as the item is triaged.
+    if (FEEDBACK_WEBHOOK) {
+      try {
+        const res = await fetch(`${FEEDBACK_WEBHOOK}?wait=true`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            username: 'Rook',
+            content: renderFeedbackMessage(row),
+            allowed_mentions: { parse: [] }, // never ping, even if the message text contains one
+          }),
+        })
+        if (res.ok) {
+          const msg = await res.json()
+          if (msg?.id) {
+            await admin.from('feedback').update({ discord_message_id: msg.id }).eq('id', row.id)
+          }
+        } else {
+          console.error('[sq-feedback] discord webhook returned', res.status)
+        }
+      } catch (dErr) {
+        console.error('[sq-feedback] discord mirror failed', dErr)
+      }
+    }
 
     let emailed = false
     if (GMAIL_USER && GMAIL_APP_PASSWORD && FEEDBACK_TO) {
