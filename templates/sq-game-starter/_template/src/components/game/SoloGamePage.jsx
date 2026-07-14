@@ -101,7 +101,19 @@ export default function SoloGamePage({ session, profile, isAdmin }) {
         <p className="opacity-80">
           Solo board placeholder — render the {{name}} solo play surface here.
         </p>
-        {/* TODO render this on your end-of-run screen, not here. */}
+        {/* TODO render this on your end-of-run screen, not here.
+            That end-of-run card ALSO needs the canonical SQ exit row, directly
+            below the result line and NEVER gated by outcome or save state (a
+            loss, a give-up and a day-closed run all get the same doors out):
+
+              <div className="flex gap-2 justify-center mt-4">
+                <button className="btn-secondary" onClick={() => navigate('/')}>← Lobby</button>
+                <button className="btn-primary" onClick={() => navigate('/stats')}>🏆 Leaderboard</button>
+              </div>
+
+            Put it on the end screen itself, not only on the "already played
+            today" re-entry panel — those are different surfaces, and mistaking
+            one for the other is how Oublex shipped without it (c240 → c279). */}
         <SaveStatus
           recordState={recordState}
           dayClosed={dayClosed}
