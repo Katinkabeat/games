@@ -86,6 +86,21 @@ const PUSH_APP = 'sidequest'
 const PUSH_RETRIES = 2
 const PUSH_BACKOFF_MS = [400, 1200]
 
+// Hard ceiling on total time spent retrying ONE recipient, across all attempts.
+//
+// The caller is a Postgres trigger going through pg_net, whose HTTP timeout is
+// 15s (sq_pgnet_timeout_15s.sql). If we exceed that, pg_net severs the call and
+// discards the response — the exact mechanism that was silently dropping turn
+// notifications (c278). Retrying is only safe if we always answer well inside
+// that window.
+//
+// A push service can fail SLOWLY: Mozilla was taking ~4.8s to return each 502.
+// Three of those plus backoff is ~16s, which overruns even the raised budget —
+// so an unbounded retry count turns one failed push into a severed call. Stop
+// retrying once we're past the deadline and report instead; the attempt already
+// in flight is allowed to finish (it may still succeed).
+const PUSH_DEADLINE_MS = 9000
+
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
 
 // No statusCode at all means the request never got an HTTP response back (DNS,
@@ -137,6 +152,7 @@ async function sendPushToUser(
     keys: { p256dh: sub.keys_p256dh, auth: sub.keys_auth },
   }
 
+  const startedAt = Date.now()
   for (let attempt = 0; ; attempt++) {
     try {
       await webpush.sendNotification(pushSubscription, JSON.stringify(payload), { TTL: 86400 })
@@ -147,7 +163,8 @@ async function sendPushToUser(
         await reportAddressDeath('{{name}}', userId, PUSH_APP, topic, pushErr.statusCode, sub.endpoint)
         return { sent: false, reason: 'address expired', tag: payload.tag, user: userId }
       }
-      if (!isTransientPushError(pushErr) || attempt >= PUSH_RETRIES) {
+      const outOfTime = Date.now() - startedAt >= PUSH_DEADLINE_MS
+      if (!isTransientPushError(pushErr) || attempt >= PUSH_RETRIES || outOfTime) {
         // One recipient's failed send is not the whole call's failure: throwing
         // here would abort the fan-out loops (game_finished), so the *other*
         // players would silently get no push either.
