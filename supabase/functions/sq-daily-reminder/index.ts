@@ -128,7 +128,7 @@ async function sendPushToUser(
     .eq('app', PUSH_APP)
     .maybeSingle()
 
-  if (!sub) return { sent: false, reason: 'no push subscription' }
+  if (!sub) return { sent: false, reason: 'no push subscription', tag: payload.tag, user: userId }
 
   const pushSubscription = {
     endpoint: sub.endpoint,
@@ -138,18 +138,18 @@ async function sendPushToUser(
   for (let attempt = 0; ; attempt++) {
     try {
       await webpush.sendNotification(pushSubscription, JSON.stringify(payload), { TTL: 86400 })
-      return { sent: true }
+      return { sent: true, tag: payload.tag, user: userId }
     } catch (err: any) {
       if (err?.statusCode === 410 || err?.statusCode === 404) {
         await supabase.from('push_subscriptions').delete().eq('user_id', userId).eq('app', PUSH_APP)
         await reportAddressDeath(userId, 'daily_reminder', err.statusCode, sub.endpoint)
-        return { sent: false, reason: 'address expired' }
+        return { sent: false, reason: 'address expired', tag: payload.tag, user: userId }
       }
       if (!isTransientPushError(err) || attempt >= PUSH_RETRIES) {
         // One recipient's failure must not abort the whole sweep — this runs over
         // every eligible user, so a throw here would silently drop everyone after.
         await reportServerError('daily_reminder', pushErrDetail(err, userId, sub.endpoint, attempt + 1))
-        return { sent: false, reason: 'send failed' }
+        return { sent: false, reason: 'send failed', tag: payload.tag, user: userId }
       }
       await sleep(PUSH_BACKOFF_MS[attempt])
     }
