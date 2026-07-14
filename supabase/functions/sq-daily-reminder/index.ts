@@ -55,10 +55,19 @@ const PUSH_BACKOFF_MS = [400, 1200]
 //
 // A push service can fail SLOWLY: Mozilla was taking ~4.8s to return each 502.
 // Three of those plus backoff is ~16s, which overruns even the raised budget —
-// so an unbounded retry count turns one failed push into a severed call. Stop
-// retrying once we're past the deadline and report instead; the attempt already
-// in flight is allowed to finish (it may still succeed).
-const PUSH_DEADLINE_MS = 9000
+// so an unbounded retry count turns one failed push into a severed call. The
+// loop only starts another attempt if the backoff plus a full worst-case attempt
+// still fits inside the deadline, so send time per recipient never exceeds it.
+// 11s admits two ~5s slow-fail attempts (so the retry still fires when a service
+// is failing slowly) while leaving pg_net headroom for function overhead.
+const PUSH_DEADLINE_MS = 11000
+
+// Per-attempt socket-inactivity timeout (web-push passes it to https.request).
+// Kills a hung socket — the "single attempt hanging >15s" hole — without
+// tripping on Mozilla's ~4.8s slow-fails, which stay under it and return a real
+// status. Also what makes the deadline projection above trustworthy: no attempt
+// can outlive it.
+const PUSH_ATTEMPT_TIMEOUT_MS = 5000
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
 
@@ -135,7 +144,7 @@ async function sendPushToUser(
   supabase: any,
   userId: string,
   payload: { title: string; body: string; tag: string; url: string; icon?: string }
-): Promise<{ sent: boolean; reason?: string }> {
+): Promise<{ sent: boolean; reason?: string; tag?: string; user?: string }> {
   const { data: sub } = await supabase
     .from('push_subscriptions')
     .select('endpoint, keys_p256dh, keys_auth')
@@ -153,7 +162,7 @@ async function sendPushToUser(
   const startedAt = Date.now()
   for (let attempt = 0; ; attempt++) {
     try {
-      await webpush.sendNotification(pushSubscription, JSON.stringify(payload), { TTL: 86400 })
+      await webpush.sendNotification(pushSubscription, JSON.stringify(payload), { TTL: 86400, timeout: PUSH_ATTEMPT_TIMEOUT_MS })
       return { sent: true, tag: payload.tag, user: userId }
     } catch (err: any) {
       if (err?.statusCode === 410 || err?.statusCode === 404) {
@@ -161,8 +170,13 @@ async function sendPushToUser(
         await reportAddressDeath(userId, 'daily_reminder', err.statusCode, sub.endpoint)
         return { sent: false, reason: 'address expired', tag: payload.tag, user: userId }
       }
-      const outOfTime = Date.now() - startedAt >= PUSH_DEADLINE_MS
-      if (!isTransientPushError(err) || attempt >= PUSH_RETRIES || outOfTime) {
+      // Project the next attempt BEFORE committing to it: an after-the-fact
+      // elapsed check can pass just under the deadline and still admit a
+      // backoff + full attempt, grazing pg_net's 15s. attempt < PUSH_RETRIES
+      // whenever this is read, so the backoff index is safe.
+      const nextWouldOverrun =
+        Date.now() - startedAt + PUSH_BACKOFF_MS[attempt] + PUSH_ATTEMPT_TIMEOUT_MS > PUSH_DEADLINE_MS
+      if (!isTransientPushError(err) || attempt >= PUSH_RETRIES || nextWouldOverrun) {
         // One recipient's failure must not abort the whole sweep — this runs over
         // every eligible user, so a throw here would silently drop everyone after.
         await reportServerError('daily_reminder', pushErrDetail(err, userId, sub.endpoint, attempt + 1))
@@ -188,8 +202,12 @@ serve(async (req: Request) => {
       return new Response(JSON.stringify({ error: error.message }), { status: 500, headers: corsHeaders })
     }
 
-    const results: any[] = []
-    for (const row of candidates ?? []) {
+    // Recipients in parallel: pg_net's 15s budget covers the WHOLE sweep, so the
+    // call must take ≈ the slowest recipient, not the sum of all of them. The
+    // sequential loop is what severed the :00/:30 runs on 2026-07-14 — one slow
+    // recipient overran the budget and everyone after silently lost their
+    // reminder (c278 follow-up).
+    const results = await Promise.all((candidates ?? []).map(async (row: any) => {
       const r = await sendPushToUser(supabase, row.user_id, {
         title: 'Your daily puzzles are ready 🎲',
         body: 'Tap to play today\'s SideQuest dailies.',
@@ -197,8 +215,8 @@ serve(async (req: Request) => {
         url: '/games/',
         icon: '/games/favicon.svg',
       })
-      results.push({ user_id: row.user_id, ...r })
-    }
+      return { user_id: row.user_id, ...r }
+    }))
     return new Response(JSON.stringify({ count: results.length, results }), { status: 200, headers: corsHeaders })
   } catch (err: any) {
     console.error('sq-daily-reminder error:', err)

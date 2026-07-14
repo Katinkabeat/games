@@ -60,7 +60,7 @@ async function sendIfOptedIn(
   app: string,
   topic: string,
   payload: { title: string; body: string; tag: string; url: string; icon?: string }
-): Promise<{ sent: boolean; reason?: string; via?: string }> {
+): Promise<{ sent: boolean; reason?: string; via?: string; tag?: string; user?: string }> {
   const { data: enabled, error } = await supabase.rpc('sq_notification_enabled', {
     p_user_id: userId,
     p_app: app,
@@ -69,7 +69,7 @@ async function sendIfOptedIn(
   if (error) {
     console.error('sq_notification_enabled failed (fail-open):', error)
   } else if (enabled === false) {
-    return { sent: false, reason: 'opted out' }
+    return { sent: false, reason: 'opted out', tag: payload.tag, user: userId }
   }
   return sendPushToUser(supabase, userId, payload, topic)
 }
@@ -96,10 +96,19 @@ const PUSH_BACKOFF_MS = [400, 1200]
 //
 // A push service can fail SLOWLY: Mozilla was taking ~4.8s to return each 502.
 // Three of those plus backoff is ~16s, which overruns even the raised budget —
-// so an unbounded retry count turns one failed push into a severed call. Stop
-// retrying once we're past the deadline and report instead; the attempt already
-// in flight is allowed to finish (it may still succeed).
-const PUSH_DEADLINE_MS = 9000
+// so an unbounded retry count turns one failed push into a severed call. The
+// loop only starts another attempt if the backoff plus a full worst-case attempt
+// still fits inside the deadline, so send time per recipient never exceeds it.
+// 11s admits two ~5s slow-fail attempts (so the retry still fires when a service
+// is failing slowly) while leaving pg_net headroom for function overhead.
+const PUSH_DEADLINE_MS = 11000
+
+// Per-attempt socket-inactivity timeout (web-push passes it to https.request).
+// Kills a hung socket — the "single attempt hanging >15s" hole — without
+// tripping on Mozilla's ~4.8s slow-fails, which stay under it and return a real
+// status. Also what makes the deadline projection above trustworthy: no attempt
+// can outlive it.
+const PUSH_ATTEMPT_TIMEOUT_MS = 5000
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
 
@@ -137,7 +146,7 @@ async function sendPushToUser(
   userId: string,
   payload: { title: string; body: string; tag: string; url: string; icon?: string },
   topic = 'unknown'
-): Promise<{ sent: boolean; reason?: string; via?: string }> {
+): Promise<{ sent: boolean; reason?: string; via?: string; tag?: string; user?: string }> {
   const { data: sub } = await supabase
     .from('push_subscriptions')
     .select('endpoint, keys_p256dh, keys_auth')
@@ -155,7 +164,7 @@ async function sendPushToUser(
   const startedAt = Date.now()
   for (let attempt = 0; ; attempt++) {
     try {
-      await webpush.sendNotification(pushSubscription, JSON.stringify(payload), { TTL: 86400 })
+      await webpush.sendNotification(pushSubscription, JSON.stringify(payload), { TTL: 86400, timeout: PUSH_ATTEMPT_TIMEOUT_MS })
       return { sent: true, via: PUSH_APP, tag: payload.tag, user: userId }
     } catch (pushErr: any) {
       if (pushErr?.statusCode === 410 || pushErr?.statusCode === 404) {
@@ -163,8 +172,13 @@ async function sendPushToUser(
         await reportAddressDeath('{{name}}', userId, PUSH_APP, topic, pushErr.statusCode, sub.endpoint)
         return { sent: false, reason: 'address expired', tag: payload.tag, user: userId }
       }
-      const outOfTime = Date.now() - startedAt >= PUSH_DEADLINE_MS
-      if (!isTransientPushError(pushErr) || attempt >= PUSH_RETRIES || outOfTime) {
+      // Project the next attempt BEFORE committing to it: an after-the-fact
+      // elapsed check can pass just under the deadline and still admit a
+      // backoff + full attempt, grazing pg_net's 15s. attempt < PUSH_RETRIES
+      // whenever this is read, so the backoff index is safe.
+      const nextWouldOverrun =
+        Date.now() - startedAt + PUSH_BACKOFF_MS[attempt] + PUSH_ATTEMPT_TIMEOUT_MS > PUSH_DEADLINE_MS
+      if (!isTransientPushError(pushErr) || attempt >= PUSH_RETRIES || nextWouldOverrun) {
         // One recipient's failed send is not the whole call's failure: throwing
         // here would abort the fan-out loops (game_finished), so the *other*
         // players would silently get no push either.
@@ -253,8 +267,9 @@ serve(async (req: Request) => {
         return new Response(JSON.stringify({ skipped: 'missing fields' }), { status: 200, headers: corsHeaders })
       }
       const inviterName = await getUsername(supabase, record.created_by)
-      const results: any[] = []
-      for (const inviteeId of invitees) {
+      // Recipients in parallel: pg_net's 15s budget covers the WHOLE call, so it
+      // must take ≈ the slowest recipient, not the sum (c278 follow-up).
+      const results = await Promise.all(invitees.map(async (inviteeId) => {
         const r = await sendIfOptedIn(supabase, inviteeId, APP, 'invite', {
           title: `${GAME_LABEL} — game invite`,
           body: `${inviterName} invited you to a ${GAME_LABEL} game. Tap to play!`,
@@ -262,8 +277,8 @@ serve(async (req: Request) => {
           url: gameUrl(record.id),
           icon: ICON,
         })
-        results.push({ user_id: inviteeId, ...r })
-      }
+        return { user_id: inviteeId, ...r }
+      }))
       return new Response(JSON.stringify({ results }), { status: 200, headers: corsHeaders })
     }
 
@@ -355,8 +370,9 @@ serve(async (req: Request) => {
       const winnerLabel = winnerNames.join(' & ') || 'Someone'
       const tie = winners.length > 1
 
-      const results: any[] = []
-      for (const p of playerRows) {
+      // Recipients in parallel: pg_net's 15s budget covers the WHOLE call, so it
+      // must take ≈ the slowest recipient, not the sum (c278 follow-up).
+      const results = await Promise.all(playerRows.map(async (p: any) => {
         const userId = p.user_id
         let title = `${GAME_LABEL} — game over`
         let body: string
@@ -386,8 +402,8 @@ serve(async (req: Request) => {
           url: gameUrl(record.id),
           icon: ICON,
         })
-        results.push({ user_id: userId, ...r })
-      }
+        return { user_id: userId, ...r }
+      }))
       return new Response(JSON.stringify({ results }), { status: 200, headers: corsHeaders })
     }
 
