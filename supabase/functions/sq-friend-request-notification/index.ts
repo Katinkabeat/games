@@ -44,13 +44,66 @@ async function sendIfOptedIn(
   } else if (enabled === false) {
     return { sent: false, reason: 'opted out' }
   }
-  return sendPushToUser(supabase, userId, payload)
+  return sendPushToUser(supabase, userId, payload, topic)
+}
+
+// ── Transient-failure retry (c271) ───────────────────────────────────────────
+// A 5xx / 429 / timeout from a push service is that service having a moment, not
+// a dead address. With no retry a single blip silently drops a real notification.
+// Retry twice with a short backoff; only a failure of every attempt is worth
+// reporting. Mirrors the five game push functions.
+const PUSH_RETRIES = 2
+const PUSH_BACKOFF_MS = [400, 1200]
+
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
+
+// No statusCode at all means the request never got an HTTP response back (DNS,
+// socket, timeout) — transient too.
+function isTransientPushError(err: any): boolean {
+  const status = err?.statusCode
+  if (status == null) return true
+  return status === 429 || status >= 500
+}
+
+// web-push's WebPushError message is always the generic "Received unexpected
+// response code" — the push service's real status and body hang off the error
+// object, never the message. Fold them in so the #error-log line is diagnosable.
+function pushErrDetail(err: any, userId: string, app: string, endpoint: string, attempts: number): string {
+  let host = 'unknown'
+  try { host = new URL(endpoint).host } catch (_e) { /* keep 'unknown' */ }
+  const status = err?.statusCode ?? 'no response'
+  const body = String(err?.body ?? err?.message ?? err ?? '').replace(/\s+/g, ' ').trim().slice(0, 200)
+  return `push send failed: ${status} — ${body} | app:${app} host:${host} user:${userId} attempts:${attempts}`
+}
+
+// Sends, retrying transient failures. 410/404 propagate raw so the caller can run
+// its expired-address cleanup; anything else surfaces as an enriched Error.
+async function sendWithRetry(
+  pushSubscription: any,
+  payload: unknown,
+  userId: string,
+  app: string,
+  endpoint: string,
+): Promise<void> {
+  for (let attempt = 0; ; attempt++) {
+    try {
+      await webpush.sendNotification(pushSubscription, JSON.stringify(payload), { TTL: 86400 })
+      return
+    } catch (err: any) {
+      if (err?.statusCode === 410 || err?.statusCode === 404) throw err
+      if (!isTransientPushError(err) || attempt >= PUSH_RETRIES) {
+        throw new Error(pushErrDetail(err, userId, app, endpoint, attempt + 1))
+      }
+      await sleep(PUSH_BACKOFF_MS[attempt])
+    }
+  }
 }
 
 async function sendPushToUser(
   supabase: any,
   userId: string,
-  payload: { title: string; body: string; tag: string; url: string; icon?: string }
+  payload: { title: string; body: string; tag: string; url: string; icon?: string },
+  topic = 'unknown'
 ): Promise<{ sent: boolean; reason?: string; via?: string }> {
   const apps = ['sidequest', 'wordy', 'rungles']
 
@@ -70,18 +123,66 @@ async function sendPushToUser(
     }
 
     try {
-      await webpush.sendNotification(pushSubscription, JSON.stringify(payload), { TTL: 86400 })
+      await sendWithRetry(pushSubscription, payload, userId, app, sub.endpoint)
       return { sent: true, via: app }
     } catch (pushErr: any) {
       if (pushErr.statusCode === 410 || pushErr.statusCode === 404) {
         await supabase.from('push_subscriptions').delete().eq('user_id', userId).eq('app', app)
+        await reportAddressDeath('SideQuest', userId, app, topic, pushErr.statusCode, sub.endpoint)
+        // Fall through to the next app (fallback)
         continue
       }
-      throw pushErr
+      await reportServerError('SideQuest', topic, pushErr?.message ?? String(pushErr))
+      return { sent: false, reason: 'send failed' }
     }
   }
 
   return { sent: false, reason: 'no push subscription' }
+}
+
+// ── #error-log reporting (c265/c268) ─────────────────────────────────────────
+// This function predates the error-log channel entirely: its push failures used
+// to go nowhere at all. Same two reporters as the game functions —
+// reportAddressDeath is a low-noise FYI (the SW self-heal re-subscribes on the
+// next rotation / hub-open), reportServerError is the red alarm.
+const ERRORLOG_WEBHOOK = Deno.env.get('SQ_DISCORD_ERRORLOG_WEBHOOK') ?? ''
+
+async function reportAddressDeath(
+  game: string, userId: string, app: string, topic: string, statusCode: number, endpoint: string
+) {
+  if (!ERRORLOG_WEBHOOK) return
+  let host = 'unknown'
+  try { host = new URL(endpoint).host } catch (_e) { /* keep 'unknown' */ }
+  try {
+    await fetch(ERRORLOG_WEBHOOK, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        username: 'Rook',
+        content: `**${game}** — push address expired (FYI)\n\`${statusCode} → sub deleted\` app:\`${app}\` topic:\`${topic}\` user:\`${userId}\` endpoint:\`${host}\`\nSelf-heal re-subscribes on next rotation / hub-open / play.`,
+        allowed_mentions: { parse: [] },
+      }),
+    })
+  } catch (_e) {
+    // best-effort: a failed report must never mask the push flow
+  }
+}
+
+async function reportServerError(game: string, type: string, detail: string) {
+  if (!ERRORLOG_WEBHOOK) return
+  try {
+    await fetch(ERRORLOG_WEBHOOK, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        username: 'Rook',
+        content: `**${game}** — push function error\n\`${type}\`\ndetail: ${String(detail ?? '').slice(0, 500)}`,
+        allowed_mentions: { parse: [] },
+      }),
+    })
+  } catch (_e) {
+    // best-effort: a failed report must never mask the original error
+  }
 }
 
 serve(async (req: Request) => {
@@ -89,8 +190,9 @@ serve(async (req: Request) => {
     return new Response('ok', { headers: corsHeaders })
   }
 
+  let payload: any = null
   try {
-    const payload = await req.json()
+    payload = await req.json()
 
     // Two callers supported:
     //   1. DB webhook style: { record: <friendships row>, old_record: ... }
@@ -134,6 +236,7 @@ serve(async (req: Request) => {
     return new Response(JSON.stringify(result), { status: 200, headers: corsHeaders })
   } catch (err: any) {
     console.error('Friend request notification error:', err)
+    await reportServerError('SideQuest', payload?.record ? 'friend_request' : 'unknown', err?.message)
     return new Response(JSON.stringify({ error: err.message }), { status: 500, headers: corsHeaders })
   }
 })
