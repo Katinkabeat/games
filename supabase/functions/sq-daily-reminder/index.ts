@@ -33,38 +33,117 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
+// The one app every push address is stored under. The old per-game fallback list
+// ('wordy', 'rungles', …) dated from when each game held its own notification
+// settings; the hub is now the only surface that ever subscribes, nothing has
+// written a per-game row since, and none survive in the table.
+const PUSH_APP = 'sidequest'
+
+// ── Transient-failure retry (c271) ───────────────────────────────────────────
+// A 5xx / 429 / timeout from a push service is that service having a moment, not
+// a dead address. With no retry a single blip silently drops a real reminder.
+const PUSH_RETRIES = 2
+const PUSH_BACKOFF_MS = [400, 1200]
+
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
+
+// No statusCode at all means the request never got an HTTP response back (DNS,
+// socket, timeout) — transient too.
+function isTransientPushError(err: any): boolean {
+  const status = err?.statusCode
+  if (status == null) return true
+  return status === 429 || status >= 500
+}
+
+// web-push's WebPushError message is always the generic "Received unexpected
+// response code" — the push service's real status and body hang off the error
+// object, never the message. Fold them in so the #error-log line is diagnosable.
+function pushErrDetail(err: any, userId: string, endpoint: string, attempts: number): string {
+  let host = 'unknown'
+  try { host = new URL(endpoint).host } catch (_e) { /* keep 'unknown' */ }
+  const status = err?.statusCode ?? 'no response'
+  const body = String(err?.body ?? err?.message ?? err ?? '').replace(/\s+/g, ' ').trim().slice(0, 200)
+  return `push send failed: ${status} — ${body} | host:${host} user:${userId} attempts:${attempts}`
+}
+
+// ── #error-log reporting (c265/c268) ─────────────────────────────────────────
+// This function predated the error-log channel: its push failures went nowhere.
+const ERRORLOG_WEBHOOK = Deno.env.get('SQ_DISCORD_ERRORLOG_WEBHOOK') ?? ''
+
+async function reportAddressDeath(userId: string, topic: string, statusCode: number, endpoint: string) {
+  if (!ERRORLOG_WEBHOOK) return
+  let host = 'unknown'
+  try { host = new URL(endpoint).host } catch (_e) { /* keep 'unknown' */ }
+  try {
+    await fetch(ERRORLOG_WEBHOOK, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        username: 'Rook',
+        content: `**SideQuest** — push address expired (FYI)\n\`${statusCode} → sub deleted\` topic:\`${topic}\` user:\`${userId}\` endpoint:\`${host}\`\nSelf-heal re-subscribes on next rotation / hub-open / play.`,
+        allowed_mentions: { parse: [] },
+      }),
+    })
+  } catch (_e) {
+    // best-effort: a failed report must never mask the push flow
+  }
+}
+
+async function reportServerError(topic: string, detail: string) {
+  if (!ERRORLOG_WEBHOOK) return
+  try {
+    await fetch(ERRORLOG_WEBHOOK, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        username: 'Rook',
+        content: `**SideQuest** — push function error\n\`${topic}\`\ndetail: ${String(detail ?? '').slice(0, 500)}`,
+        allowed_mentions: { parse: [] },
+      }),
+    })
+  } catch (_e) {
+    // best-effort: a failed report must never mask the original error
+  }
+}
+
 async function sendPushToUser(
   supabase: any,
   userId: string,
   payload: { title: string; body: string; tag: string; url: string; icon?: string }
 ): Promise<{ sent: boolean; reason?: string }> {
-  // Daily reminder is hub-level — try the sidequest subscription first,
-  // then any per-game subscription as fallback.
-  const apps = ['sidequest', 'yahdle', 'snibble', 'wordy', 'rungles']
-  for (const app of apps) {
-    const { data: sub } = await supabase
-      .from('push_subscriptions')
-      .select('endpoint, keys_p256dh, keys_auth')
-      .eq('user_id', userId)
-      .eq('app', app)
-      .maybeSingle()
-    if (!sub) continue
-    const pushSubscription = {
-      endpoint: sub.endpoint,
-      keys: { p256dh: sub.keys_p256dh, auth: sub.keys_auth },
-    }
+  const { data: sub } = await supabase
+    .from('push_subscriptions')
+    .select('endpoint, keys_p256dh, keys_auth')
+    .eq('user_id', userId)
+    .eq('app', PUSH_APP)
+    .maybeSingle()
+
+  if (!sub) return { sent: false, reason: 'no push subscription' }
+
+  const pushSubscription = {
+    endpoint: sub.endpoint,
+    keys: { p256dh: sub.keys_p256dh, auth: sub.keys_auth },
+  }
+
+  for (let attempt = 0; ; attempt++) {
     try {
       await webpush.sendNotification(pushSubscription, JSON.stringify(payload), { TTL: 86400 })
       return { sent: true }
     } catch (err: any) {
-      if (err.statusCode === 410 || err.statusCode === 404) {
-        await supabase.from('push_subscriptions').delete().eq('user_id', userId).eq('app', app)
-        continue
+      if (err?.statusCode === 410 || err?.statusCode === 404) {
+        await supabase.from('push_subscriptions').delete().eq('user_id', userId).eq('app', PUSH_APP)
+        await reportAddressDeath(userId, 'daily_reminder', err.statusCode, sub.endpoint)
+        return { sent: false, reason: 'address expired' }
       }
-      throw err
+      if (!isTransientPushError(err) || attempt >= PUSH_RETRIES) {
+        // One recipient's failure must not abort the whole sweep — this runs over
+        // every eligible user, so a throw here would silently drop everyone after.
+        await reportServerError('daily_reminder', pushErrDetail(err, userId, sub.endpoint, attempt + 1))
+        return { sent: false, reason: 'send failed' }
+      }
+      await sleep(PUSH_BACKOFF_MS[attempt])
     }
   }
-  return { sent: false, reason: 'no push subscription' }
 }
 
 serve(async (req: Request) => {

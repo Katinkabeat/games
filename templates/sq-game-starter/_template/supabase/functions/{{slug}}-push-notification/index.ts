@@ -73,38 +73,79 @@ async function sendIfOptedIn(
   return sendPushToUser(supabase, userId, payload, topic)
 }
 
+// The one app every push address is stored under. The SQ hub is the only surface
+// that ever calls pushManager.subscribe, and it hardcodes this value — a game
+// never registers an address of its own. (Note this is unrelated to the per-game
+// values in user_notification_prefs, which are alive and well.)
+const PUSH_APP = 'sidequest'
+
+// ── Transient-failure retry (c271) ───────────────────────────────────────────
+// A 5xx / 429 / timeout from a push service is that service having a moment, not
+// a dead address. With no retry a single blip silently drops a real turn ping.
+const PUSH_RETRIES = 2
+const PUSH_BACKOFF_MS = [400, 1200]
+
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
+
+// No statusCode at all means the request never got an HTTP response back (DNS,
+// socket, timeout) — transient too.
+function isTransientPushError(err: any): boolean {
+  const status = err?.statusCode
+  if (status == null) return true
+  return status === 429 || status >= 500
+}
+
+// web-push's WebPushError message is always the generic "Received unexpected
+// response code" — the push service's real status and body hang off the error
+// object, never the message. Fold them in so the #error-log line is diagnosable.
+function pushErrDetail(err: any, userId: string, endpoint: string, attempts: number): string {
+  let host = 'unknown'
+  try { host = new URL(endpoint).host } catch (_e) { /* keep 'unknown' */ }
+  const status = err?.statusCode ?? 'no response'
+  const body = String(err?.body ?? err?.message ?? err ?? '').replace(/\s+/g, ' ').trim().slice(0, 200)
+  return `push send failed: ${status} — ${body} | host:${host} user:${userId} attempts:${attempts}`
+}
+
 async function sendPushToUser(
   supabase: any,
   userId: string,
   payload: { title: string; body: string; tag: string; url: string; icon?: string },
   topic = 'unknown'
 ): Promise<{ sent: boolean; reason?: string; via?: string }> {
-  const apps = ['sidequest', APP]
-  for (const app of apps) {
-    const { data: sub } = await supabase
-      .from('push_subscriptions')
-      .select('endpoint, keys_p256dh, keys_auth')
-      .eq('user_id', userId)
-      .eq('app', app)
-      .maybeSingle()
-    if (!sub) continue
-    const pushSubscription = {
-      endpoint: sub.endpoint,
-      keys: { p256dh: sub.keys_p256dh, auth: sub.keys_auth },
-    }
+  const { data: sub } = await supabase
+    .from('push_subscriptions')
+    .select('endpoint, keys_p256dh, keys_auth')
+    .eq('user_id', userId)
+    .eq('app', PUSH_APP)
+    .maybeSingle()
+
+  if (!sub) return { sent: false, reason: 'no push subscription' }
+
+  const pushSubscription = {
+    endpoint: sub.endpoint,
+    keys: { p256dh: sub.keys_p256dh, auth: sub.keys_auth },
+  }
+
+  for (let attempt = 0; ; attempt++) {
     try {
       await webpush.sendNotification(pushSubscription, JSON.stringify(payload), { TTL: 86400 })
-      return { sent: true, via: app }
+      return { sent: true, via: PUSH_APP }
     } catch (pushErr: any) {
-      if (pushErr.statusCode === 410 || pushErr.statusCode === 404) {
-        await supabase.from('push_subscriptions').delete().eq('user_id', userId).eq('app', app)
-        await reportAddressDeath('{{name}}', userId, app, topic, pushErr.statusCode, sub.endpoint)
-        continue
+      if (pushErr?.statusCode === 410 || pushErr?.statusCode === 404) {
+        await supabase.from('push_subscriptions').delete().eq('user_id', userId).eq('app', PUSH_APP)
+        await reportAddressDeath('{{name}}', userId, PUSH_APP, topic, pushErr.statusCode, sub.endpoint)
+        return { sent: false, reason: 'address expired' }
       }
-      throw pushErr
+      if (!isTransientPushError(pushErr) || attempt >= PUSH_RETRIES) {
+        // One recipient's failed send is not the whole call's failure: throwing
+        // here would abort the fan-out loops (game_finished), so the *other*
+        // players would silently get no push either.
+        await reportServerError('{{name}}', topic, pushErrDetail(pushErr, userId, sub.endpoint, attempt + 1))
+        return { sent: false, reason: 'send failed' }
+      }
+      await sleep(PUSH_BACKOFF_MS[attempt])
     }
   }
-  return { sent: false, reason: 'no push subscription' }
 }
 
 async function getUsername(supabase: any, userId: string): Promise<string> {
