@@ -39,7 +39,7 @@ const corsHeaders = {
 // written a per-game row since, and none survive in the table.
 const PUSH_APP = 'sidequest'
 
-// ── Transient-failure retry (c271) ───────────────────────────────────────────
+// ── Transient-failure retry (c276) ───────────────────────────────────────────
 // A 5xx / 429 / timeout from a push service is that service having a moment, not
 // a dead address. With no retry a single blip silently drops a real reminder.
 const PUSH_RETRIES = 2

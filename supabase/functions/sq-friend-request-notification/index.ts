@@ -50,7 +50,7 @@ async function sendIfOptedIn(
 // The one app every push address is stored under (see sendPushToUser).
 const PUSH_APP = 'sidequest'
 
-// ── Transient-failure retry (c271) ───────────────────────────────────────────
+// ── Transient-failure retry (c276) ───────────────────────────────────────────
 // A 5xx / 429 / timeout from a push service is that service having a moment, not
 // a dead address. With no retry a single blip silently drops a real notification.
 // Retry twice with a short backoff; only a failure of every attempt is worth

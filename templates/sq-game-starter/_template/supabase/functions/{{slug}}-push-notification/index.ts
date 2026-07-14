@@ -21,8 +21,9 @@
 //                         never-filled game (only the creator was seated).
 //                         Notifies the lone creator. (c150 policy)
 //
-// Reuses the shared push_subscriptions table. Subscription fallback
-// order: ['sidequest', '{{slug}}'] — most users opt in via the SQ hub.
+// Reuses the shared push_subscriptions table. Every push address is stored
+// under the single 'sidequest' app — the SQ hub is the only surface that
+// subscribes, and a game never registers an address of its own.
 // Respects per-user/game/topic prefs via sq_notification_enabled.
 
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts'
@@ -79,7 +80,7 @@ async function sendIfOptedIn(
 // values in user_notification_prefs, which are alive and well.)
 const PUSH_APP = 'sidequest'
 
-// ── Transient-failure retry (c271) ───────────────────────────────────────────
+// ── Transient-failure retry (c276) ───────────────────────────────────────────
 // A 5xx / 429 / timeout from a push service is that service having a moment, not
 // a dead address. With no retry a single blip silently drops a real turn ping.
 const PUSH_RETRIES = 2
