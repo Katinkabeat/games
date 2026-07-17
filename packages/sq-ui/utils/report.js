@@ -17,6 +17,11 @@
 
 const DEFAULT_TIMEOUT_MS = 8000
 
+// The push-notification functions retry transient sends internally with an 11s
+// per-recipient deadline (PUSH_DEADLINE_MS, c276). The client must outwait that
+// deadline, or a slow-but-successful send gets reported as a timeout failure.
+const PUSH_TIMEOUT_MS = 13000
+
 // Per page-load dedup. A widespread break (an endpoint down for everyone) would
 // otherwise fire one report per affected action; we only want to hear about a
 // given signature once per session. Keyed by game:type:status so different
@@ -103,7 +108,7 @@ export async function reportClientError({ url, anonKey, game, type, detail, stat
  * @param {string} opts.type      push type, for the report
  * @param {string} [opts.detail]  extra context (ids), for the report
  */
-export async function firePushAndReport({ pushUrl, reportUrl, anonKey, body, game, type, detail, timeoutMs = DEFAULT_TIMEOUT_MS }) {
+export async function firePushAndReport({ pushUrl, reportUrl, anonKey, body, game, type, detail, timeoutMs = PUSH_TIMEOUT_MS }) {
   const ctrl = new AbortController()
   const timer = setTimeout(() => ctrl.abort(), timeoutMs)
   try {
