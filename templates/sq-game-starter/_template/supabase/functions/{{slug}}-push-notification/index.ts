@@ -141,6 +141,13 @@ function pushErrDetail(err: any, userId: string, endpoint: string, attempts: num
   return `push send failed: ${status} — ${body} | host:${host} ep:${epFingerprint(endpoint)} user:${userId} attempts:${attempts}`
 }
 
+// Topics where a held-back delivery goes stale before it's seen (the turn's
+// already played, the invite already handled) ride Urgency: high so battery
+// saver / Doze shows them immediately instead of at the next maintenance
+// window (c283). Everything else stays normal — FCM can deprioritize senders
+// that blanket-mark pushes high.
+const HIGH_URGENCY_TOPICS = new Set(['your_turn', 'nudge', 'invite', 'opponent_joined'])
+
 async function sendPushToUser(
   supabase: any,
   userId: string,
@@ -161,10 +168,11 @@ async function sendPushToUser(
     keys: { p256dh: sub.keys_p256dh, auth: sub.keys_auth },
   }
 
+  const urgency = HIGH_URGENCY_TOPICS.has(topic) ? 'high' : 'normal'
   const startedAt = Date.now()
   for (let attempt = 0; ; attempt++) {
     try {
-      await webpush.sendNotification(pushSubscription, JSON.stringify(payload), { TTL: 86400, timeout: PUSH_ATTEMPT_TIMEOUT_MS })
+      await webpush.sendNotification(pushSubscription, JSON.stringify(payload), { TTL: 86400, timeout: PUSH_ATTEMPT_TIMEOUT_MS, urgency })
       return { sent: true, via: PUSH_APP, tag: payload.tag, user: userId }
     } catch (pushErr: any) {
       if (pushErr?.statusCode === 410 || pushErr?.statusCode === 404) {

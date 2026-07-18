@@ -113,6 +113,13 @@ function pushErrDetail(err: any, userId: string, app: string, endpoint: string, 
   return `push send failed: ${status} — ${body} | app:${app} host:${host} ep:${epFingerprint(endpoint)} user:${userId} attempts:${attempts}`
 }
 
+// Topics where a held-back delivery goes stale before it's seen ride
+// Urgency: high (c283). friend_request deliberately isn't one of them — a
+// friend request is still fresh an hour later, and the high-urgency budget
+// stays reserved for turn/nudge/invite pushes so FCM doesn't deprioritize
+// the sender. The set matches the game push fns' shared contract.
+const HIGH_URGENCY_TOPICS = new Set(['your_turn', 'nudge', 'invite', 'opponent_joined'])
+
 // Sends, retrying transient failures. 410/404 propagate raw so the caller can run
 // its expired-address cleanup; anything else surfaces as an enriched Error.
 async function sendWithRetry(
@@ -121,11 +128,13 @@ async function sendWithRetry(
   userId: string,
   app: string,
   endpoint: string,
+  topic: string,
 ): Promise<void> {
+  const urgency = HIGH_URGENCY_TOPICS.has(topic) ? 'high' : 'normal'
   const startedAt = Date.now()
   for (let attempt = 0; ; attempt++) {
     try {
-      await webpush.sendNotification(pushSubscription, JSON.stringify(payload), { TTL: 86400, timeout: PUSH_ATTEMPT_TIMEOUT_MS })
+      await webpush.sendNotification(pushSubscription, JSON.stringify(payload), { TTL: 86400, timeout: PUSH_ATTEMPT_TIMEOUT_MS, urgency })
       return
     } catch (err: any) {
       if (err?.statusCode === 410 || err?.statusCode === 404) throw err
@@ -170,7 +179,7 @@ async function sendPushToUser(
   }
 
   try {
-    await sendWithRetry(pushSubscription, payload, userId, PUSH_APP, sub.endpoint)
+    await sendWithRetry(pushSubscription, payload, userId, PUSH_APP, sub.endpoint, topic)
     return { sent: true, via: PUSH_APP, tag: payload.tag, user: userId }
   } catch (pushErr: any) {
     if (pushErr.statusCode === 410 || pushErr.statusCode === 404) {

@@ -162,6 +162,9 @@ async function sendPushToUser(
   const startedAt = Date.now()
   for (let attempt = 0; ; attempt++) {
     try {
+      // Deliberately NOT urgency:high (c283): this is a daily sweep, not
+      // time-sensitive — the high-urgency budget stays reserved for the game
+      // fns' turn/nudge/invite pushes so FCM doesn't deprioritize the sender.
       await webpush.sendNotification(pushSubscription, JSON.stringify(payload), { TTL: 86400, timeout: PUSH_ATTEMPT_TIMEOUT_MS })
       return { sent: true, tag: payload.tag, user: userId }
     } catch (err: any) {
