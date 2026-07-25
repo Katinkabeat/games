@@ -510,7 +510,9 @@ export default function LandingPage({ session }) {
               <IOSInstallPrompt />
               <AndroidInstallPrompt />
             </div>
-            <div className="grid gap-4 sm:grid-cols-2">
+            {/* Single column at every width: the 480px container only gives a
+                2-up tile ~230px, which truncates the game name to nothing. */}
+            <div className="grid gap-4">
               {games.map((game) => {
                 // Admins bypass the access gate so they can test in-development
                 // games while the rest of the world sees them as "Coming soon".
