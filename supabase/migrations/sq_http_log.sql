@@ -137,7 +137,7 @@ end;
 $$;
 
 comment on function public.sq_http_log_drain() is
-  'Copies new net._http_response rows into sq_http_log before pg_net vacuums them (~6h TTL), then prunes past 90 days. Run every minute by cron.';
+  'Copies new net._http_response rows into sq_http_log before pg_net vacuums them (~6h TTL), then prunes past 90 days. Run every 10 minutes by cron — see the schedule note in the migration before tightening that interval.';
 
 -- ── Failures-only view (the one to actually query) ───────────────────────────
 -- security_invoker so the view does not become an RLS bypass on the table
@@ -166,9 +166,29 @@ comment on view public.sq_push_failures is
   'Every logged pg_net send that did not cleanly succeed: severed calls (timed_out), non-2xx, and 200s where the push fn itself reported sent:false. A timed_out row has no tag — correlate it against move timestamps.';
 
 -- ── Schedule ─────────────────────────────────────────────────────────────────
--- Every minute. pg_net's TTL is ~6h so this is far more often than retention
--- demands; the tight interval is what gives net.http_request_queue a chance of
--- still holding the url, and keeps the log near-live during an incident.
+-- Every 10 minutes. pg_net's TTL is ~6h, so this still clears retention by 36x.
+--
+-- WAS every minute, for two stated reasons. Both were measured and dropped:
+--
+--   1. "gives net.http_request_queue a chance of still holding the url" — it
+--      never once did. Over 357 logged rows at a 1-minute tick, `url` was
+--      populated on ZERO of them (0.00%). pg_net's worker always deletes the
+--      queue row first. Capturing url needs the request id recorded at the call
+--      site or a trigger on the queue table, as the header above already says.
+--   2. "keeps the log near-live during an incident" — real cost is measured:
+--      drain lag goes from ~55s to ~10min. This log is read after a bug report
+--      lands, hours later, not watched live. Judged worth it.
+--
+-- WHY IT HAD TO CHANGE (2026-08-07): a per-minute write pins the database awake,
+-- and archive_timeout=120 then forces a WAL segment switch every 2 minutes,
+-- around the clock. Each forced switch writes + fsyncs + archives a full 16 MB
+-- segment no matter how little is in it. Measured: 33 kB of real WAL records
+-- shipped a 16 MB segment (~500x amplification), ~720 switches/day, ~11.5 GB/day
+-- of write IO on a 50 MB database. That drained the project's Disk IO budget and
+-- tripped a Supabase alert on 2026-08-05, ~30h after this job went live.
+--
+-- So: DO NOT tighten this back toward every-minute. Any cron that writes more
+-- often than every ~2 minutes re-arms the same amplification, whatever it does.
 -- Idempotent: unschedule first so re-running the migration doesn't double up.
 do $$
 begin
@@ -180,6 +200,6 @@ $$;
 
 select cron.schedule(
   'sq-http-log-drain',
-  '* * * * *',
+  '*/10 * * * *',
   $$select public.sq_http_log_drain();$$
 );
