@@ -72,6 +72,8 @@ _(none — Rungles shipped 2026-05-03, see Done)_
 
 ## Someday / nice-to-have
 
+- [ ] **Fold the 8 push fns' inline `reportServerError` copies onto `_shared/errorlog.ts`** (flagged 2026-08-09, c291). c291 extracted the first real shared module (`supabase/functions/_shared/errorlog.ts`) and wired sq-feedback / sq-feedback-stamp / sq-feedback-sweep through it. The 8 push functions (and the sq-game-starter template's push fn) still carry their own inline copies — functionally identical, just duplicated. Folding them in is mechanical but each fn needs a redeploy, so batch it with the next push-fn touch rather than as its own pass.
+
 - [ ] **Drop orphaned Snibble testing-phase DB objects** (flagged 2026-06-07, c190). The settings-unification card removed the client code for Redo today / Allow redo / Reset leaderboard, leaving two now-unreferenced server-side objects in the shared project: the `sn_app_settings` row `key = 'redo_today_enabled'` and the RPC `sn_admin_reset_leaderboard`. Harmless dead weight; left in place deliberately. Drop via the dashboard SQL editor during the next refactor pass (destructive prod change → not auto-run).
 - [ ] Full audit pass with Explore agent — duplication inside files, dead exports, prop-drilling, test coverage gaps.
 - [ ] Rungles `SoloGamePage.jsx` (~14 KB) standalone cleanup if MultiGamePage extraction doesn't naturally absorb it.
