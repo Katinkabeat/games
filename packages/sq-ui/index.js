@@ -34,6 +34,8 @@ export {
   reportClientError,
   firePushAndReport,
   installGlobalErrorReporting,
+  isChunkLoadError,
 } from './utils/report.js';
+export { lazyWithRetry } from './utils/lazyWithRetry.js';
 export { installPushHeal } from './utils/pushHeal.js';
 export { installNotificationNav } from './utils/notificationNav.js';

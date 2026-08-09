@@ -151,6 +151,19 @@ const _seenGlobal = new Set()
 // channel. Repeats of one message are already collapsed by _seenGlobal.
 const MAX_DISTINCT_PER_SESSION = 25
 
+// A failed dynamic-import (lazy route chunk) — every engine words it differently
+// (c315). These are usually a player's network blip, not a code bug, so they get
+// downgraded to a 'chunk-load' FYI rather than reported as a render crash.
+const CHUNK_LOAD_RE = /Importing a module script failed|error loading dynamically imported module|Failed to fetch dynamically imported module|ChunkLoadError/i
+
+/** True if the error/message looks like a failed lazy-chunk fetch. Accepts an Error or a string. */
+export function isChunkLoadError(errOrMessage) {
+  const m = typeof errOrMessage === 'string'
+    ? errOrMessage
+    : String(errOrMessage?.message ?? errOrMessage ?? '')
+  return CHUNK_LOAD_RE.test(m)
+}
+
 // Noise that is never worth a report: cross-origin opaque errors, the benign
 // ResizeObserver loop notice, and anything originating in a browser extension.
 function looksBenign(message = '', stack = '') {
@@ -180,8 +193,13 @@ function firstFrame(stack = '') {
 function reportGlobal(type, message, stack) {
   if (!_globalCfg) return
   if (looksBenign(message, stack)) return
+  // Chunk-load failures reclassify to a low-noise FYI type, and collapse to ONE
+  // report per session no matter which chunk/frame/wording — a player retrying
+  // against a dead connection is one incident, not five (c315).
+  const chunk = isChunkLoadError(message)
+  if (chunk) type = 'chunk-load'
   const frame = firstFrame(stack)
-  const key = `${type}:${message}:${frame}`
+  const key = chunk ? 'chunk-load' : `${type}:${message}:${frame}`
   if (_seenGlobal.has(key)) return
   if (_seenGlobal.size >= MAX_DISTINCT_PER_SESSION) return
   _seenGlobal.add(key)

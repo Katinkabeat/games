@@ -71,6 +71,7 @@ serve(async (req: Request) => {
     'js-error': 'uncaught error',
     'unhandled-rejection': 'unhandled promise rejection',
     'render-crash': 'render crash',
+    'chunk-load': 'chunk load failed (FYI)',
   }
   const isErrorType = type in HEAD
   const headline = HEAD[type] ?? 'push failed'
@@ -82,6 +83,11 @@ serve(async (req: Request) => {
     `\`${type}\`${statusPart}`,
   ]
   if (detail) lines.push(`detail: ${detail}`)
+  if (type === 'chunk-load') {
+    // Downgraded, not dropped (c315): one player = network blip, but several
+    // players/games in a burst = suspect a broken deploy (chunks 404ing).
+    lines.push('One player exhausted lazy-chunk retries — usually their network. A burst across players = check the deploy.')
+  }
 
   try {
     const res = await fetch(`${WEBHOOK}?wait=true`, {

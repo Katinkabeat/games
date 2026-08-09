@@ -6,7 +6,7 @@
 // variant="page"   — full-screen fallback (game shells, hub root).
 // variant="inline" — fallback sits in place as a card (hub grid, banners).
 import { Component } from 'react';
-import { reportRenderCrash } from '../utils/report.js';
+import { reportRenderCrash, isChunkLoadError } from '../utils/report.js';
 
 export default class SQErrorBoundary extends Component {
   state = { error: null };
@@ -26,7 +26,14 @@ export default class SQErrorBoundary extends Component {
     if (!this.state.error) return this.props.children;
 
     const inline = this.props.variant === 'inline';
-    const title = this.props.title || 'Something went wrong';
+    // A failed lazy-chunk fetch is a network blip, not a crash — and React.lazy
+    // caches the rejection, so only a full reload can recover it (c314). Show a
+    // connection-flavoured panel whose Try again reloads instead of resetting.
+    const chunk = isChunkLoadError(this.state.error);
+    const title = chunk ? 'Connection hiccup' : this.props.title || 'Something went wrong';
+    const body = chunk
+      ? "Part of the game didn't load — that's usually a brief network blip. Your progress is safe. Try again once you're back online."
+      : 'This part of SideQuest hit a snag. Your progress is safe. Try again, or reload to get back on track.';
 
     const panel = (
       <div className="card p-8 text-center max-w-[420px] w-full">
@@ -34,20 +41,27 @@ export default class SQErrorBoundary extends Component {
           {title}
         </h2>
         <p className="font-body text-sm text-wordy-600 dark:text-wordy-300 mb-6">
-          This part of SideQuest hit a snag. Your progress is safe. Try again, or
-          reload to get back on track.
+          {body}
         </p>
         <div className="flex gap-3 justify-center">
-          <button
-            type="button"
-            className="btn-secondary"
-            onClick={() => this.setState({ error: null })}
-          >
-            Try again
-          </button>
-          <button type="button" className="btn-primary" onClick={() => window.location.reload()}>
-            Reload
-          </button>
+          {chunk ? (
+            <button type="button" className="btn-primary" onClick={() => window.location.reload()}>
+              Try again
+            </button>
+          ) : (
+            <>
+              <button
+                type="button"
+                className="btn-secondary"
+                onClick={() => this.setState({ error: null })}
+              >
+                Try again
+              </button>
+              <button type="button" className="btn-primary" onClick={() => window.location.reload()}>
+                Reload
+              </button>
+            </>
+          )}
         </div>
       </div>
     );
