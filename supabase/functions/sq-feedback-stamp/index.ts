@@ -18,6 +18,7 @@
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { renderFeedbackMessage } from '../_shared/feedbackMessage.ts'
+import { reportServerError } from '../_shared/errorlog.ts'
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
 const SUPABASE_SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
@@ -50,6 +51,7 @@ serve(async (req: Request) => {
 
   if (error) {
     console.error('sq-feedback-stamp: row read failed', error.message)
+    await reportServerError('sq-feedback-stamp: row read failed', `feedback ${id}: ${error.message}`)
     return json({ stamped: false, reason: 'row read failed' })
   }
   if (!row) return json({ skipped: 'no such row' })
@@ -66,11 +68,19 @@ serve(async (req: Request) => {
     })
     if (!res.ok) {
       console.error('sq-feedback-stamp: webhook PATCH returned', res.status)
+      await reportServerError(
+        'sq-feedback-stamp: stamp failed',
+        `http ${res.status} — feedback ${id} is '${row.status}' but #feedback still shows the old stamp`
+      )
       return json({ stamped: false, reason: `webhook http ${res.status}` })
     }
     return json({ stamped: true, status: row.status })
   } catch (err: any) {
     console.error('sq-feedback-stamp: webhook PATCH failed', err?.message)
+    await reportServerError(
+      'sq-feedback-stamp: stamp failed',
+      `feedback ${id} is '${row.status}' but #feedback still shows the old stamp: ${err?.message ?? err}`
+    )
     return json({ stamped: false, reason: 'webhook error' })
   }
 })

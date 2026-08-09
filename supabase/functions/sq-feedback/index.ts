@@ -2,6 +2,7 @@ import { serve } from 'https://deno.land/std@0.177.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { SMTPClient } from 'https://deno.land/x/denomailer@1.6.0/mod.ts'
 import { renderFeedbackMessage } from '../_shared/feedbackMessage.ts'
+import { reportServerError } from '../_shared/errorlog.ts'
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
 const SUPABASE_SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
@@ -89,13 +90,36 @@ serve(async (req: Request) => {
         if (res.ok) {
           const msg = await res.json()
           if (msg?.id) {
-            await admin.from('feedback').update({ discord_message_id: msg.id }).eq('id', row.id)
+            const { error: midErr } = await admin
+              .from('feedback')
+              .update({ discord_message_id: msg.id })
+              .eq('id', row.id)
+            if (midErr) {
+              // Message exists but the row doesn't know its id → stamps will skip it.
+              await reportServerError(
+                'sq-feedback: discord_message_id save failed',
+                `feedback ${row.id}: ${midErr.message}`
+              )
+            }
+          } else {
+            await reportServerError(
+              'sq-feedback: discord mirror returned no message id',
+              `feedback ${row.id}: item will be invisible in #feedback`
+            )
           }
         } else {
           console.error('[sq-feedback] discord webhook returned', res.status)
+          await reportServerError(
+            'sq-feedback: discord mirror failed',
+            `http ${res.status} — feedback ${row.id} saved but NOT in #feedback`
+          )
         }
       } catch (dErr) {
         console.error('[sq-feedback] discord mirror failed', dErr)
+        await reportServerError(
+          'sq-feedback: discord mirror failed',
+          `feedback ${row.id} saved but NOT in #feedback: ${(dErr as Error)?.message ?? dErr}`
+        )
       }
     }
 
@@ -127,6 +151,10 @@ serve(async (req: Request) => {
       } catch (mailErr) {
         // The row is saved; a broken mailer must not fail the user's submission.
         console.error('[sq-feedback] email send failed', mailErr)
+        await reportServerError(
+          'sq-feedback: email forward failed',
+          `feedback ${row.id}: ${(mailErr as Error)?.message ?? mailErr}`
+        )
       }
     }
 
