@@ -74,8 +74,14 @@ begin
 
   -- Empty board (start of week, nobody has points yet): clear any stale
   -- rows and bail — nothing to diff or notify.
+  --
+  -- The WHERE matches every row (week_start is NOT NULL) but must be
+  -- present: PostgREST sessions preload pg_safeupdate (authenticator's
+  -- rolconfig), which rejects unfiltered DELETEs even inside functions.
+  -- Without it this branch 500s every early-Monday tick ("DELETE
+  -- requires a WHERE clause", 2026-08-10 03:20/04:20 in sq_http_log).
   if v_week_start is null then
-    delete from public.sq_leaderboard_rank_snapshot;
+    delete from public.sq_leaderboard_rank_snapshot where week_start is not null;
     return;
   end if;
 
