@@ -32,6 +32,11 @@ export default defineConfig({
         changeOrigin: true,
         ws: true,
       },
+      '/oublex': {
+        target: 'http://localhost:5189',
+        changeOrigin: true,
+        ws: true,
+      },
     },
   },
 });
