@@ -31,18 +31,43 @@ serve(async (req: Request) => {
   const admin = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY)
   const cutoff = new Date(Date.now() - 60 * 60 * 1000).toISOString()
 
-  const { data: rows, error } = await admin
-    .from('feedback')
-    .select('id, username, category, created_at')
-    .eq('status', 'new')
-    .is('discord_message_id', null)
-    .lt('created_at', cutoff)
-    .order('created_at', { ascending: true })
-    .limit(20)
+  // The table is tiny (one index on created_at, a handful of rows), so a
+  // failure here is the shared project's API gateway stalling (504 "Gateway
+  // Timeout" seen ~25% of ticks, 2026-09-13), not the query. Retry with a
+  // short backoff and only alert once every attempt has failed — a missed
+  // tick costs nothing (the next hour re-checks the same rows), but a real
+  // outage should still be loud.
+  const query = () =>
+    admin
+      .from('feedback')
+      .select('id, username, category, created_at')
+      .eq('status', 'new')
+      .is('discord_message_id', null)
+      .lt('created_at', cutoff)
+      .order('created_at', { ascending: true })
+      .limit(20)
 
-  if (error) {
-    console.error('sq-feedback-sweep: query failed', error.message)
-    await reportServerError('sq-feedback-sweep: query failed', error.message)
+  const BACKOFF_MS = [2000, 4000]
+  let rows: { id: string; username: string | null; category: string; created_at: string }[] | null = null
+  let lastError: string | null = null
+  for (let attempt = 0; attempt <= BACKOFF_MS.length; attempt++) {
+    if (attempt > 0) await new Promise((r) => setTimeout(r, BACKOFF_MS[attempt - 1]))
+    const { data, error } = await query()
+    if (!error) {
+      rows = data
+      lastError = null
+      break
+    }
+    lastError = error.message
+    console.warn(`sq-feedback-sweep: query attempt ${attempt + 1} failed`, error.message)
+  }
+
+  if (lastError !== null) {
+    console.error('sq-feedback-sweep: query failed', lastError)
+    await reportServerError(
+      'sq-feedback-sweep: query failed',
+      `${lastError} (after ${BACKOFF_MS.length + 1} attempts)`
+    )
     return json({ swept: false, reason: 'query failed' })
   }
 
