@@ -16,6 +16,13 @@
 --
 -- Source table assumed: {{slug}}_solo_results(user_id, play_date,
 -- score, completed_at) — see {{slug}}_solo_results.sql.
+--
+-- c332 (SideQuest Test Accounts group): both RPCs below exclude any
+-- public.sq_is_test_account(user_id) member from the leaderboard AND
+-- from ranking — a member never occupies a rank slot, and if the caller
+-- IS a member, {{slug}}_solo_my_rank just returns nothing for them (no
+-- rank to report). sq_is_test_account/sq_test_account_ids are the
+-- platform's shared SECDEF helpers; nothing else to apply for this part.
 -- ============================================================
 
 CREATE OR REPLACE FUNCTION public.{{slug}}_solo_leaderboard(
@@ -52,6 +59,7 @@ BEGIN
       FROM public.{{slug}}_solo_results r
       JOIN public.profiles p ON p.id = r.user_id
       WHERE r.play_date = p_date
+        AND NOT public.sq_is_test_account(r.user_id)  -- c332
       ORDER BY r.score DESC, r.completed_at ASC
       LIMIT 10;
   ELSE
@@ -66,6 +74,7 @@ BEGIN
       JOIN public.profiles p ON p.id = r.user_id
       WHERE (v_start IS NULL OR r.play_date >= v_start)
         AND (v_end   IS NULL OR r.play_date <  v_end)
+        AND NOT public.sq_is_test_account(r.user_id)  -- c332
       GROUP BY r.user_id, p.username, p.avatar_hue
       ORDER BY sum(r.score) DESC, max(r.completed_at) ASC
       LIMIT 10;
@@ -114,6 +123,9 @@ BEGIN
           rank() OVER (ORDER BY r.score DESC, r.completed_at ASC) AS rk
         FROM public.{{slug}}_solo_results r
         WHERE r.play_date = p_date
+          AND NOT public.sq_is_test_account(r.user_id)  -- c332: a member never
+          -- occupies a rank slot; if the caller IS a member this also means
+          -- `uid = v_uid` below matches nothing, so they get an empty result.
       )
       SELECT rk::int, user_score::int
       FROM ranked
@@ -128,6 +140,7 @@ BEGIN
         FROM public.{{slug}}_solo_results r
         WHERE (v_start IS NULL OR r.play_date >= v_start)
           AND (v_end   IS NULL OR r.play_date <  v_end)
+          AND NOT public.sq_is_test_account(r.user_id)  -- c332
         GROUP BY r.user_id
       ),
       ranked AS (

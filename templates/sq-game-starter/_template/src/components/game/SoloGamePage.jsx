@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import {
   SQBoardShell,
@@ -36,6 +36,22 @@ export default function SoloGamePage({ session, profile, isAdmin }) {
   const [recordState, setRecordState] = useState('idle') // idle | saving | error | saved
   const [dayClosed, setDayClosed]     = useState(false)  // run finished after its day ended
   const lastResultRef = useRef(null)                     // for the retry button
+
+  // c332 (SideQuest Test Accounts group): a test-account member may replay
+  // today's daily as often as they like. isTestAccount below is a cosmetic
+  // gate only (whether the "Replay (test account)" button renders) — the
+  // real gate is server-side, inside {{slug}}_test_reset_today() itself.
+  const [isTestAccount, setIsTestAccount] = useState(false)
+  const [resetting, setResetting] = useState(false)
+
+  useEffect(() => {
+    let active = true
+    if (!userId) return
+    supabase.rpc('sq_is_test_account', { uid: userId })
+      .then(({ data }) => { if (active) setIsTestAccount(!!data) })
+      .catch(() => { if (active) setIsTestAccount(false) })
+    return () => { active = false }
+  }, [userId])
 
   // Record a finished run. This MUST NOT be fire-and-forget: a swallowed
   // failure loses the score, and (with resume) leaves the run replayable.
@@ -77,6 +93,31 @@ export default function SoloGamePage({ session, profile, isAdmin }) {
     if (r) recordResult(r.playDate, r.score)
   }
 
+  // c332: wipe today's result (+ resume snapshot, if your game has one)
+  // server-side (membership re-checked inside the RPC), then drop the player
+  // back into a fresh run of today's daily. Call this from the "Replay (test
+  // account)" button on your already-played screen, resetting whatever local
+  // game state that screen owns after it resolves. See Rungles'
+  // SoloGamePage.jsx / Snibble's GameView.jsx for a wired reference.
+  async function handleTestReplay() {
+    if (resetting) return
+    setResetting(true)
+    try {
+      const { error } = await supabase.rpc('{{slug}}_test_reset_today')
+      if (error) throw error
+      lastResultRef.current = null
+      setRecordState('idle')
+      setDayClosed(false)
+      // TODO: reset whatever local/component state renders the "already
+      // played today" screen so the player sees a fresh run, not the stale
+      // result they just deleted.
+    } catch (e) {
+      console.error(`[{{slug}}] test reset failed`, e)
+    } finally {
+      setResetting(false)
+    }
+  }
+
   return (
     <SQBoardShell
       width="narrow"
@@ -113,7 +154,23 @@ export default function SoloGamePage({ session, profile, isAdmin }) {
 
             Put it on the end screen itself, not only on the "already played
             today" re-entry panel — those are different surfaces, and mistaking
-            one for the other is how Oublex shipped without it (c240 → c279). */}
+            one for the other is how Oublex shipped without it (c240 → c279).
+
+            c332: on the "already played today" screen specifically (not the
+            end-of-run screen), also add a small quiet replay button, gated on
+            isTestAccount:
+
+              {isTestAccount && (
+                <button
+                  type="button"
+                  className="text-xs opacity-60 hover:opacity-100 underline mt-3"
+                  onClick={handleTestReplay}
+                  disabled={resetting}
+                >
+                  {resetting ? 'Resetting…' : 'Replay (test account)'}
+                </button>
+              )}
+        */}
         <SaveStatus
           recordState={recordState}
           dayClosed={dayClosed}
