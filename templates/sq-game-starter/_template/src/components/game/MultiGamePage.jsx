@@ -148,11 +148,9 @@ export default function MultiGamePage({ session, profile, isAdmin }) {
   }, [gameId, isWaiting, iAmInvitee, iAmPlayer, refresh])
 
   useRealtimeChannel({
-    channelName: `game-{{slug}}-${gameId}`,
-    subscriptions: gameId ? [
-      { event: 'UPDATE', schema: 'public', table: '{{slug}}_games',   filter: `id=eq.${gameId}` },
-      { event: '*',      schema: 'public', table: '{{slug}}_players', filter: `game_id=eq.${gameId}` },
-    ] : [],
+    // Private Broadcast topic fed by the {{slug}}_broadcast_game_change trigger
+    // ({{slug}}_games UPDATE + {{slug}}_players changes for this game).
+    topic: gameId ? `{{slug}}:game:${gameId}` : null,
     onChange: refresh,
     pollMs: 15_000,
     enabled: !!gameId,

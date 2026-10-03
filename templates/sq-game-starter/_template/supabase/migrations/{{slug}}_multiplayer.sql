@@ -21,7 +21,7 @@
 --   • claim-inactive-win after 7 days of no turn activity
 --   • per-pair win/loss matchup record
 --   • is_participant() + N-player RLS read policies
---   • realtime publication, invite expiry, {{slug}}_pending_for(uid)
+--   • realtime Broadcast triggers + policies, invite expiry, {{slug}}_pending_for(uid)
 --
 -- ── GAME-SPECIFIC TODO ───────────────────────────────────────
 -- The turn ENGINE is generic, but how a turn earns points is your
@@ -122,10 +122,6 @@ create table if not exists public.{{slug}}_players (
 );
 
 create index if not exists {{slug}}_players_user_idx on public.{{slug}}_players(user_id);
-
--- Realtime needs replica identity full for filters on non-PK columns
--- (the lobby + game page filter {{slug}}_players on game_id / user_id).
-alter table public.{{slug}}_players replica identity full;
 
 -- ── 3. {{slug}}_matchups ──────────────────────────────────────
 -- Per-pair W/L totals (one row per ordered (player, opponent) pair).
@@ -782,15 +778,157 @@ language sql security definer stable as $$
 $$;
 grant execute on function public.{{slug}}_pending_for(uuid) to authenticated;
 
--- ── 19. Realtime publication ──────────────────────────────────
--- Required so MultiplayerCard + MultiGamePage receive live updates.
--- Wrapped so re-running this file doesn't error on "already member".
-do $$ begin
-  alter publication supabase_realtime add table public.{{slug}}_games;
-exception when duplicate_object then null; end $$;
-do $$ begin
-  alter publication supabase_realtime add table public.{{slug}}_players;
-exception when duplicate_object then null; end $$;
+-- ── 19. Realtime: Broadcast from database ────────────────────
+-- Uses realtime.send (private Broadcast) instead of postgres_changes: no
+-- publication membership or replica identity needed. Idempotent.
+-- Topics (prefixed because the Supabase project is shared with other SQ games):
+--   {{slug}}:game:<game_id>   everyone in / invited to / who created that game
+--   {{slug}}:user:<user_id>   lobby feed for one user
+-- Event name: 'change'. Payload:
+--   { table, event, game_id, user_id?, status,
+--     new: { id, status, created_by } }
+-- (`new` is only present for table = '{{slug}}_games'; {{slug}}_players events
+--  carry game_id/user_id and clients just refetch.)
+
+-- 19a. Trigger function
+create or replace function public.{{slug}}_broadcast_game_change()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_game_id  uuid;
+  v_status   text;
+  v_creator  uuid;
+  v_invitee  uuid;
+  v_invitees uuid[];
+  v_payload  jsonb;
+  v_uid      uuid;
+begin
+  if TG_TABLE_NAME = '{{slug}}_games' then
+    v_game_id  := NEW.id;
+    v_status   := NEW.status;
+    v_creator  := NEW.created_by;
+    v_invitee  := NEW.invited_user_id;
+    v_invitees := coalesce(NEW.invited_user_ids, '{}');
+    v_payload := jsonb_build_object(
+      'table',   '{{slug}}_games',
+      'event',   TG_OP,
+      'game_id', v_game_id,
+      'status',  v_status,
+      'new', jsonb_build_object(
+        'id',         NEW.id,
+        'status',     NEW.status,
+        'created_by', NEW.created_by
+      )
+    );
+  else
+    -- {{slug}}_players: use OLD on DELETE (NEW is null there)
+    if TG_OP = 'DELETE' then
+      v_game_id := OLD.game_id;
+      v_uid     := OLD.user_id;
+    else
+      v_game_id := NEW.game_id;
+      v_uid     := NEW.user_id;
+    end if;
+    if v_game_id is null then
+      return coalesce(NEW, OLD);
+    end if;
+    select g.status, g.created_by, g.invited_user_id, coalesce(g.invited_user_ids, '{}')
+      into v_status, v_creator, v_invitee, v_invitees
+      from public.{{slug}}_games g where g.id = v_game_id;
+    v_payload := jsonb_build_object(
+      'table',   '{{slug}}_players',
+      'event',   TG_OP,
+      'game_id', v_game_id,
+      'user_id', v_uid,
+      'status',  v_status
+    );
+  end if;
+
+  begin
+    perform realtime.send(v_payload, 'change', '{{slug}}:game:' || v_game_id::text, true);
+
+    -- One lobby message per distinct user: every player in the game, the
+    -- creator, the invitee(s), and (players events) the row's own user, who
+    -- may have just been removed from the table.
+    for v_uid in
+      select sp.user_id from public.{{slug}}_players sp where sp.game_id = v_game_id
+      union
+      select v_creator where v_creator is not null
+      union
+      select v_invitee where v_invitee is not null
+      union
+      select unnest(v_invitees)
+      union
+      select v_uid where v_uid is not null
+    loop
+      perform realtime.send(v_payload, 'change', '{{slug}}:user:' || v_uid::text, true);
+    end loop;
+  exception when others then
+    -- A Realtime hiccup must never abort the game write.
+    raise warning '{{slug}}_broadcast_game_change failed: %', sqlerrm;
+  end;
+
+  return coalesce(NEW, OLD);
+end;
+$$;
+
+-- 19b. Triggers
+drop trigger if exists {{slug}}_games_broadcast on public.{{slug}}_games;
+create trigger {{slug}}_games_broadcast
+  after update on public.{{slug}}_games
+  for each row execute function public.{{slug}}_broadcast_game_change();
+
+drop trigger if exists {{slug}}_players_broadcast on public.{{slug}}_players;
+create trigger {{slug}}_players_broadcast
+  after insert or update or delete on public.{{slug}}_players
+  for each row execute function public.{{slug}}_broadcast_game_change();
+
+-- 19c. Realtime authorization (private channels)
+-- SECURITY DEFINER helper so the policy doesn't recurse through
+-- {{slug}}_players RLS. Ignores malformed topics instead of erroring.
+-- The uuid starts right after the '{{slug}}:game:' prefix.
+create or replace function public.{{slug}}_can_read_game_topic(p_topic text)
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select p_topic ~ '^{{slug}}:game:[0-9a-fA-F-]{36}$'
+    and exists (
+      select 1
+      from public.{{slug}}_games g
+      where g.id = substr(p_topic, length('{{slug}}:game:') + 1)::uuid
+        and (
+          g.created_by = (select auth.uid())
+          or g.invited_user_id = (select auth.uid())
+          or (select auth.uid()) = any(coalesce(g.invited_user_ids, '{}'))
+          or exists (
+            select 1 from public.{{slug}}_players sp
+            where sp.game_id = g.id and sp.user_id = (select auth.uid())
+          )
+        )
+    );
+$$;
+
+drop policy if exists "{{slug}}_realtime_game_topic_select" on realtime.messages;
+create policy "{{slug}}_realtime_game_topic_select"
+  on realtime.messages for select to authenticated
+  using (
+    realtime.messages.extension in ('broadcast')
+    and public.{{slug}}_can_read_game_topic(realtime.topic())
+  );
+
+drop policy if exists "{{slug}}_realtime_user_topic_select" on realtime.messages;
+create policy "{{slug}}_realtime_user_topic_select"
+  on realtime.messages for select to authenticated
+  using (
+    realtime.messages.extension in ('broadcast')
+    and realtime.topic() = '{{slug}}:user:' || (select auth.uid())::text
+  );
 
 -- ── 20. Push notification triggers ────────────────────────────
 -- Feed the {{slug}}-push-notification Edge Function via pg_net.

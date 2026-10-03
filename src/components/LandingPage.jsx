@@ -316,36 +316,39 @@ export default function LandingPage({ session }) {
       if (active) setLoading(false);
     })();
 
-    const channel = supabase
-      .channel('hub-inbox')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'games' }, scheduleRecount)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'rg_games' }, scheduleRecount)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'sn_matches', filter: `creator_id=eq.${user.id}` }, scheduleRecount)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'sn_matches', filter: `opponent_id=eq.${user.id}` }, scheduleRecount)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'sn_matches', filter: `invited_user_id=eq.${user.id}` }, scheduleRecount)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'game_players', filter: `user_id=eq.${user.id}` }, scheduleRecount)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'rg_players', filter: `user_id=eq.${user.id}` }, scheduleRecount)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'sn_match_round_plays', filter: `user_id=eq.${user.id}` }, scheduleRecount)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'yahdle_games', filter: `created_by=eq.${user.id}` }, scheduleRecount)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'yahdle_games', filter: `invited_user_id=eq.${user.id}` }, scheduleRecount)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'yahdle_players', filter: `user_id=eq.${user.id}` }, scheduleRecount)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'friendships' }, () => { if (active) loadPendingFriends(); })
-      .subscribe((status) => {
-        if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
-          if (!pollInterval) {
-            pollInterval = setInterval(() => { if (active) recountInbox(); }, 60000);
+    // Realtime: Broadcast-from-database. Each game's DB trigger sends a `change`
+    // message to the private topic `<game>:user:<userId>` whenever anything
+    // relevant to this user changes (payload ignored; we just recount).
+    // Pending-friend updates (friendships) have no Broadcast trigger yet and
+    // only load on mount; the old postgres_changes subscription was already
+    // dead (friendships was never in the publication), so this is unchanged.
+    const failedTopics = new Set();
+    const topics = ['wordy', 'rungles', 'snibble', 'yahdle'].map((g) => `${g}:user:${user.id}`);
+    const channels = topics.map((topic) =>
+      supabase
+        .channel(topic, { config: { private: true } })
+        .on('broadcast', { event: 'change' }, scheduleRecount)
+        .subscribe((status) => {
+          if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
+            failedTopics.add(topic);
+            if (!pollInterval) {
+              pollInterval = setInterval(() => { if (active) recountInbox(); }, 60000);
+            }
+          } else if (status === 'SUBSCRIBED') {
+            failedTopics.delete(topic);
+            if (failedTopics.size === 0 && pollInterval) {
+              clearInterval(pollInterval);
+              pollInterval = null;
+            }
           }
-        } else if (status === 'SUBSCRIBED' && pollInterval) {
-          clearInterval(pollInterval);
-          pollInterval = null;
-        }
-      });
+        })
+    );
 
     return () => {
       active = false;
       if (recountTimer) clearTimeout(recountTimer);
       if (pollInterval) clearInterval(pollInterval);
-      supabase.removeChannel(channel);
+      channels.forEach((ch) => supabase.removeChannel(ch));
     };
   }, [user.id]);
 

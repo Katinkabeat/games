@@ -11,8 +11,8 @@ import { useRealtimeChannel } from './useRealtimeChannel.js'
 //                    (via {{slug}}_list_open_games / {{slug}}_join_open_game)
 // Returns { ...lists, opponents (id→profile), loading, reload }.
 //
-// Realtime + 30s polling keep these fresh. Requires the tables to be in
-// the supabase_realtime publication (done in {{slug}}_multiplayer.sql).
+// Realtime + 30s polling keep these fresh. Requires
+// the {{slug}}_broadcast_game_change trigger (done in {{slug}}_multiplayer.sql).
 export function useMultiplayerLobby(userId) {
   const [pendingInvites, setPendingInvites] = useState([])
   const [sentInvites, setSentInvites] = useState([])
@@ -98,12 +98,9 @@ export function useMultiplayerLobby(userId) {
   useEffect(() => { reload() }, [reload])
 
   useRealtimeChannel({
-    channelName: `lobby_{{slug}}_${userId}`,
-    subscriptions: userId ? [
-      { event: '*', schema: 'public', table: '{{slug}}_games', filter: `created_by=eq.${userId}` },
-      { event: '*', schema: 'public', table: '{{slug}}_games', filter: `invited_user_id=eq.${userId}` },
-      { event: '*', schema: 'public', table: '{{slug}}_players', filter: `user_id=eq.${userId}` },
-    ] : [],
+    // Per-user private Broadcast topic: the trigger sends me changes to games
+    // I'm in, created, or was invited to.
+    topic: userId ? `{{slug}}:user:${userId}` : null,
     onChange: reload,
     pollMs: 30_000,
     enabled: !!userId,

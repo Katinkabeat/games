@@ -85,13 +85,13 @@ into the one stubbed seam. It includes:
   greyed ✗ pills); if only the creator is seated it closes with
   `closed_reason='no_other_players'` (filed under Completed with an "invite
   expired" blurb, one `game_closed` push, no stats/matchups recorded)
-- `<slug>_is_participant()` + N-player RLS, realtime publication, and
+- `<slug>_is_participant()` + N-player RLS, realtime Broadcast triggers, and
   `<slug>_pending_for(uid)` for the hub bell
 
 **Files:**
 
 - Backend: `supabase/migrations/<slug>_multiplayer.sql` (schema + RPCs + RLS +
-  expiry + push triggers + realtime publication), `<slug>_nudge.sql`, and the
+  expiry + push triggers + realtime Broadcast triggers), `<slug>_nudge.sql`, and the
   `supabase/functions/<slug>-push-notification/` edge function.
 - Frontend: `src/lib/multiplayerActions.js`, `src/hooks/useMultiplayerLobby.js`,
   `src/hooks/useFriends.js`, `src/components/lobby/MultiplayerCard.jsx` +
@@ -101,8 +101,8 @@ into the one stubbed seam. It includes:
 **Setup after scaffolding:**
 
 1. Run `<slug>_multiplayer.sql`, then `<slug>_nudge.sql`, then
-   `<slug>_admin_close_game.sql` in the SQL editor. The first one adds both
-   tables to the `supabase_realtime` publication and creates
+   `<slug>_admin_close_game.sql` in the SQL editor. The first one creates the Broadcast triggers + `realtime.messages`
+   policies (no publication or replica identity needed) and
    `<slug>_pending_for(uid)` — so there's no separate "enable realtime" step.
 2. In `<slug>_multiplayer.sql` **section 20**, replace `<PROJECT_REF>` and
    `<ANON_JWT>` in the push triggers (the SQ shared project ref is
